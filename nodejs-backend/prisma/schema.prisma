@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model user {
   id       String  @id @default(uuid())
   name     String
   email    String  @unique
@@ -15,32 +15,32 @@ model User {
   role     String  // 'customer' or 'seller'
   createdAt DateTime @default(now())
 
-  Customer Customer?
-  Seller   Seller?
+  Customer customer?
+  Seller   seller?
 }
 
-model Customer {
+model customer {
   id       String  @id @default(uuid())
-  user     User    @relation(fields: [userId], references: [id])
+  user     user    @relation(fields: [userId], references: [id])
   userId   String  @unique
   address  String
   phone    String
-  orders    Order[]
+  orders   order[]
 }
 
-model Seller {
+model seller {
   id          String   @id @default(uuid())
-  user        User     @relation(fields: [userId], references: [id])
+  user        user     @relation(fields: [userId], references: [id])
   userId      String   @unique
   storeName   String
   description String?
   rating      Float    @default(0)
-  products    Product[]
+  products    product[]
 }
 
-model Product {
+model product {
   id          String  @id @default(uuid())
-  seller      Seller  @relation(fields: [sellerId], references: [id])
+  seller      seller  @relation(fields: [sellerId], references: [id])
   sellerId    String
   name        String
   description String?
@@ -48,33 +48,33 @@ model Product {
   stock       Int
   category    String
   createdAt   DateTime @default(now())
-  orderItems  OrderItem[]
+  orderItems  order_item[]
 }
 
-model Order {
+model order {
   id         String     @id @default(uuid())
-  customer   Customer   @relation(fields: [customerId], references: [id])
+  customer   customer   @relation(fields: [customerId], references: [id])
   customerId String
   totalPrice Float
   status     String     // 'pending', 'completed', 'cancelled'
   createdAt  DateTime   @default(now())
-  orderItems OrderItem[]
-  payment     Payment?
+  orderItems order_item[]
+  payment    payment?
 }
 
-model OrderItem {
+model order_item {
   id        String  @id @default(uuid())
-  order     Order   @relation(fields: [orderId], references: [id])
+  order     order   @relation(fields: [orderId], references: [id])
   orderId   String
-  product   Product @relation(fields: [productId], references: [id])
+  product   product @relation(fields: [productId], references: [id])
   productId String
   quantity  Int
   unitPrice Float
 }
 
-model Payment {
+model payment {
   id        String   @id @default(uuid())
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     order    @relation(fields: [orderId], references: [id])
   orderId   String   @unique
   amount    Float
   status    String   // 'pending', 'completed', 'failed'

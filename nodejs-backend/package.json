@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "ts-node src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "seed": "node prisma/seed.js",
+    "clean-seed": "node prisma/seedCleaner.js"
   },
   "keywords": [],
   "author": "",
