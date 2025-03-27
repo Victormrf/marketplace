@@ -1,24 +1,28 @@
 import { Router } from "express";
 import { UserService } from "../services/userService";
-import { UserNotFoundError, ValidationError } from "../utils/customErrors";
+import {
+  ConflictError,
+  UserNotFoundError,
+  ValidationError,
+} from "../utils/customErrors";
 
 export const userRoutes = Router();
 const userService = new UserService();
 
-userRoutes.post("/create", async (req, res) => {
+userRoutes.post("/register", async (req, res) => {
   const { name, email, password, role } = req.body;
 
   try {
     const result = await userService.create({ name, email, password, role });
     res.status(201).json(result);
   } catch (error) {
-    if (error instanceof UserNotFoundError) {
-      res.status(404).json({ error: error.message });
+    if (error instanceof ConflictError) {
+      res.status(409).json({ error: error.message });
     } else if (error instanceof ValidationError) {
       res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: "Internal Server Error" });
     }
-
-    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -72,12 +76,3 @@ userRoutes.delete("/:userId", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-// export const deleteUser = async (req: Request, res: Response) => {
-//   try {
-//     await userService.deleteUser(req.params.id);
-//     res.status(204).send();
-//   } catch (error) {
-//     res.status(404).json({ message: error.message });
-//   }
-// };

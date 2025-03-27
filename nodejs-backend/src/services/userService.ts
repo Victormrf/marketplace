@@ -1,5 +1,10 @@
+import { Prisma } from "@prisma/client";
 import { UserModel } from "../models/userModel";
-import { UserNotFoundError, ValidationError } from "../utils/customErrors";
+import {
+  ConflictError,
+  UserNotFoundError,
+  ValidationError,
+} from "../utils/customErrors";
 
 interface UserInputData {
   name: string;
@@ -29,10 +34,14 @@ export class UserService {
 
     try {
       return await UserModel.create(data);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to create user: ${(error as Error).message}`);
+    } catch (error: any) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError("Email already on use");
       }
+      throw error; // Re-lança o erro
     }
   }
 
@@ -53,7 +62,7 @@ export class UserService {
 
     try {
       return await UserModel.update(userId, data);
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Failed to update user: ${(error as Error).message}`);
     }
   }
