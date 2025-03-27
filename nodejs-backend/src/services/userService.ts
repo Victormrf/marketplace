@@ -57,39 +57,14 @@ export class UserService {
       throw new Error(`Failed to update user: ${(error as Error).message}`);
     }
   }
+
+  async delete(userId: string) {
+    const user = await UserModel.getById(userId);
+
+    if (!user) {
+      throw new UserNotFoundError();
+    }
+
+    return await UserModel.delete(userId);
+  }
 }
-
-// export const getUserById = async (id: string) => {
-//   const user = await userModel.getUserById(id);
-//   if (!user) {
-//     throw new Error("User not found");
-//   }
-//   return user;
-// };
-
-// export const createUser = async (data: {
-//   name: string;
-//   email: string;
-//   password: string;
-//   role: string;
-// }) => {
-//   const user = await userModel.createUser(data);
-//   return user;
-// };
-
-// export const updateUser = async (
-//   id: string,
-//   data: {
-//     name?: string;
-//     email?: string;
-//     password?: string;
-//     role?: string;
-//   }
-// ) => {
-//   const user = await userModel.updateUser(id, data);
-//   return user;
-// };
-
-// export const deleteUser = async (id: string) => {
-//   await userModel.deleteUser(id);
-// };
