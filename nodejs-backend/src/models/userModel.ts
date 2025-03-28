@@ -1,4 +1,5 @@
 import prisma from "../config/db";
+import bcrypt from "bcrypt";
 
 export class UserModel {
   id?: number;
@@ -18,14 +19,24 @@ export class UserModel {
     password: string;
     role: string;
   }): Promise<UserModel> {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(data.password, saltRounds);
+
     return prisma.user.create({
-      data,
+      ...data,
+      password: hashedPassword,
     });
   }
 
   static async getById(id: string): Promise<UserModel> {
     return prisma.user.findUnique({
       where: { id },
+    });
+  }
+
+  static async getByEmail(email: string): Promise<UserModel> {
+    return prisma.user.findUnique({
+      where: { email },
     });
   }
 

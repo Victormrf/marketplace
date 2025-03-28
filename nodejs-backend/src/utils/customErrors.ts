@@ -18,3 +18,10 @@ export class ConflictError extends Error {
     this.name = "ConflictError";
   }
 }
+
+export class InvalidCredentialsError extends Error {
+  constructor() {
+    super("User credentials are invalid.");
+    this.name = "InvalidCredentialsError";
+  }
+}
