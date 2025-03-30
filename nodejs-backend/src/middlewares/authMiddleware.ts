@@ -11,9 +11,8 @@ export function authMiddleware(
   const token = req.header("Authorization")?.replace("Bearer ", "");
 
   if (!token) {
-    return res
-      .status(401)
-      .json({ message: "Acesso negado. Token não fornecido." });
+    res.status(401).json({ message: "Access denied. Token not informed." });
+    return next();
   }
 
   try {
@@ -21,6 +20,6 @@ export function authMiddleware(
     (req as any).user = decoded; // Anexa os dados do usuário à requisição
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Token inválido ou expirado." });
+    res.status(401).json({ message: "Invalid / expired token." });
   }
 }
