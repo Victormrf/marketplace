@@ -7,12 +7,13 @@ export async function adminMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
     const { user } = req as any;
 
     if (!user || !user.id) {
       res.status(401).json({ message: "User not auhenticated." });
+      return;
     }
 
     const userData = await userService.getById(user.id);
@@ -21,11 +22,12 @@ export async function adminMiddleware(
       res.status(403).json({
         message: "Access denied.",
       });
-
-      return next();
+      return;
     }
+
+    next();
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error." });
-    return next();
+    return;
   }
 }

@@ -13,7 +13,6 @@ const userService = new UserService();
 
 userRoutes.post("/register", async (req, res) => {
   const { name, email, password, role } = req.body;
-
   try {
     const newUser = await userService.create({ name, email, password, role });
     res.status(201).json(newUser);
@@ -23,7 +22,7 @@ userRoutes.post("/register", async (req, res) => {
     } else if (error instanceof ValidationError) {
       res.status(400).json({ error: error.message });
     } else {
-      res.status(500).json({ error: "Internal Server Error" });
+      res.status(500).json({ error: error });
     }
   }
 });
@@ -89,7 +88,7 @@ userRoutes.delete(
       if (error instanceof UserNotFoundError) {
         res.status(404).json({ error: error.message });
       }
-      res.status(500).json({ error: "Internal Server Error" });
+      res.status(500).json({ error: error });
     }
   }
 );

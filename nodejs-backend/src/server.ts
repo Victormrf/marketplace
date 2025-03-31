@@ -1,4 +1,5 @@
 import express from "express";
+import prisma from "./config/db";
 import { userRoutes } from "./controllers/userController";
 import { authRoutes } from "./controllers/authController";
 
@@ -11,8 +12,15 @@ app.get("/", (req, res) => {
   res.send("Server running on port 8000");
 });
 
-app.use("/login", authRoutes);
+app.use("/users", authRoutes);
 app.use("/users", userRoutes);
+
+// Encerrar conexão do Prisma quando o servidor for interrompido
+process.on("SIGINT", async () => {
+  await prisma.$disconnect();
+  console.log("Prisma disconnected.");
+  process.exit(0);
+});
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

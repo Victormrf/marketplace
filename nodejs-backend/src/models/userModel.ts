@@ -23,8 +23,12 @@ export class UserModel {
     const hashedPassword = await bcrypt.hash(data.password, saltRounds);
 
     return prisma.user.create({
-      ...data,
-      password: hashedPassword,
+      data: {
+        name: data.name,
+        email: data.email,
+        password: hashedPassword,
+        role: data.role,
+      },
     });
   }
 

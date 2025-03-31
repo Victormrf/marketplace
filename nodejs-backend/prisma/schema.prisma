@@ -8,75 +8,74 @@ datasource db {
 }
 
 model user {
-  id       String  @id @default(uuid())
-  name     String
-  email    String  @unique
-  password String
-  role     String  // 'customer' or 'seller'
-  createdAt DateTime @default(now())
-
-  Customer customer?
-  Seller   seller?
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      String
+  createdAt DateTime  @default(now())
+  Customer  customer?
+  Seller    seller?
 }
 
 model customer {
-  id       String  @id @default(uuid())
-  user     user    @relation(fields: [userId], references: [id])
-  userId   String  @unique
-  address  String
-  phone    String
-  orders   order[]
+  id      String  @id @default(uuid())
+  userId  String  @unique
+  address String
+  phone   String
+  user    user    @relation(fields: [userId], references: [id])
+  orders  order[]
 }
 
 model seller {
-  id          String   @id @default(uuid())
-  user        user     @relation(fields: [userId], references: [id])
-  userId      String   @unique
+  id          String    @id @default(uuid())
+  userId      String    @unique
   storeName   String
   description String?
-  rating      Float    @default(0)
+  rating      Float     @default(0)
   products    product[]
+  user        user      @relation(fields: [userId], references: [id])
 }
 
 model product {
-  id          String  @id @default(uuid())
-  seller      seller  @relation(fields: [sellerId], references: [id])
+  id          String       @id @default(uuid())
   sellerId    String
   name        String
   description String?
   price       Float
   stock       Int
   category    String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime     @default(now())
   orderItems  order_item[]
+  seller      seller       @relation(fields: [sellerId], references: [id])
 }
 
 model order {
-  id         String     @id @default(uuid())
-  customer   customer   @relation(fields: [customerId], references: [id])
+  id         String       @id @default(uuid())
   customerId String
   totalPrice Float
-  status     String     // 'pending', 'completed', 'cancelled'
-  createdAt  DateTime   @default(now())
+  status     String
+  createdAt  DateTime     @default(now())
+  customer   customer     @relation(fields: [customerId], references: [id])
   orderItems order_item[]
   payment    payment?
 }
 
 model order_item {
   id        String  @id @default(uuid())
-  order     order   @relation(fields: [orderId], references: [id])
   orderId   String
-  product   product @relation(fields: [productId], references: [id])
   productId String
   quantity  Int
   unitPrice Float
+  order     order   @relation(fields: [orderId], references: [id])
+  product   product @relation(fields: [productId], references: [id])
 }
 
 model payment {
   id        String   @id @default(uuid())
-  order     order    @relation(fields: [orderId], references: [id])
   orderId   String   @unique
   amount    Float
-  status    String   // 'pending', 'completed', 'failed'
+  status    String
   createdAt DateTime @default(now())
+  order     order    @relation(fields: [orderId], references: [id])
 }

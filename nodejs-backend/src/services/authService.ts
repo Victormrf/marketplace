@@ -10,11 +10,16 @@ export class AuthService {
       throw new InvalidCredentialsError();
     }
 
-    if (bcrypt.compareSync(password, userModel.password)) {
+    const isPasswordValid = await bcrypt.compare(password, userModel.password);
+    if (isPasswordValid) {
       // gerar o jwt
-      return jwt.sign({ id: userModel.id, email: userModel.email }, "123456", {
-        expiresIn: "1h",
-      });
+      return jwt.sign(
+        { id: userModel.id, email: userModel.email },
+        process.env.JWT_SECRET || "your-secret-key",
+        {
+          expiresIn: "1h",
+        }
+      );
     } else {
       throw new InvalidCredentialsError();
     }
