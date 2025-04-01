@@ -83,7 +83,7 @@ userRoutes.delete(
 
     try {
       await userService.delete(userId);
-      res.status(204);
+      res.status(204).json({message: "User was successfully deleted"});
     } catch (error) {
       if (error instanceof UserNotFoundError) {
         res.status(404).json({ error: error.message });

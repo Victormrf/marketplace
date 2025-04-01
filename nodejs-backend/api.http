@@ -1,6 +1,5 @@
 ###
-
-# @name createUser
+# @name createdUser
 POST http://localhost:8000/users/register
 Content-Type: application/json
 
@@ -12,7 +11,8 @@ Content-Type: application/json
 }
 
 ###
-@userId = {{ createUser.response.body.id }}
+@userId = {{createdUser.response.body.id}}
+
 
 ###
 # @name loginUser
@@ -28,4 +28,18 @@ Content-Type: application/json
 
 ###
 GET http://localhost:8000/users/057fd440-3a11-4e48-8152-1c7dbbfdef55
+Authorization: Bearer {{token}}
+
+###
+PUT http://localhost:8000/users/057fd440-3a11-4e48-8152-1c7dbbfdef55
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "Pablo Vegetti",
+    "email": "pablo.vegetti@vasco.com"
+}
+
+###
+DELETE http://localhost:8000/users/{{userId}}
 Authorization: Bearer {{token}}

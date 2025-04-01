@@ -25,3 +25,10 @@ export class InvalidCredentialsError extends Error {
     this.name = "InvalidCredentialsError";
   }
 }
+
+export class ExistingProfileError extends Error {
+  constructor() {
+    super("This user already has a profile.");
+    this.name = "ExistingProfileError";
+  }
+}

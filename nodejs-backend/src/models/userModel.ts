@@ -2,7 +2,7 @@ import prisma from "../config/db";
 import bcrypt from "bcrypt";
 
 export class UserModel {
-  id?: number;
+  id?: string;
   name?: string;
   email?: string;
   password?: string;
