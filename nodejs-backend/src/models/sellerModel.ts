@@ -7,7 +7,7 @@ export class SellerModel {
   storeName?: string;
   description?: string;
 
-  contructor(data: Partial<SellerModel> = {}) {
+  constructor(data: Partial<SellerModel> = {}) {
     this.fill(data);
   }
 

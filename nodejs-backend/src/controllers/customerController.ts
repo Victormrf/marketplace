@@ -3,10 +3,10 @@ import { CustomerService } from "../services/customerService";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { ExistingProfileError } from "../utils/customErrors";
 
-export const CustomerRoutes = Router();
+export const customerRoutes = Router();
 const customerService = new CustomerService();
 
-CustomerRoutes.post("/profile", authMiddleware, async (req, res) => {
+customerRoutes.post("/profile", authMiddleware, async (req, res) => {
   const userId = req.user.id;
   const { address, phone } = req.body;
 

@@ -2,13 +2,13 @@ import { CustomerModel } from "../models/customerModel";
 import { SellerModel } from "../models/sellerModel";
 import { ExistingProfileError } from "../utils/customErrors";
 
-interface CustomerData {
-  address: string;
-  phone: string;
+interface SellerData {
+  storeName: string;
+  description: string;
 }
 
-export class CustomerService {
-  async createCustomerProfile(userId: string, customerData: CustomerData) {
+export class SellerService {
+  async createSellerProfile(userId: string, sellerData: SellerData) {
     const existingCustomer = await CustomerModel.getByUserId(userId);
     const existingSeller = await SellerModel.getByUserId(userId);
 
@@ -16,6 +16,6 @@ export class CustomerService {
       throw new ExistingProfileError();
     }
 
-    return await CustomerModel.create({ userId, ...customerData });
+    return await SellerModel.create({ userId, ...sellerData });
   }
 }

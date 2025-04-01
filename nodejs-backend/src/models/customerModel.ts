@@ -1,5 +1,4 @@
 import prisma from "../config/db";
-import { UserModel } from "./userModel";
 
 export class CustomerModel {
   id?: string;
@@ -7,7 +6,7 @@ export class CustomerModel {
   address?: string;
   phone?: string;
 
-  contructor(data: Partial<CustomerModel> = {}) {
+  constructor(data: Partial<CustomerModel> = {}) {
     this.fill(data);
   }
 
@@ -25,7 +24,7 @@ export class CustomerModel {
     });
   }
 
-  static async getByUserId(userId: string): Promise<UserModel> {
+  static async getByUserId(userId: string): Promise<CustomerModel> {
     return prisma.customer.findUnique({
       where: { userId },
     });

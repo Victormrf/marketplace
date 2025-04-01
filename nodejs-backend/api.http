@@ -43,3 +43,37 @@ Content-Type: application/json
 ###
 DELETE http://localhost:8000/users/{{userId}}
 Authorization: Bearer {{token}}
+
+###
+POST http://localhost:8000/users/register
+Content-Type: application/json
+
+{
+    "name": "Nuno Moreira",
+    "email": "nuno.moreira@vasco.com",
+    "password": "test1234",
+    "role": "customer"
+}
+
+###
+# @name customerLogin
+POST http://localhost:8000/users/login
+Content-Type: application/json
+
+{
+    "email": "nuno.moreira@vasco.com",
+    "password": "test1234"
+}
+
+###
+@customerToken = {{customerLogin.response.body.token}}
+
+### 
+POST http://localhost:8000/customers/profile
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+    "address": "São Januário, RJ",
+    "phone": "+55 11 98765-4321"
+}
