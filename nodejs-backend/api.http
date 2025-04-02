@@ -137,3 +137,16 @@ Authorization: Bearer {{adminToken}}
 ###
 GET http://localhost:8000/sellers/
 Authorization: Bearer {{adminToken}}
+
+###
+PUT http://localhost:8000/customers/profile/0f2bc54d-5b6d-424f-b3da-
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "phone": "+55 11 12345-6789"
+}
+
+###
+DELETE http://localhost:8000/customers/profile/12123312314
+Authorization: Bearer {{customerToken}}

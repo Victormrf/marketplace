@@ -44,6 +44,22 @@ export class CustomerModel {
     });
   }
 
+  static async updateCustomer(
+    userId: string,
+    data: { address?: string; phone?: string }
+  ): Promise<void> {
+    return prisma.customer.update({
+      where: { userId },
+      data,
+    });
+  }
+
+  static async deleteCustomer(userId: string): Promise<void> {
+    return prisma.customer.delete({
+      where: { userId },
+    });
+  }
+
   fill(data: Partial<CustomerModel>): void {
     if (data.id !== undefined) this.id = data.id;
     if (data.userId !== undefined) this.userId = data.userId;

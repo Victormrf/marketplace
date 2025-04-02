@@ -45,6 +45,22 @@ export class SellerModel {
     });
   }
 
+  static async updateSeller(
+    userId: string,
+    data: { storeName?: string; description?: string }
+  ): Promise<void> {
+    return prisma.seller.update({
+      where: { userId },
+      data,
+    });
+  }
+
+  static async deleteSeller(userId: string): Promise<void> {
+    return prisma.seller.delete({
+      where: { userId },
+    });
+  }
+
   fill(data: Partial<SellerModel>): void {
     if (data.id !== undefined) this.id = data.id;
     if (data.userId !== undefined) this.userId = data.userId;

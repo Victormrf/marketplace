@@ -1,7 +1,7 @@
-export class UserNotFoundError extends Error {
-  constructor() {
-    super("User not found");
-    this.name = "UserNotFoundError";
+export class EntityNotFoundError extends Error {
+  constructor(entity: string) {
+    super(`${entity} not found.`);
+    this.name = "EntityNotFoundError";
   }
 }
 

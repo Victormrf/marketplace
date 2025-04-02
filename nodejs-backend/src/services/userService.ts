@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { UserModel } from "../models/userModel";
 import {
   ConflictError,
-  UserNotFoundError,
+  EntityNotFoundError,
   ValidationError,
 } from "../utils/customErrors";
 
@@ -17,7 +17,7 @@ export class UserService {
   async getById(userId: string) {
     const user = await UserModel.getById(userId);
     if (!user) {
-      throw new UserNotFoundError();
+      throw new EntityNotFoundError("User");
     }
     return user;
   }
@@ -49,7 +49,7 @@ export class UserService {
     const user = await UserModel.getById(userId);
 
     if (!user) {
-      throw new UserNotFoundError();
+      throw new EntityNotFoundError("User");
     }
 
     // Validação do e-mail, se fornecido
@@ -71,7 +71,7 @@ export class UserService {
     const user = await UserModel.getById(userId);
 
     if (!user) {
-      throw new UserNotFoundError();
+      throw new EntityNotFoundError("User");
     }
 
     return await UserModel.delete(userId);

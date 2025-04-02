@@ -14,7 +14,11 @@ export class AuthService {
     if (isPasswordValid) {
       // gerar o jwt
       return jwt.sign(
-        { id: userModel.id, email: userModel.email },
+        {
+          id: userModel.id,
+          email: userModel.email,
+          role: userModel.role ? userModel.role : "user",
+        },
         process.env.JWT_SECRET || "your-secret-key",
         {
           expiresIn: "1h",

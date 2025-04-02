@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { CustomerService } from "../services/customerService";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { ExistingProfileError } from "../utils/customErrors";
+import {
+  EntityNotFoundError,
+  ExistingProfileError,
+} from "../utils/customErrors";
 import { adminMiddleware } from "../middlewares/isAdminMiddleware";
 
 export const customerRoutes = Router();
@@ -36,3 +39,54 @@ customerRoutes.get("/", authMiddleware, adminMiddleware, async (req, res) => {
     res.status(500).json({ error: error.message || "Internal Server Error" });
   }
 });
+
+customerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
+  const requestorId = req.user.id;
+  const requestorRole = req.user.role;
+  const { userId } = req.params;
+  const updateData = req.body;
+
+  if (requestorId !== userId && requestorRole !== "admin") {
+    res.status(403).json({ error: `role: ${requestorRole}` });
+    return;
+  }
+
+  if (!updateData || Object.keys(updateData).length === 0) {
+    res.status(400).json({ error: "No fields to update." });
+    return;
+  }
+
+  try {
+    const updatedCustomer = await customerService.updateCustomerProfile(
+      userId,
+      req.body
+    );
+    res.json(updatedCustomer);
+  } catch (error) {
+    if (error instanceof EntityNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    }
+    res.status(500).json({ error: "Internal Server Error" });
+    return;
+  }
+});
+
+customerRoutes.delete(
+  "/profile/:userId",
+  authMiddleware,
+  adminMiddleware,
+  async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+      await customerService.deleteCustomerProfile(userId);
+      res.status(204).json({ message: "Customer was successfully deleted" });
+    } catch (error) {
+      if (error instanceof EntityNotFoundError) {
+        res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: error });
+    }
+  }
+);
