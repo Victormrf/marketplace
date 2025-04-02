@@ -18,4 +18,8 @@ export class SellerService {
 
     return await SellerModel.create({ userId, ...sellerData });
   }
+
+  async getAllSellers() {
+    return await SellerModel.getAllSellers();
+  }
 }

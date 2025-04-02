@@ -44,6 +44,8 @@ Content-Type: application/json
 DELETE http://localhost:8000/users/{{userId}}
 Authorization: Bearer {{token}}
 
+#### CUSTOMER
+
 ###
 POST http://localhost:8000/users/register
 Content-Type: application/json
@@ -77,3 +79,61 @@ Content-Type: application/json
     "address": "São Januário, RJ",
     "phone": "+55 11 98765-4321"
 }
+
+#### SELLER
+
+###
+POST http://localhost:8000/users/register
+Content-Type: application/json
+
+{
+    "name": "Dimitry Payet",
+    "email": "dimitry.payet@vasco.com",
+    "password": "teste1234",
+    "role": "seller"
+}
+
+###
+# @name sellerLogin
+POST http://localhost:8000/users/login
+Content-Type: application/json
+
+{
+    "email": "dimitry.payet@vasco.com",
+    "password": "teste1234"
+}
+
+###
+@sellerToken = {{sellerLogin.response.body.token}}
+
+###
+POST http://localhost:8000/sellers/profile
+Authorization: Bearer {{sellerToken}}
+Content-Type: application/json
+
+{
+    "storeName": "Loja do gigante",
+    "description": "Um lugar onde você encontrará todos os produtos oficiais do gigante da colina nos melhores preços"
+}
+
+#### ADMIN 
+###
+# @name adminLogin
+POST http://localhost:8000/users/login
+Content-Type: application/json
+
+{
+    "email": "vmrf2000@hotmail.com",
+    "password": "test1234"
+}
+
+###
+@adminToken = {{adminLogin.response.body.token}}
+
+###
+GET http://localhost:8000/customers/
+Authorization: Bearer {{adminToken}}
+
+###
+GET http://localhost:8000/sellers/
+Authorization: Bearer {{adminToken}}

@@ -18,4 +18,8 @@ export class CustomerService {
 
     return await CustomerModel.create({ userId, ...customerData });
   }
+
+  async getAllCustomers() {
+    return await CustomerModel.getAllCustomers();
+  }
 }

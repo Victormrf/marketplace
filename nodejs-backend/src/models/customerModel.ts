@@ -30,6 +30,20 @@ export class CustomerModel {
     });
   }
 
+  static async getAllCustomers(): Promise<CustomerModel[]> {
+    return prisma.customer.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
   fill(data: Partial<CustomerModel>): void {
     if (data.id !== undefined) this.id = data.id;
     if (data.userId !== undefined) this.userId = data.userId;

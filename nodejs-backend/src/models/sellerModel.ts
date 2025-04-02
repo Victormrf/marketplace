@@ -31,6 +31,20 @@ export class SellerModel {
     });
   }
 
+  static async getAllSellers(): Promise<SellerModel[]> {
+    return prisma.seller.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
   fill(data: Partial<SellerModel>): void {
     if (data.id !== undefined) this.id = data.id;
     if (data.userId !== undefined) this.userId = data.userId;
