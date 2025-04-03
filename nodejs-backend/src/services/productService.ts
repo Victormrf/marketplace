@@ -19,8 +19,8 @@ export class ProductService {
     if (
       !productData.sellerId ||
       !productData.name ||
-      !productData.price ||
-      !productData.stock ||
+      productData.price === undefined ||
+      productData.stock === undefined ||
       !productData.category
     ) {
       throw new ValidationError("Missing required fields");
@@ -39,6 +39,21 @@ export class ProductService {
   }
 
   async restock(productId: string, quantity: number) {
+    const product = await ProductModel.getById(productId);
+
+    if (!product) {
+      throw new ObjectNotFoundError("Product");
+    }
+
+    if (product.stock === undefined) {
+      throw new ValidationError("Product stock is not initialized");
+    }
+
+    const newStock = product.stock + quantity;
+
+    if (newStock < 0) {
+      throw new ValidationError("Stock cannot be negative");
+    }
     return await ProductModel.updateStock(productId, quantity);
   }
 

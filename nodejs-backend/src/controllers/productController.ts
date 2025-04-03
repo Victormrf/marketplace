@@ -15,7 +15,7 @@ productRoutes.post("/listProduct", authMiddleware, async (req, res) => {
   const { sellerId, name, description, price, stock, category } = req.body;
 
   try {
-    const newProductListing = productService.createOrRestockProduct({
+    const newProductListing = await productService.createOrRestockProduct({
       sellerId,
       name,
       description,
@@ -35,7 +35,7 @@ productRoutes.post("/listProduct", authMiddleware, async (req, res) => {
   }
 });
 
-productRoutes.get("/:sellerId", async (req, res) => {
+productRoutes.get("/seller/:sellerId", async (req, res) => {
   const { sellerId } = req.params;
 
   try {
@@ -52,7 +52,7 @@ productRoutes.get("/:sellerId", async (req, res) => {
   }
 });
 
-productRoutes.get("/:category", async (req, res) => {
+productRoutes.get("/category/:category", async (req, res) => {
   const { category } = req.params;
 
   try {
@@ -113,8 +113,10 @@ productRoutes.delete(
     } catch (error) {
       if (error instanceof ObjectNotFoundError) {
         res.status(404).json({ error: error.message });
+        return;
       }
       res.status(500).json({ error: error });
+      return;
     }
   }
 );
