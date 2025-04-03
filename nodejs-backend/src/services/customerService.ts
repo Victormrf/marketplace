@@ -1,8 +1,9 @@
 import { CustomerModel } from "../models/customerModel";
 import { SellerModel } from "../models/sellerModel";
 import {
-  EntityNotFoundError,
+  ObjectNotFoundError,
   ExistingProfileError,
+  ValidationError,
 } from "../utils/customErrors";
 
 interface CustomerData {
@@ -12,6 +13,10 @@ interface CustomerData {
 
 export class CustomerService {
   async createCustomerProfile(userId: string, customerData: CustomerData) {
+    if (!customerData.address || !customerData.phone) {
+      throw new ValidationError("Missing required fields");
+    }
+
     const existingCustomer = await CustomerModel.getByUserId(userId);
     const existingSeller = await SellerModel.getByUserId(userId);
 
@@ -30,7 +35,7 @@ export class CustomerService {
     const customer = await CustomerModel.getByUserId(userId);
 
     if (!customer) {
-      throw new EntityNotFoundError("Customer");
+      throw new ObjectNotFoundError("Customer");
     }
 
     try {
@@ -44,7 +49,7 @@ export class CustomerService {
     const customer = await CustomerModel.getByUserId(userId);
 
     if (!customer) {
-      throw new EntityNotFoundError("Customer");
+      throw new ObjectNotFoundError("Customer");
     }
 
     try {

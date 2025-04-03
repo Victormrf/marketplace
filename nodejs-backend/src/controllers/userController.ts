@@ -2,7 +2,7 @@ import { Router } from "express";
 import { UserService } from "../services/userService";
 import {
   ConflictError,
-  EntityNotFoundError,
+  ObjectNotFoundError,
   ValidationError,
 } from "../utils/customErrors";
 import { authMiddleware } from "../middlewares/authMiddleware";
@@ -38,7 +38,7 @@ userRoutes.get(
       const user = await userService.getById(userId);
       res.json(user);
     } catch (error) {
-      if (error instanceof EntityNotFoundError) {
+      if (error instanceof ObjectNotFoundError) {
         res.status(404).json({ message: error.message });
       } else {
         res.status(500).json({ message: "Internal Server Error" });
@@ -63,7 +63,7 @@ userRoutes.put(
       const updatedUser = await userService.update(userId, req.body);
       res.json(updatedUser);
     } catch (error) {
-      if (error instanceof EntityNotFoundError) {
+      if (error instanceof ObjectNotFoundError) {
         res.status(404).json({ error: error.message });
       }
       if (error instanceof ValidationError) {
@@ -85,7 +85,7 @@ userRoutes.delete(
       await userService.delete(userId);
       res.status(204).json({ message: "User was successfully deleted" });
     } catch (error) {
-      if (error instanceof EntityNotFoundError) {
+      if (error instanceof ObjectNotFoundError) {
         res.status(404).json({ error: error.message });
       }
       res.status(500).json({ error: error });

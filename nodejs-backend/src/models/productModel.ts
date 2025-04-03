@@ -34,6 +34,12 @@ export class ProductModel {
     });
   }
 
+  static async getById(id: string): Promise<ProductModel> {
+    return prisma.product.findUnique({
+      where: { id },
+    });
+  }
+
   static async getProductBySellerAndName(
     name: string,
     sellerId: string

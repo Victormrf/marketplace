@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import {
-  EntityNotFoundError,
+  ObjectNotFoundError,
   ExistingProfileError,
+  ValidationError,
 } from "../utils/customErrors";
 import { SellerService } from "../services/sellerService";
 import { adminMiddleware } from "../middlewares/isAdminMiddleware";
@@ -25,6 +26,8 @@ sellerRoutes.post("/profile", authMiddleware, async (req, res) => {
   } catch (error) {
     if (error instanceof ExistingProfileError) {
       res.status(409).json({ error: error.message });
+    } else if (error instanceof ValidationError) {
+      res.status(400).json({ error: error.message });
     } else {
       res.status(500).json({ error: error });
     }
@@ -63,7 +66,7 @@ sellerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
     );
     res.json(updatedSeller);
   } catch (error) {
-    if (error instanceof EntityNotFoundError) {
+    if (error instanceof ObjectNotFoundError) {
       res.status(404).json({ error: error.message });
       return;
     }
@@ -83,7 +86,7 @@ sellerRoutes.delete(
       await sellerService.deleteSellerProfile(userId);
       res.status(204).json({ message: "Seller was successfully deleted" });
     } catch (error) {
-      if (error instanceof EntityNotFoundError) {
+      if (error instanceof ObjectNotFoundError) {
         res.status(404).json({ error: error.message });
       }
       res.status(500).json({ error: error });
