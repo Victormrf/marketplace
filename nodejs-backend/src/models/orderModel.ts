@@ -1,11 +1,49 @@
+import prisma from "../config/db";
+
 export class OrderModel {
   id?: string;
   customerId?: string;
   totalPrice?: Float32Array;
   status?: string;
   createdAt?: string;
+
   constructor(data: Partial<OrderModel> = {}) {
     this.fill(data);
+  }
+
+  static async create(data: {
+    customerId: string;
+    totalPrice: Float32Array;
+    status: string;
+  }): Promise<OrderModel> {
+    return prisma.order.create(data);
+  }
+
+  static async getById(id: string): Promise<OrderModel | null> {
+    return prisma.order.findUnique({
+      where: { id },
+    });
+  }
+
+  static async getOrdersByCustomerId(
+    customerId: string
+  ): Promise<OrderModel[]> {
+    return prisma.order.findMany({
+      where: { customerId },
+    });
+  }
+
+  static async update(id: string, data: Partial<OrderModel>): Promise<void> {
+    return prisma.order.update({
+      where: { id },
+      data,
+    });
+  }
+
+  static async delete(id: string): Promise<void> {
+    return prisma.order.delete({
+      where: { id },
+    });
   }
 
   fill(data: Partial<OrderModel>) {
@@ -16,14 +54,3 @@ export class OrderModel {
     if (data.createdAt !== undefined) this.createdAt = data.createdAt;
   }
 }
-
-// model order {
-//     id         String       @id @default(uuid())
-//     customerId String
-//     totalPrice Float
-//     status     String
-//     createdAt  DateTime     @default(now())
-//     customer   customer     @relation(fields: [customerId], references: [id])
-//     orderItems order_item[]
-//     payment    payment?
-//   }
