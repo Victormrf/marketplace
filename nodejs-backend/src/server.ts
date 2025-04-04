@@ -5,6 +5,8 @@ import { authRoutes } from "./controllers/authController";
 import { customerRoutes } from "./controllers/customerController";
 import { sellerRoutes } from "./controllers/sellerController";
 import { productRoutes } from "./controllers/productController";
+import { orderRoutes } from "./controllers/orderController";
+import { orderItemRoutes } from "./controllers/orderItemController";
 
 const app = express();
 app.use(express.json());
@@ -20,6 +22,8 @@ app.use("/users", userRoutes);
 app.use("/customers", customerRoutes);
 app.use("/sellers", sellerRoutes);
 app.use("/products", productRoutes);
+app.use("/orders", orderRoutes);
+app.use("/orderItems", orderItemRoutes);
 
 // Encerrar conexão do Prisma quando o servidor for interrompido
 process.on("SIGINT", async () => {
