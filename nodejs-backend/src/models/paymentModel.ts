@@ -29,6 +29,9 @@ export class PaymentModel {
   static async getByOrderId(orderId: string): Promise<PaymentModel | null> {
     return prisma.payment.findUnique({
       where: { orderId },
+      include: {
+        order: true,
+      },
     });
   }
 
