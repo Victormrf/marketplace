@@ -7,6 +7,10 @@ export class DashboardService {
   async getSalesStats(sellerId: string) {
     const orders = await OrderModel.getCompletedOrdersBySeller(sellerId);
 
+    if (!orders.length) {
+      throw new ObjectsNotFoundError("Orders");
+    }
+
     const totalSales = orders.reduce(
       (sum, order) => sum + order.totalPrice!,
       0
