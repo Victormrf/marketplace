@@ -7,7 +7,7 @@ import {
 
 interface OrderData {
   customerId: string;
-  totalPrice: Float32Array;
+  totalPrice: number;
   status: string;
 }
 

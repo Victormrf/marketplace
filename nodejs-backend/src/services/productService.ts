@@ -9,7 +9,7 @@ interface ProductData {
   sellerId: string;
   name: string;
   description?: string;
-  price: Float32Array;
+  price: number;
   stock: number;
   category: string;
 }

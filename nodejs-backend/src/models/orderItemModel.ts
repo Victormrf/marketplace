@@ -1,5 +1,12 @@
 import prisma from "../config/db";
 
+type BestSellingProductGroup = {
+  productId: string;
+  _sum: {
+    quantity: number | null;
+  };
+};
+
 export class OrderItemModel {
   id?: string;
   orderId?: string;
@@ -39,7 +46,7 @@ export class OrderItemModel {
 
   static async getBestSellingProductsBySeller(
     sellerId: string
-  ): Promise<OrderItemModel[]> {
+  ): Promise<BestSellingProductGroup[]> {
     return prisma.order_item.groupBy({
       by: ["productId"],
       where: {

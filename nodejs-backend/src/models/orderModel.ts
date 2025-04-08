@@ -3,7 +3,7 @@ import prisma from "../config/db";
 export class OrderModel {
   id?: string;
   customerId?: string;
-  totalPrice?: Float32Array;
+  totalPrice?: number;
   status?: string;
   createdAt?: string;
 
@@ -13,7 +13,7 @@ export class OrderModel {
 
   static async create(data: {
     customerId: string;
-    totalPrice: Float32Array;
+    totalPrice: number;
     status: string;
   }): Promise<OrderModel> {
     return prisma.order.create(data);

@@ -5,7 +5,7 @@ export class ProductModel {
   sellerId?: string;
   name?: string;
   description?: string;
-  price?: Float32Array;
+  price?: number;
   stock?: number;
   category?: string;
   createdAt?: Date;
@@ -18,7 +18,7 @@ export class ProductModel {
     sellerId: string;
     name: string;
     description?: string;
-    price: Float32Array;
+    price: number;
     stock: number;
     category: string;
   }): Promise<ProductModel> {
@@ -66,6 +66,16 @@ export class ProductModel {
     return prisma.product.findMany({
       where: {
         category,
+      },
+    });
+  }
+
+  static async getProductsByIds(productIds: string[]): Promise<ProductModel[]> {
+    return prisma.product.findMany({
+      where: {
+        id: {
+          in: productIds,
+        },
       },
     });
   }
