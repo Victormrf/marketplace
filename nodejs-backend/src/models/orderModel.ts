@@ -33,6 +33,26 @@ export class OrderModel {
     });
   }
 
+  static async getCompletedOrdersBySeller(
+    sellerId: string
+  ): Promise<OrderModel[]> {
+    return prisma.order.findMany({
+      where: {
+        status: "completed",
+        orderItems: {
+          some: {
+            product: {
+              sellerId: sellerId,
+            },
+          },
+        },
+      },
+      include: {
+        orderItems: true,
+      },
+    });
+  }
+
   static async update(id: string, data: Partial<OrderModel>): Promise<void> {
     return prisma.order.update({
       where: { id },

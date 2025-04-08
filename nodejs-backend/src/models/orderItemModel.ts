@@ -37,6 +37,28 @@ export class OrderItemModel {
     });
   }
 
+  static async getBestSellingProductsBySeller(
+    sellerId: string
+  ): Promise<OrderItemModel[]> {
+    return prisma.order_item.groupBy({
+      by: ["productId"],
+      where: {
+        product: {
+          sellerId: sellerId,
+        },
+      },
+      _sum: {
+        quantity: true,
+      },
+      orderBy: {
+        _sum: {
+          quantity: "desc",
+        },
+      },
+      take: 5, // ou qualquer número que represente os "mais vendidos"
+    });
+  }
+
   static async updateQuantity(itemId: string, quantity: number) {
     return prisma.order_item.update({
       where: { id: itemId },
