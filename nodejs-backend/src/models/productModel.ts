@@ -44,7 +44,7 @@ export class ProductModel {
     name: string,
     sellerId: string
   ): Promise<ProductModel> {
-    return prisma.product.findUnique({
+    return prisma.product.findFirst({
       where: {
         name,
         sellerId,

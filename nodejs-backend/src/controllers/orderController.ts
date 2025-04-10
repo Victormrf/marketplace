@@ -120,8 +120,10 @@ orderRoutes.delete(
 
     try {
       const deletedOrder = await orderService.deleteOrder(orderId);
-      res.status(200).json(deletedOrder);
-    } catch {
+      res
+        .status(200)
+        .json({ message: "Order deleted successfully", deletedOrder });
+    } catch (error) {
       if (error instanceof ObjectNotFoundError) {
         res.status(404).json({ error: error.message });
         return;
