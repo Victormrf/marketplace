@@ -43,6 +43,26 @@ sellerRoutes.get("/", authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
+sellerRoutes.get(
+  "/:userId",
+  authMiddleware,
+  adminMiddleware,
+  async (req, res) => {
+    const { userId } = req.params;
+    try {
+      const profile = await sellerService.getSellerProfile(userId);
+      res.status(200).json({ profile });
+    } catch (error: any) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+      return;
+    }
+  }
+);
+
 sellerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
   const requestorId = req.user.id;
   const requestorRole = req.user.role;

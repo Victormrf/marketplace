@@ -43,6 +43,26 @@ customerRoutes.get("/", authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
+customerRoutes.get(
+  "/:userId",
+  authMiddleware,
+  adminMiddleware,
+  async (req, res) => {
+    const { userId } = req.params;
+    try {
+      const profile = await customerService.getCustomerProfile(userId);
+      res.status(200).json({ profile });
+    } catch (error: any) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+      return;
+    }
+  }
+);
+
 customerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
   const requestorId = req.user.id;
   const requestorRole = req.user.role;
@@ -50,7 +70,7 @@ customerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
   const updateData = req.body;
 
   if (requestorId !== userId && requestorRole !== "admin") {
-    res.status(403).json({ error: `role: ${requestorRole}` });
+    res.status(403).json({ error: `Access restricted` });
     return;
   }
 

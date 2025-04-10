@@ -31,6 +31,16 @@ export class SellerService {
     return await SellerModel.getAllSellers();
   }
 
+  async getSellerProfile(userId: string) {
+    const seller = await SellerModel.getByUserId(userId);
+
+    if (!seller) {
+      throw new ObjectNotFoundError("Seller");
+    }
+
+    return seller;
+  }
+
   async updateSellerProfile(userId: string, data: Partial<SellerData>) {
     const seller = await SellerModel.getByUserId(userId);
 

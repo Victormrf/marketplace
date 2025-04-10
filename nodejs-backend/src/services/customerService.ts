@@ -31,6 +31,16 @@ export class CustomerService {
     return await CustomerModel.getAllCustomers();
   }
 
+  async getCustomerProfile(userId: string) {
+    const customer = await CustomerModel.getByUserId(userId);
+
+    if (!customer) {
+      throw new ObjectNotFoundError("Customer");
+    }
+
+    return customer;
+  }
+
   async updateCustomerProfile(userId: string, data: Partial<CustomerData>) {
     const customer = await CustomerModel.getByUserId(userId);
 

@@ -12,16 +12,15 @@ interface OrderData {
 }
 
 export class OrderService {
-  async createOrder(orderData: OrderData) {
-    if (
-      !orderData.customerId ||
-      orderData.totalPrice === undefined ||
-      !orderData.status
-    ) {
+  async createOrder(orderData: { customerId: string; totalPrice: number }) {
+    if (!orderData.customerId || orderData.totalPrice === undefined) {
       throw new ValidationError("Missing required fields");
     }
 
-    return await OrderModel.create(orderData);
+    return await OrderModel.create({
+      status: "processed",
+      ...orderData,
+    });
   }
 
   async getOrderById(id: string) {
@@ -55,6 +54,22 @@ export class OrderService {
       return await OrderModel.update(id, orderData);
     } catch (error) {
       throw new Error(`Failed to update order: ${(error as Error).message}`);
+    }
+  }
+
+  async updateOrderStatus(orderId: string, status: string) {
+    const order = await OrderModel.getById(orderId);
+
+    if (!order) {
+      throw new ObjectNotFoundError("order");
+    }
+
+    try {
+      return await OrderModel.updateStatus(orderId, status);
+    } catch (error: any) {
+      throw new Error(
+        `Failed to update order status: ${(error as Error).message}`
+      );
     }
   }
 

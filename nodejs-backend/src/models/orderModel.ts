@@ -16,7 +16,13 @@ export class OrderModel {
     totalPrice: number;
     status: string;
   }): Promise<OrderModel> {
-    return prisma.order.create(data);
+    return prisma.order.create({
+      data: {
+        customerId: data.customerId,
+        totalPrice: data.totalPrice,
+        status: data.status,
+      },
+    });
   }
 
   static async getById(id: string): Promise<OrderModel | null> {
@@ -57,6 +63,13 @@ export class OrderModel {
     return prisma.order.update({
       where: { id },
       data,
+    });
+  }
+
+  static async updateStatus(orderId: string, status: string): Promise<void> {
+    return prisma.order.update({
+      where: { id: orderId },
+      data: { status },
     });
   }
 

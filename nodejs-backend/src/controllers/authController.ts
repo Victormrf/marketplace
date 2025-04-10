@@ -10,11 +10,16 @@ authRoutes.post("/login", async (req, res) => {
 
   try {
     const token = await authService.login(email, password);
-    res.send({ token });
+    res.send({
+      message: "User logged in successfully.",
+      token,
+    });
   } catch (e) {
     if (e instanceof InvalidCredentialsError) {
       res.status(401).json({ message: "Invalid credentials" });
+      return;
     }
     res.status(500).json({ message: "Internal Server Error" });
+    return;
   }
 });

@@ -12,14 +12,13 @@ import { error } from "console";
 export const orderRoutes = Router();
 const orderService = new OrderService();
 
-orderRoutes.post("/", authMiddleware, async (req, res) => {
-  const { customerId, totalPrice, status } = req.body;
+orderRoutes.post("/generateOrder", authMiddleware, async (req, res) => {
+  const { customerId, totalPrice } = req.body;
 
   try {
-    const newOrder = orderService.createOrder({
+    const newOrder = await orderService.createOrder({
       customerId,
       totalPrice,
-      status,
     });
     res.status(201).json({ message: "Order generated successfully", newOrder });
   } catch (error) {
@@ -37,7 +36,7 @@ orderRoutes.get("/:orderId", authMiddleware, async (req, res) => {
   const { orderId } = req.params;
 
   try {
-    const order = orderService.getOrderById(orderId);
+    const order = await orderService.getOrderById(orderId);
     res.status(200).json({ order });
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
@@ -54,24 +53,7 @@ orderRoutes.get("/customer/:customerId", authMiddleware, async (req, res) => {
   const { customerId } = req.params;
 
   try {
-    const orders = orderService.getOrdersByCustomerId(customerId);
-    res.status(200).json({ orders });
-  } catch (error) {
-    if (error instanceof ObjectsNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    } else {
-      res.status(500).json({ message: "Internal Server Error" });
-      return;
-    }
-  }
-});
-
-orderRoutes.get("/customer/:customerId", authMiddleware, async (req, res) => {
-  const { customerId } = req.params;
-
-  try {
-    const orders = orderService.getOrdersByCustomerId(customerId);
+    const orders = await orderService.getOrdersByCustomerId(customerId);
     res.status(200).json({ orders });
   } catch (error) {
     if (error instanceof ObjectsNotFoundError) {
@@ -98,7 +80,7 @@ orderRoutes.put(
     }
 
     try {
-      const updatedOrder = orderService.updateOrder(orderId, updateData);
+      const updatedOrder = await orderService.updateOrder(orderId, updateData);
       res.status(200).json(updatedOrder);
     } catch {
       if (error instanceof ObjectNotFoundError) {
@@ -111,6 +93,24 @@ orderRoutes.put(
   }
 );
 
+orderRoutes.put("/:orderId/changeStatus", authMiddleware, async (req, res) => {
+  const { orderId } = req.params;
+  const { status } = req.body;
+
+  try {
+    const updatedOrder = await orderService.updateOrderStatus(orderId, status);
+    res.status(200).json(updatedOrder);
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    } else {
+      res.status(500).json({ error });
+      return;
+    }
+  }
+});
+
 orderRoutes.delete(
   "/:orderId",
   authMiddleware,
@@ -119,7 +119,7 @@ orderRoutes.delete(
     const { orderId } = req.params;
 
     try {
-      const deletedOrder = orderService.deleteOrder(orderId);
+      const deletedOrder = await orderService.deleteOrder(orderId);
       res.status(200).json(deletedOrder);
     } catch {
       if (error instanceof ObjectNotFoundError) {
