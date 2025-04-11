@@ -1,4 +1,8 @@
 import prisma from "../config/db";
+import {
+  removeNullFields,
+  removeNullFieldsFromArray,
+} from "../utils/removeNullFields";
 
 export class ReviewModel {
   static async create(data: {
@@ -8,7 +12,8 @@ export class ReviewModel {
     rating: number;
     comment?: string;
   }) {
-    return prisma.review.create({ data });
+    const review = await prisma.review.create({ data });
+    return removeNullFields(review);
   }
 
   static async getById(reviewId: string) {
@@ -16,17 +21,39 @@ export class ReviewModel {
   }
 
   static async getByProduct(productId: string) {
-    return prisma.review.findMany({
+    const reviews = await prisma.review.findMany({
       where: { productId },
       orderBy: { createdAt: "desc" },
     });
+
+    const filteredReviews = removeNullFieldsFromArray(reviews);
+
+    const averageRating =
+      filteredReviews.reduce((acc: number, curr: any) => acc + curr.rating, 0) /
+        filteredReviews.length || 0;
+
+    return {
+      averageRating: parseFloat(averageRating.toFixed(2)),
+      reviews: filteredReviews,
+    };
   }
 
   static async getBySeller(sellerId: string) {
-    return prisma.review.findMany({
+    const reviews = await prisma.review.findMany({
       where: { sellerId },
       orderBy: { createdAt: "desc" },
     });
+
+    const filteredReviews = removeNullFieldsFromArray(reviews);
+
+    const averageRating =
+      filteredReviews.reduce((acc: number, curr: any) => acc + curr.rating, 0) /
+        filteredReviews.length || 0;
+
+    return {
+      averageRating: parseFloat(averageRating.toFixed(2)),
+      reviews: filteredReviews,
+    };
   }
 
   static async updateReview(

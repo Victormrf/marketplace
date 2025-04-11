@@ -1,14 +1,24 @@
 import { Router } from "express";
 import { ReviewService } from "../services/reviewService";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { ValidationError, ObjectNotFoundError } from "../utils/customErrors";
+import {
+  ValidationError,
+  ObjectNotFoundError,
+  ConflictError,
+} from "../utils/customErrors";
 
 export const reviewRoutes = Router();
 const reviewService = new ReviewService();
 
 reviewRoutes.post("/product", authMiddleware, async (req, res) => {
   const userId = req.user.id;
+  const requestorRole = req.user.role;
   const { productId, rating, comment } = req.body;
+
+  if (requestorRole !== "customer") {
+    res.status(403).json({ error: "Only customers can send reviews." });
+    return;
+  }
 
   try {
     const review = await reviewService.createProductReview(userId, {
@@ -20,6 +30,8 @@ reviewRoutes.post("/product", authMiddleware, async (req, res) => {
   } catch (error) {
     if (error instanceof ValidationError) {
       res.status(400).json({ error: error.message });
+    } else if (error instanceof ConflictError) {
+      res.status(409).json({ error: error.message });
     } else {
       res.status(500).json({ error: "Internal Server Error" });
     }
@@ -29,7 +41,13 @@ reviewRoutes.post("/product", authMiddleware, async (req, res) => {
 // Criar avaliação de um vendedor
 reviewRoutes.post("/seller", authMiddleware, async (req, res) => {
   const userId = req.user.id;
+  const requestorRole = req.user.role;
   const { sellerId, rating, comment } = req.body;
+
+  if (requestorRole !== "customer") {
+    res.status(403).json({ error: "Only customers can send reviews." });
+    return;
+  }
 
   try {
     const review = await reviewService.createSellerReview(userId, {
@@ -41,6 +59,8 @@ reviewRoutes.post("/seller", authMiddleware, async (req, res) => {
   } catch (error) {
     if (error instanceof ValidationError) {
       res.status(400).json({ error: error.message });
+    } else if (error instanceof ConflictError) {
+      res.status(409).json({ error: error.message });
     } else {
       res.status(500).json({ error: "Internal Server Error" });
     }

@@ -1,5 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { ReviewModel } from "../models/reviewModel";
 import {
+  ConflictError,
   ObjectNotFoundError,
   ObjectsNotFoundError,
   ValidationError,
@@ -15,12 +17,23 @@ export class ReviewService {
       throw new ValidationError("Missing required fields for product review.");
     }
 
-    return await ReviewModel.create({
-      userId,
-      productId,
-      rating,
-      comment,
-    });
+    try {
+      return await ReviewModel.create({
+        userId,
+        productId,
+        rating,
+        comment,
+      });
+    } catch (error: any) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError(
+          "This product has already received a review from you."
+        );
+      }
+    }
   }
 
   async createSellerReview(
@@ -32,28 +45,39 @@ export class ReviewService {
       throw new ValidationError("Missing required fields for seller review.");
     }
 
-    return await ReviewModel.create({
-      userId,
-      sellerId,
-      rating,
-      comment,
-    });
+    try {
+      return await ReviewModel.create({
+        userId,
+        sellerId,
+        rating,
+        comment,
+      });
+    } catch (error: any) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError(
+          "This seller has already received a review from you."
+        );
+      }
+    }
   }
 
   async getProductReviews(productId: string) {
-    const reviews = await ReviewModel.getByProduct(productId);
-    if (!reviews.length) {
+    const data = await ReviewModel.getByProduct(productId);
+    if (!data.reviews.length) {
       throw new ObjectsNotFoundError("reviews");
     }
-    return reviews;
+    return data;
   }
 
   async getSellerReviews(sellerId: string) {
-    const reviews = await ReviewModel.getBySeller(sellerId);
-    if (!reviews.length) {
+    const data = await ReviewModel.getBySeller(sellerId);
+    if (!data.reviews.length) {
       throw new ObjectsNotFoundError("reviews");
     }
-    return reviews;
+    return data;
   }
 
   async updateReview(reviewId: string, rating?: number, comment?: string) {

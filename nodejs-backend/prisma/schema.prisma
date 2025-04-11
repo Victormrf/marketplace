@@ -94,4 +94,7 @@ model review {
   rating     Int
   comment    String?
   createdAt  DateTime @default(now())
+  
+  @@unique([userId, productId])
+  @@unique([userId, sellerId])
 }
