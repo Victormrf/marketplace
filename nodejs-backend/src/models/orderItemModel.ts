@@ -39,9 +39,16 @@ export class OrderItemModel {
   }
 
   static async getByOrderId(orderId: string): Promise<OrderItemModel[]> {
-    return prisma.order_item.findMany({
+    const items = await prisma.order_item.findMany({
       where: { orderId },
     });
+
+    const itemsWithTotal = items.map((item: any) => ({
+      ...item,
+      totalPrice: item.quantity * item.unitPrice,
+    }));
+
+    return itemsWithTotal;
   }
 
   static async getBestSellingProductsBySeller(
@@ -70,12 +77,6 @@ export class OrderItemModel {
     return prisma.order_item.update({
       where: { id: itemId },
       data: { quantity },
-    });
-  }
-
-  static async delete(id: string): Promise<void> {
-    await prisma.order_item.delete({
-      where: { id },
     });
   }
 

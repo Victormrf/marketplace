@@ -11,41 +11,6 @@ export class OrderModel {
     this.fill(data);
   }
 
-  // static async createOrderWithItemsTX(
-  //   customerId: string,
-  //   items: { productId: string; quantity: number }[]
-  // ): Promise<void> {
-  //   return await prisma.$transaction(async (tx) => {
-  //     const productIds = items.map((item) => item.productId);
-  //     const products = await tx.product.findMany({
-  //       where: { id: { in: productIds } },
-  //       select: { id: true, price: true },
-  //     });
-
-  //     const productMap = new Map(
-  //       products.map((p: { id: string; price: number }) => [p.id, p.price])
-  //     );
-
-  //     // Calcular o totalPrice
-  //     let totalPrice = 0;
-  //     const orderItemsData = items.map(({ productId, quantity }) => {
-  //       const unitPrice = productMap.get(productId);
-  //       if (unitPrice === undefined) {
-  //         throw new ValidationError(`Product ${productId} not found.`);
-  //       }
-
-  //       const itemTotal = unitPrice * quantity;
-  //       totalPrice += itemTotal;
-
-  //       return {
-  //         productId,
-  //         quantity,
-  //         unitPrice,
-  //       };
-  //     });
-  //   });
-  // }
-
   static async create(data: {
     customerId: string;
     totalPrice: number;

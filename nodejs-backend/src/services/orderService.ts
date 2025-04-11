@@ -76,17 +76,6 @@ export class OrderService {
     });
   }
 
-  async createOrder(orderData: { customerId: string; totalPrice: number }) {
-    if (!orderData.customerId || orderData.totalPrice === undefined) {
-      throw new ValidationError("Missing required fields");
-    }
-
-    return await OrderModel.create({
-      status: "processed",
-      ...orderData,
-    });
-  }
-
   async getOrderById(id: string) {
     const order = await OrderModel.getById(id);
 
