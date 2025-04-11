@@ -13,20 +13,16 @@ export const orderRoutes = Router();
 const orderService = new OrderService();
 
 orderRoutes.post("/generateOrder", authMiddleware, async (req, res) => {
-  const { customerId, totalPrice } = req.body;
-
+  const { customerId, items } = req.body; // items: [{ productId, quantity }]
   try {
-    const newOrder = await orderService.createOrder({
-      customerId,
-      totalPrice,
-    });
-    res.status(201).json({ message: "Order generated successfully", newOrder });
+    const newOrder = await orderService.createOrderWithItems(customerId, items);
+    res.status(201).json({ message: "Order created with items", newOrder });
   } catch (error) {
     if (error instanceof ValidationError) {
       res.status(400).json({ error: error.message });
       return;
     } else {
-      res.status(500).json({ message: "Internal Server Error" });
+      res.status(500).json({ error: "Internal Server Error" });
       return;
     }
   }

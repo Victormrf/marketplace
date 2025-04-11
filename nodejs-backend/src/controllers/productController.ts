@@ -39,7 +39,7 @@ productRoutes.get("/seller/:sellerId", async (req, res) => {
   const { sellerId } = req.params;
 
   try {
-    const products = productService.getProductsBySellerId(sellerId);
+    const products = await productService.getProductsBySellerId(sellerId);
     res.status(200).json({ products });
   } catch (error) {
     if (error instanceof ObjectsNotFoundError) {
@@ -56,7 +56,7 @@ productRoutes.get("/category/:category", async (req, res) => {
   const { category } = req.params;
 
   try {
-    const products = productService.getProductsByCategory(category);
+    const products = await productService.getProductsByCategory(category);
     res.status(200).json({ products });
   } catch (error) {
     if (error instanceof ObjectsNotFoundError) {

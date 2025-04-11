@@ -57,6 +57,13 @@ export class ProductModel {
       where: {
         sellerId,
       },
+      include: {
+        seller: {
+          select: {
+            storeName: true,
+          },
+        },
+      },
     });
   }
 
@@ -66,6 +73,13 @@ export class ProductModel {
     return prisma.product.findMany({
       where: {
         category,
+      },
+      include: {
+        seller: {
+          select: {
+            storeName: true,
+          },
+        },
       },
     });
   }
