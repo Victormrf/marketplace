@@ -29,7 +29,7 @@ app.use("/orders", orderRoutes);
 app.use("/orderItems", orderItemRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/review", reviewRoutes);
-app.use("/dashvoard", dashboardRoutes);
+app.use("/dashboard", dashboardRoutes);
 
 // Encerrar conexão do Prisma quando o servidor for interrompido
 process.on("SIGINT", async () => {

@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { PaymentService } from "../services/paymentService";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { ObjectNotFoundError, ValidationError } from "../utils/customErrors";
+import {
+  ObjectNotFoundError,
+  ObjectsNotFoundError,
+  ValidationError,
+} from "../utils/customErrors";
+import { adminMiddleware } from "../middlewares/isAdminMiddleware";
 
 export const paymentRoutes = Router();
 const paymentService = new PaymentService();
@@ -47,7 +52,7 @@ paymentRoutes.get("/customer/:customerId", authMiddleware, async (req, res) => {
     const payments = await paymentService.getPaymentsByCustomer(customerId);
     res.status(200).json(payments);
   } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
+    if (error instanceof ObjectsNotFoundError) {
       res.status(404).json({ error: error.message });
     } else {
       res.status(500).json({ error });
@@ -111,19 +116,24 @@ paymentRoutes.put(
   }
 );
 
-paymentRoutes.delete("/:paymentId", authMiddleware, async (req, res) => {
-  const { paymentId } = req.params;
+paymentRoutes.delete(
+  "/:paymentId",
+  authMiddleware,
+  adminMiddleware,
+  async (req, res) => {
+    const { paymentId } = req.params;
 
-  try {
-    await paymentService.deletePayment(paymentId);
-    res.status(204).send();
-  } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    } else {
-      res.status(500).json({ error });
-      return;
+    try {
+      await paymentService.deletePayment(paymentId);
+      res.status(204).send();
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      } else {
+        res.status(500).json({ error });
+        return;
+      }
     }
   }
-});
+);
