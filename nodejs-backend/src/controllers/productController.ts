@@ -11,7 +11,7 @@ import { adminMiddleware } from "../middlewares/isAdminMiddleware";
 export const productRoutes = Router();
 const productService = new ProductService();
 
-productRoutes.post("/listProduct", authMiddleware, async (req, res) => {
+productRoutes.post("/", authMiddleware, async (req, res) => {
   const { sellerId, name, description, price, stock, category } = req.body;
 
   try {

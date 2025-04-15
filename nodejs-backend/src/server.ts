@@ -26,7 +26,7 @@ app.use("/customers", customerRoutes);
 app.use("/sellers", sellerRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
-app.use("/orderItems", orderItemRoutes);
+app.use("/orders/:orderId/items", orderItemRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/review", reviewRoutes);
 app.use("/dashboard", dashboardRoutes);

@@ -11,7 +11,7 @@ import { adminMiddleware } from "../middlewares/isAdminMiddleware";
 export const sellerRoutes = Router();
 const sellerService = new SellerService();
 
-sellerRoutes.post("/profile", authMiddleware, async (req, res) => {
+sellerRoutes.post("/", authMiddleware, async (req, res) => {
   const userId = req.user.id;
   const { storeName, description } = req.body;
 
@@ -63,7 +63,7 @@ sellerRoutes.get(
   }
 );
 
-sellerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
+sellerRoutes.put("/:userId", authMiddleware, async (req, res) => {
   const requestorId = req.user.id;
   const requestorRole = req.user.role;
   const { userId } = req.params;
@@ -96,7 +96,7 @@ sellerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
 });
 
 sellerRoutes.delete(
-  "/profile/:userId",
+  "/:userId",
   authMiddleware,
   adminMiddleware,
   async (req, res) => {

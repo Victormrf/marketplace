@@ -47,7 +47,7 @@ orderItemRoutes.delete("/:itemId", authMiddleware, async (req, res) => {
 });
 
 // Listar itens de um pedido
-orderItemRoutes.get("/:orderId", authMiddleware, async (req, res) => {
+orderItemRoutes.get("/", authMiddleware, async (req, res) => {
   const { orderId } = req.params;
 
   try {

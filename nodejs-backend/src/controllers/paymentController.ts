@@ -91,30 +91,26 @@ paymentRoutes.put("/:paymentId", authMiddleware, async (req, res) => {
   }
 });
 
-paymentRoutes.put(
-  "/:paymentId/changeStatus",
-  authMiddleware,
-  async (req, res) => {
-    const { paymentId } = req.params;
-    const { status } = req.body;
+paymentRoutes.put("/:paymentId/status", authMiddleware, async (req, res) => {
+  const { paymentId } = req.params;
+  const { status } = req.body;
 
-    try {
-      const updatedPayment = await paymentService.updatePaymentStatus(
-        paymentId,
-        status
-      );
-      res.status(200).json(updatedPayment);
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-        return;
-      } else {
-        res.status(500).json({ error });
-        return;
-      }
+  try {
+    const updatedPayment = await paymentService.updatePaymentStatus(
+      paymentId,
+      status
+    );
+    res.status(200).json(updatedPayment);
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    } else {
+      res.status(500).json({ error });
+      return;
     }
   }
-);
+});
 
 paymentRoutes.delete(
   "/:paymentId",

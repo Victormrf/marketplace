@@ -12,7 +12,7 @@ import { error } from "console";
 export const orderRoutes = Router();
 const orderService = new OrderService();
 
-orderRoutes.post("/generateOrder", authMiddleware, async (req, res) => {
+orderRoutes.post("/", authMiddleware, async (req, res) => {
   const { customerId, items } = req.body; // items: [{ productId, quantity }]
   try {
     const newOrder = await orderService.createOrderWithItems(customerId, items);
@@ -89,7 +89,7 @@ orderRoutes.put(
   }
 );
 
-orderRoutes.put("/:orderId/changeStatus", authMiddleware, async (req, res) => {
+orderRoutes.put("/:orderId/status", authMiddleware, async (req, res) => {
   const { orderId } = req.params;
   const { status } = req.body;
 

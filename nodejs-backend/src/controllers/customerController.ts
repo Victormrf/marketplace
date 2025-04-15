@@ -11,7 +11,7 @@ import { adminMiddleware } from "../middlewares/isAdminMiddleware";
 export const customerRoutes = Router();
 const customerService = new CustomerService();
 
-customerRoutes.post("/profile", authMiddleware, async (req, res) => {
+customerRoutes.post("/", authMiddleware, async (req, res) => {
   const userId = req.user.id;
   const { address, phone } = req.body;
 
@@ -63,7 +63,7 @@ customerRoutes.get(
   }
 );
 
-customerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
+customerRoutes.put("/:userId", authMiddleware, async (req, res) => {
   const requestorId = req.user.id;
   const requestorRole = req.user.role;
   const { userId } = req.params;
@@ -96,7 +96,7 @@ customerRoutes.put("/profile/:userId", authMiddleware, async (req, res) => {
 });
 
 customerRoutes.delete(
-  "/profile/:userId",
+  "/:userId",
   authMiddleware,
   adminMiddleware,
   async (req, res) => {
