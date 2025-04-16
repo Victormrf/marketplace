@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { Laptop, Dumbbell, Utensils, Home as HomeIcon } from "lucide-react";
+import {
+  Laptop,
+  Dumbbell,
+  Utensils,
+  Home as HomeIcon,
+  Search,
+} from "lucide-react";
+import CategoryCard from "@/components/categoryCard";
 
 export default function HomePage() {
   return (
@@ -29,8 +36,8 @@ export default function HomePage() {
             placeholder="Search for products..."
             className="px-4 py-2 w-full border border-gray-300 rounded-l"
           />
-          <button className="px-4 bg-black text-white rounded-r hover:bg-gray-800">
-            🔍 Search
+          <button className="flex items-center justify-center gap-2 px-4 bg-black text-white rounded-r hover:bg-gray-800">
+            <Search /> Search
           </button>
         </div>
       </section>
@@ -57,34 +64,8 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="bg-gray-100 text-sm text-center py-6">
-        <p className="mb-2">© 2025 V·Market. All rights reserved.</p>
-        <div className="flex justify-center gap-4 text-gray-500">
-          <a href="#" className="hover:text-black">
-            🐦
-          </a>
-          <a href="#" className="hover:text-black">
-            📘
-          </a>
-          <a href="#" className="hover:text-black">
-            📸
-          </a>
-        </div>
+        <p className="mb-2">© 2025 Victor Fernandes. All rights reserved.</p>
       </footer>
-    </div>
-  );
-}
-
-function CategoryCard({
-  icon,
-  label,
-}: {
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <div className="p-4 border rounded-lg flex flex-col items-center hover:shadow transition">
-      <div className="mb-2 text-gray-700">{icon}</div>
-      <p className="font-medium">{label}</p>
     </div>
   );
 }
