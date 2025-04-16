@@ -10,6 +10,7 @@ import { orderItemRoutes } from "./controllers/orderItemController";
 import { paymentRoutes } from "./controllers/paymentController";
 import { reviewRoutes } from "./controllers/reviewController";
 import { dashboardRoutes } from "./controllers/dashboardController";
+import cors from "cors";
 
 const app = express();
 app.use(express.json());
@@ -19,6 +20,13 @@ const PORT = process.env.PORT || 8000;
 app.get("/", (req, res) => {
   res.send("Server running on port 8000");
 });
+
+app.use(
+  cors({
+    origin: "http://localhost:3000", // frontend Next.js
+    credentials: true,
+  })
+);
 
 app.use("/users", authRoutes);
 app.use("/users", userRoutes);
