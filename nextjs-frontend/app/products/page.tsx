@@ -53,10 +53,10 @@ export default function ProductsPage() {
   return (
     <div>
       <div className="bg-gray-100">
-        <h1 className="text-2xl font-bold mb-4 pt-4 px-4">
+        <h1 className="text-2xl font-bold mb-2 pt-4 px-4">
           {category?.toUpperCase()} PRODUCTS
         </h1>
-        <div className="flex justify-center max-w-md mx-auto pb-4">
+        <div className="flex justify-center max-w-md mx-auto pb-8">
           <input
             type="text"
             placeholder="Search for products..."
@@ -116,7 +116,15 @@ export default function ProductsPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-600">
+                    {product.seller.storeName}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Stock: {product.stock}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-gray-800 text-2xl font-bold">
                     $ {product.price.toFixed(2)}
                   </span>
