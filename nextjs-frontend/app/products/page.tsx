@@ -1,5 +1,7 @@
 "use client";
 
+import { Heart, Search } from "lucide-react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -16,6 +18,7 @@ interface Product {
   stock: number;
   description?: string;
   category?: string;
+  averageRating?: number;
   createdAt?: string;
 }
 
@@ -49,33 +52,84 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">
-        Produtos da categoria: {category}
-      </h1>
+      <div className="bg-gray-100">
+        <h1 className="text-2xl font-bold mb-4 pt-4 px-4">
+          {category?.toUpperCase()} PRODUCTS
+        </h1>
+        <div className="flex justify-center max-w-md mx-auto pb-4">
+          <input
+            type="text"
+            placeholder="Search for products..."
+            className="px-4 py-2 w-full border border-gray-300 rounded-l"
+          />
+          <button className="flex items-center justify-center gap-2 px-4 bg-slate-900 text-white rounded-r hover:bg-slate-800">
+            <Search />
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <p>Carregando produtos...</p>
       ) : products.length === 0 ? (
         <p>Nenhum produto encontrado.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="px-4 sm:px-8 md:px-16 lg:px-24 xl:px-32 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 pt-12">
           {products.map((product) => (
             <div
               key={product.id}
-              className="border rounded-xl shadow-sm p-4 hover:shadow-md transition-all"
+              className="w-full bg-background border border-gray-200 rounded-lg shadow-sm flex flex-col"
             >
-              <h2 className="text-lg font-semibold mb-1">{product.name}</h2>
-              <p className="text-sm text-gray-600 mb-2">
-                {product.description}
-              </p>
-              <p className="text-base font-medium text-green-700 mb-2">
-                R$ {product.price.toFixed(2)}
-              </p>
-              <p className="text-sm text-gray-500 mb-1">
-                Vendido por:{" "}
-                <span className="font-medium">{product.seller.storeName}</span>
-              </p>
-              <p className="text-sm text-gray-400">Estoque: {product.stock}</p>
+              <div className="flex justify-center p-4">
+                <Image
+                  className="rounded-lg object-contain"
+                  width={160}
+                  height={200}
+                  src={product.image || "/images/blank-shirt-model.jpg"}
+                  alt="Imagem do produto"
+                />
+              </div>
+              <div className="px-5 pb-5 flex-1 flex flex-col justify-between">
+                <div>
+                  <h5 className="text-gray-800 text-xl font-semibold tracking-tight">
+                    {product.name}
+                  </h5>
+                  <div className="flex items-center mt-2.5 mb-3">
+                    <div className="flex items-center space-x-1">
+                      {[...Array(5)].map((_, i) => (
+                        <svg
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < Math.round(product.averageRating || 0)
+                              ? "text-yellow-400"
+                              : "text-gray-500"
+                          }`}
+                          fill="currentColor"
+                          viewBox="0 0 22 20"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path d="M10 15l-5.878 3.09L5.5 12.5 1 8.91l6.061-.882L10 2.5l2.939 5.528L19 8.91l-4.5 3.59 1.378 5.59z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-sm ms-3">
+                      {product.averageRating?.toFixed(1) || "N/A"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-gray-800 text-2xl font-bold">
+                    $ {product.price.toFixed(2)}
+                  </span>
+                  <div className="flex gap-2">
+                    <button className="text-white bg-slate-500 hover:bg-slate-700 font-medium rounded-lg text-sm px-4 py-2">
+                      Add to cart
+                    </button>
+                    <button className="text-red-300 bg-white border border-red-300 hover:border-red-600 hover:text-red-600  font-medium rounded-lg text-sm px-4 py-2">
+                      <Heart />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>

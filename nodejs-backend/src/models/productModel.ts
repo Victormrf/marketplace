@@ -70,7 +70,7 @@ export class ProductModel {
   static async getProductsByCategory(
     category: string
   ): Promise<ProductModel[]> {
-    return prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: {
         category,
       },
@@ -82,6 +82,26 @@ export class ProductModel {
         },
       },
     });
+
+    const productsWithAvgRating = await Promise.all(
+      products.map(async (product: ProductModel) => {
+        const avg = await prisma.review.aggregate({
+          where: { productId: product.id },
+          _avg: {
+            rating: true,
+          },
+        });
+
+        return {
+          ...product,
+          averageRating: avg._avg.rating
+            ? parseFloat(avg._avg.rating.toFixed(2))
+            : null,
+        };
+      })
+    );
+
+    return productsWithAvgRating;
   }
 
   static async getProductsByIds(productIds: string[]): Promise<ProductModel[]> {
