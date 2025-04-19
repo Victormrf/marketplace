@@ -1,9 +1,7 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,7 +15,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function LoginForm() {
+type LoginFormProps = {
+  onRegisterClick?: () => void;
+  onClose?: () => void;
+};
+
+export default function LoginForm({
+  onRegisterClick,
+  onClose,
+}: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -31,6 +37,16 @@ export default function LoginForm() {
   return (
     <div className="flex justify-center items-center min-h-screen p-4">
       <Card className="w-full max-w-md">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+            aria-label="Fechar"
+          >
+            ×
+          </button>
+        )}
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Entrar</CardTitle>
           <CardDescription>
@@ -80,12 +96,13 @@ export default function LoginForm() {
             </Button>
             <div className="text-center text-sm">
               Não possui uma conta?{" "}
-              <Link
-                href="/registro"
+              <button
+                type="button"
                 className="text-primary underline underline-offset-4 hover:text-primary/90"
+                onClick={onRegisterClick}
               >
                 Registre-se
-              </Link>
+              </button>
             </div>
           </CardFooter>
         </form>

@@ -1,7 +1,7 @@
-import Header from "@/components/header";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import Footer from "@/components/footer";
+import AuthModalProvider from "@/components/authModalProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -18,8 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.className}>
       <body className="flex flex-col min-h-screen bg-white text-gray-900">
-        <Header />
-        <main className="flex-1">{children}</main>
+        <AuthModalProvider>
+          <main className="flex-1">{children}</main>
+        </AuthModalProvider>
         <Footer />
       </body>
     </html>

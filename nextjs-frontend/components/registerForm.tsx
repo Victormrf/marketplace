@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,7 +14,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-export default function RegisterForm() {
+type RegisterFormProps = {
+  onBackToLogin?: () => void;
+  onClose?: () => void;
+};
+
+export default function RegisterForm({
+  onBackToLogin,
+  onClose,
+}: RegisterFormProps) {
   const [userType, setUserType] = useState<"customer" | "seller" | "">("");
   const [formData, setFormData] = useState({
     name: "",
@@ -43,6 +50,16 @@ export default function RegisterForm() {
   return (
     <div className="flex justify-center items-center min-h-screen p-4">
       <Card className="w-full max-w-md">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+            aria-label="Fechar"
+          >
+            ×
+          </button>
+        )}
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Criar conta</CardTitle>
           <CardDescription>
@@ -207,12 +224,13 @@ export default function RegisterForm() {
             </Button>
             <div className="text-center text-sm">
               Já possui uma conta?{" "}
-              <Link
-                href="/login"
+              <button
+                type="button"
                 className="text-primary underline underline-offset-4 hover:text-primary/90"
+                onClick={onBackToLogin}
               >
                 Entrar
-              </Link>
+              </button>
             </div>
           </CardFooter>
         </form>

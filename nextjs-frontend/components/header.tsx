@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export default function Header() {
+export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   return (
     <header className="flex items-center justify-between px-8 py-2 shadow bg-white">
       <Link href="/" className="text-xl font-bold">
@@ -12,12 +12,12 @@ export default function Header() {
           height={80}
         />
       </Link>
-      <Link
-        href="/login"
+      <button
         className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 text-sm"
+        onClick={onAuthClick}
       >
         Sign In / Register
-      </Link>
+      </button>
     </header>
   );
 }
