@@ -17,6 +17,7 @@ model user {
   Customer  customer?
   Seller    seller?
   reviews   review[] 
+  cartItems cart_item[]
 }
 
 model customer {
@@ -48,9 +49,21 @@ model product {
   stock       Int
   category    String
   createdAt   DateTime     @default(now())
+  cartItems   cart_item[]   
   orderItems  order_item[]
   seller      seller       @relation(fields: [sellerId], references: [id])
   reviews     review[]
+}
+
+model cart_item {
+  id         String   @id @default(uuid())
+  userId     String
+  productId  String
+  quantity   Int
+  createdAt  DateTime @default(now())
+
+  user    user    @relation(fields: [userId], references: [id])
+  product product @relation(fields: [productId], references: [id])
 }
 
 model order {
