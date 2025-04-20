@@ -1,5 +1,3 @@
-"use client";
-
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,16 +25,69 @@ export default function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Função para sincronizar o carrinho local com o backend
+  async function syncLocalCartWithBackend(token: string) {
+    const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
+    for (const item of localCart) {
+      await fetch("http://localhost:8000/cart-item", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(item),
+      });
+    }
+    localStorage.removeItem("cart");
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aqui você implementaria a lógica de autenticação
-    console.log({ email, password, rememberMe });
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. Autenticação
+      const res = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        setError("Usuário ou senha inválidos");
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+      const token = data.token; // ajuste conforme resposta do seu backend
+
+      // 2. Salve o token (exemplo: localStorage, cookie, context, etc)
+      localStorage.setItem("token", token);
+
+      // 3. Sincronize o carrinho local com o backend
+      await syncLocalCartWithBackend(token);
+
+      // 4. Feche o modal ou redirecione
+      if (onClose) onClose();
+    } catch (err: unknown) {
+      setError(
+        `Erro ao fazer login. Tente novamente. ${
+          err instanceof Error ? err.message : "Erro desconhecido"
+        }`
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex justify-center items-center min-h-screen p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md relative">
         {onClose && (
           <button
             type="button"
@@ -55,6 +106,7 @@ export default function LoginForm({
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && <div className="text-red-500 text-sm">{error}</div>}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -91,8 +143,8 @@ export default function LoginForm({
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full">
-              Entrar
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
             <div className="text-center text-sm">
               Não possui uma conta?{" "}

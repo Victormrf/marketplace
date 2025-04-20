@@ -29,6 +29,23 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Função para adicionar ao carrinho
+  function handleAddToCart(productId: string) {
+    // Tenta obter o carrinho do localStorage, ou inicia como array vazio
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const existing = cart.find(
+      (item: { productId: string; quantity: number }) =>
+        item.productId === productId
+    );
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      cart.push({ productId, quantity: 1 });
+    }
+    localStorage.setItem("cart", JSON.stringify(cart));
+    alert("Produto adicionado ao carrinho!");
+  }
+
   useEffect(() => {
     if (category) {
       const fetchProducts = async () => {
@@ -129,7 +146,10 @@ export default function ProductsPage() {
                     $ {product.price.toFixed(2)}
                   </span>
                   <div className="flex gap-2">
-                    <button className="text-white bg-slate-500 hover:bg-slate-700 font-medium rounded-lg text-sm px-4 py-2">
+                    <button
+                      className="text-white bg-slate-500 hover:bg-slate-700 font-medium rounded-lg text-sm px-4 py-2"
+                      onClick={() => handleAddToCart(product.id)}
+                    >
                       Add to cart
                     </button>
                     <button className="text-red-300 bg-white border border-red-300 hover:border-red-600 hover:text-red-600  font-medium rounded-lg text-sm px-4 py-2">
