@@ -9,6 +9,12 @@ export class CartItemModel {
     return prisma.cart_item.create({ data });
   }
 
+  static async getById(id: string) {
+    return prisma.cart_item.findUnique({
+      where: { id },
+    });
+  }
+
   static async getByUser(userId: string) {
     return prisma.cart_item.findMany({
       where: { userId },
