@@ -17,7 +17,6 @@ model user {
   Customer  customer?
   Seller    seller?
   reviews   review[] 
-  cartItems cart_item[]
 }
 
 model customer {
@@ -27,6 +26,7 @@ model customer {
   phone   String
   user    user    @relation(fields: [userId], references: [id])
   orders  order[]
+  cartItems cart_item[]
 }
 
 model seller {
@@ -57,12 +57,12 @@ model product {
 
 model cart_item {
   id         String   @id @default(uuid())
-  userId     String
+  customerId String
   productId  String
   quantity   Int
   createdAt  DateTime @default(now())
 
-  user    user    @relation(fields: [userId], references: [id])
+  customer    customer    @relation(fields: [customerId], references: [id])
   product product @relation(fields: [productId], references: [id])
 }
 

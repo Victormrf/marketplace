@@ -11,6 +11,7 @@ import { paymentRoutes } from "./controllers/paymentController";
 import { reviewRoutes } from "./controllers/reviewController";
 import { dashboardRoutes } from "./controllers/dashboardController";
 import cors from "cors";
+import { cartItemRoutes } from "./controllers/cartItemController";
 
 const app = express();
 app.use(express.json());
@@ -32,6 +33,7 @@ app.use("/users", authRoutes);
 app.use("/users", userRoutes);
 app.use("/customers", customerRoutes);
 app.use("/sellers", sellerRoutes);
+app.use("/cartItems", cartItemRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
 app.use("/orders/:orderId/items", orderItemRoutes);
