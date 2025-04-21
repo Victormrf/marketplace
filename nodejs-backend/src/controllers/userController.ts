@@ -6,7 +6,7 @@ import {
   ValidationError,
 } from "../utils/customErrors";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { adminMiddleware } from "../middlewares/isAdminMiddleware";
+import { roleMiddleware } from "../middlewares/roleMiddleware";
 
 export const userRoutes = Router();
 const userService = new UserService();
@@ -30,7 +30,7 @@ userRoutes.post("/register", async (req, res) => {
 userRoutes.get(
   "/:userId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { userId } = req.params;
 
@@ -50,7 +50,7 @@ userRoutes.get(
 userRoutes.put(
   "/:userId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { userId } = req.params;
     const updateData = req.body;
@@ -77,7 +77,7 @@ userRoutes.put(
 userRoutes.delete(
   "/:userId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { userId } = req.params;
 

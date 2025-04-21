@@ -6,7 +6,7 @@ import {
   ExistingProfileError,
   ValidationError,
 } from "../utils/customErrors";
-import { adminMiddleware } from "../middlewares/isAdminMiddleware";
+import { roleMiddleware } from "../middlewares/roleMiddleware";
 
 export const customerRoutes = Router();
 const customerService = new CustomerService();
@@ -34,19 +34,24 @@ customerRoutes.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-customerRoutes.get("/", authMiddleware, adminMiddleware, async (req, res) => {
-  try {
-    const profiles = await customerService.getAllCustomers();
-    res.status(200).json({ profiles });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || "Internal Server Error" });
+customerRoutes.get(
+  "/",
+  authMiddleware,
+  roleMiddleware("admin"),
+  async (req, res) => {
+    try {
+      const profiles = await customerService.getAllCustomers();
+      res.status(200).json({ profiles });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
   }
-});
+);
 
 customerRoutes.get(
   "/:userId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { userId } = req.params;
     try {
@@ -98,7 +103,7 @@ customerRoutes.put("/:userId", authMiddleware, async (req, res) => {
 customerRoutes.delete(
   "/:userId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { userId } = req.params;
 

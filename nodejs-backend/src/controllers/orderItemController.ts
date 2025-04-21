@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { OrderItemService } from "../services/orderItemService";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { ObjectNotFoundError, ValidationError } from "../utils/customErrors";
+import { ObjectNotFoundError } from "../utils/customErrors";
 
 export const orderItemRoutes = Router();
 const orderItemService = new OrderItemService();

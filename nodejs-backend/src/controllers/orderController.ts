@@ -6,8 +6,8 @@ import {
   ObjectsNotFoundError,
   ValidationError,
 } from "../utils/customErrors";
-import { adminMiddleware } from "../middlewares/isAdminMiddleware";
 import { error } from "console";
+import { roleMiddleware } from "../middlewares/roleMiddleware";
 
 export const orderRoutes = Router();
 const orderService = new OrderService();
@@ -65,7 +65,7 @@ orderRoutes.get("/customer/:customerId", authMiddleware, async (req, res) => {
 orderRoutes.put(
   "/:orderId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { orderId } = req.params;
     const updateData = req.body;
@@ -110,7 +110,7 @@ orderRoutes.put("/:orderId/status", authMiddleware, async (req, res) => {
 orderRoutes.delete(
   "/:orderId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { orderId } = req.params;
 

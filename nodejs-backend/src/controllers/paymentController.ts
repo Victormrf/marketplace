@@ -6,7 +6,7 @@ import {
   ObjectsNotFoundError,
   ValidationError,
 } from "../utils/customErrors";
-import { adminMiddleware } from "../middlewares/isAdminMiddleware";
+import { roleMiddleware } from "../middlewares/roleMiddleware";
 
 export const paymentRoutes = Router();
 const paymentService = new PaymentService();
@@ -115,7 +115,7 @@ paymentRoutes.put("/:paymentId/status", authMiddleware, async (req, res) => {
 paymentRoutes.delete(
   "/:paymentId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { paymentId } = req.params;
 

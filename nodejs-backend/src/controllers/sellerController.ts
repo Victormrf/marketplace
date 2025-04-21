@@ -6,7 +6,7 @@ import {
   ValidationError,
 } from "../utils/customErrors";
 import { SellerService } from "../services/sellerService";
-import { adminMiddleware } from "../middlewares/isAdminMiddleware";
+import { roleMiddleware } from "../middlewares/roleMiddleware";
 
 export const sellerRoutes = Router();
 const sellerService = new SellerService();
@@ -34,19 +34,24 @@ sellerRoutes.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-sellerRoutes.get("/", authMiddleware, adminMiddleware, async (req, res) => {
-  try {
-    const profiles = await sellerService.getAllSellers();
-    res.status(200).json({ profiles });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || "Internal Server Error" });
+sellerRoutes.get(
+  "/",
+  authMiddleware,
+  roleMiddleware("admin"),
+  async (req, res) => {
+    try {
+      const profiles = await sellerService.getAllSellers();
+      res.status(200).json({ profiles });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
   }
-});
+);
 
 sellerRoutes.get(
   "/:userId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { userId } = req.params;
     try {
@@ -98,7 +103,7 @@ sellerRoutes.put("/:userId", authMiddleware, async (req, res) => {
 sellerRoutes.delete(
   "/:userId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { userId } = req.params;
 

@@ -6,7 +6,7 @@ import {
   ObjectsNotFoundError,
   ValidationError,
 } from "../utils/customErrors";
-import { adminMiddleware } from "../middlewares/isAdminMiddleware";
+import { roleMiddleware } from "../middlewares/roleMiddleware";
 
 export const productRoutes = Router();
 const productService = new ProductService();
@@ -103,7 +103,7 @@ productRoutes.put("/:productId", authMiddleware, async (req, res) => {
 productRoutes.delete(
   "/:productId",
   authMiddleware,
-  adminMiddleware,
+  roleMiddleware("admin"),
   async (req, res) => {
     const { productId } = req.params;
 
