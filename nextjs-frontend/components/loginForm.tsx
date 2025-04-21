@@ -12,6 +12,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { jwtDecode } from "jwt-decode";
+
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: "customer" | "seller" | "admin";
+}
 
 type LoginFormProps = {
   onRegisterClick?: () => void;
@@ -32,7 +39,7 @@ export default function LoginForm({
   async function syncLocalCartWithBackend(token: string) {
     const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
     for (const item of localCart) {
-      await fetch("http://localhost:8000/cart-item", {
+      await fetch("http://localhost:8000/cart-items/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -51,7 +58,7 @@ export default function LoginForm({
 
     try {
       // 1. Autenticação
-      const res = await fetch("http://localhost:8000/auth/login", {
+      const res = await fetch("http://localhost:8000/users/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -69,8 +76,13 @@ export default function LoginForm({
       // 2. Salve o token (exemplo: localStorage, cookie, context, etc)
       localStorage.setItem("token", token);
 
-      // 3. Sincronize o carrinho local com o backend
-      await syncLocalCartWithBackend(token);
+      // 3. Decodifique o token para recuperar a role do usuário logado.
+      const decoded = jwtDecode<DecodedToken>(token);
+
+      // 3. Sincronize o carrinho local com o backend, apenas caso o usuário logado seja um customer
+      if (decoded.role === "customer") {
+        await syncLocalCartWithBackend(token);
+      }
 
       // 4. Feche o modal ou redirecione
       if (onClose) onClose();
