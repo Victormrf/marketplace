@@ -49,6 +49,7 @@ model product {
   price       Float
   stock       Int
   category    String
+  image       String?
   createdAt   DateTime     @default(now())
   cartItems   cart_item[]   
   orderItems  order_item[]

@@ -34,11 +34,11 @@ cartItemRoutes.post(
 );
 
 cartItemRoutes.get(
-  "/:userId",
+  "/",
   authMiddleware,
   roleMiddleware("customer"),
   async (req, res) => {
-    const { userId } = req.params;
+    const userId = req.user.id;
     try {
       const items = await cartItemService.getUserCart(userId);
       res.status(200).json(items);

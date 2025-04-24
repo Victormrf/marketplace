@@ -8,6 +8,7 @@ export class ProductModel {
   price?: number;
   stock?: number;
   category?: string;
+  image?: string;
   createdAt?: Date;
 
   constructor(data: Partial<ProductModel> = {}) {
@@ -21,6 +22,7 @@ export class ProductModel {
     price: number;
     stock: number;
     category: string;
+    image: string;
   }): Promise<ProductModel> {
     return prisma.product.create({
       data: {
@@ -30,6 +32,7 @@ export class ProductModel {
         price: data.price,
         stock: data.stock,
         category: data.category,
+        image: data.image,
       },
     });
   }

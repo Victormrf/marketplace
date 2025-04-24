@@ -12,6 +12,7 @@ interface ProductData {
   price: number;
   stock: number;
   category: string;
+  image: string;
 }
 
 export class ProductService {
@@ -55,6 +56,20 @@ export class ProductService {
       throw new ValidationError("Stock cannot be negative");
     }
     return await ProductModel.updateStock(productId, quantity);
+  }
+
+  async getProductsByIds(productIds: string[]) {
+    if (!productIds || !productIds.length) {
+      throw new ValidationError("No product id was informed.");
+    }
+
+    const products = await ProductModel.getProductsByIds(productIds);
+
+    if (!products || !products.length) {
+      throw new ObjectsNotFoundError("products");
+    }
+
+    return products;
   }
 
   async getProductsBySellerId(sellerId: string) {

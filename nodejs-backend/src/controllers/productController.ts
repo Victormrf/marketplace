@@ -35,6 +35,26 @@ productRoutes.post("/", authMiddleware, async (req, res) => {
   }
 });
 
+productRoutes.get("/:productIds", async (req, res) => {
+  const { productIds } = req.params;
+  const idsArray = productIds.split(",");
+  try {
+    const products = await productService.getProductsByIds(idsArray);
+    res.status(200).json({ products });
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    } else if (error instanceof ObjectsNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    } else {
+      res.status(500).json({ message: "Internal Server Error" });
+      return;
+    }
+  }
+});
+
 productRoutes.get("/seller/:sellerId", async (req, res) => {
   const { sellerId } = req.params;
 
@@ -43,10 +63,10 @@ productRoutes.get("/seller/:sellerId", async (req, res) => {
     res.status(200).json({ products });
   } catch (error) {
     if (error instanceof ObjectsNotFoundError) {
-      res.status(400).json({ error: error.message });
+      res.status(404).json({ error: error.message });
       return;
     } else {
-      res.status(500).json({ error: error });
+      res.status(500).json({ message: "Internal Server Error" });
       return;
     }
   }
@@ -60,10 +80,10 @@ productRoutes.get("/category/:category", async (req, res) => {
     res.status(200).json({ products });
   } catch (error) {
     if (error instanceof ObjectsNotFoundError) {
-      res.status(400).json({ error: error.message });
+      res.status(404).json({ error: error.message });
       return;
     } else {
-      res.status(500).json({ error: error });
+      res.status(500).json({ message: "Internal Server Error" });
       return;
     }
   }
