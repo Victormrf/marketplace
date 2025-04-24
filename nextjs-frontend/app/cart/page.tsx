@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 type Product = {
   id: string;
@@ -104,7 +105,7 @@ export default function CartPage() {
   );
   const savings = cartItems.length > 0 ? 50 : 0; // Exemplo fixo
   const storePickup = cartItems.length > 0 ? 14.9 : 0;
-  const tax = cartItems.length > 0 ? 10 * cartItems.length : 0;
+  const tax = cartItems.reduce((sum, item) => sum + 10 * item.quantity, 0);
   const total = originalPrice - savings + storePickup + tax;
 
   if (loading) {
@@ -347,12 +348,12 @@ export default function CartPage() {
                   </dd>
                 </dl>
               </div>
-              <a
-                href="#"
-                className="flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+              <Link
+                href="/checkout"
+                className="flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
               >
                 Proceed to Checkout
-              </a>
+              </Link>
               <div className="flex items-center justify-center gap-2">
                 <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
                   {" "}
@@ -361,7 +362,7 @@ export default function CartPage() {
                 <a
                   href="#"
                   title=""
-                  className="inline-flex items-center gap-2 text-sm font-medium text-primary-700 underline hover:no-underline dark:text-primary-500"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-cyan-700 underline hover:no-underline dark:text-primary-500"
                 >
                   Continue Shopping
                   <svg
@@ -395,14 +396,14 @@ export default function CartPage() {
                   <input
                     type="text"
                     id="voucher"
-                    className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                    className="block w-full rounded-lg border border-gray-300 bg-gray-100 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
                     placeholder=""
                     required
                   />
                 </div>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-slate hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                  className="flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                 >
                   Apply Code
                 </button>

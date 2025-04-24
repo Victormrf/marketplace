@@ -125,7 +125,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
           className="inline-flex items-center gap-1 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
         >
           <User className="w-5 h-5" />
-          <span className="hidden sm:inline">Account</span>
+          <span className="hidden sm:inline">My Account</span>
           <ChevronDown className="hidden sm:inline w-4 h-4" />
         </button>
         {showUserPreferences && (
