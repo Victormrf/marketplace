@@ -2,6 +2,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import React from "react";
 
 // Nota: Este componente apenas replica a estrutura visual estática.
@@ -18,9 +19,104 @@ export default function OrderSummaryPage() {
     <>
       {/* --- Seção Principal: Resumo do Pedido --- */}
       <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
+        <div className="mx-auto max-w-4xl mb-8">
+          <ol className="flex w-full items-center text-md font-medium">
+            <li className="flex items-center flex-1 min-w-0 text-cyan-700 ">
+              <span className="flex items-center gap-0.5 whitespace-nowrap">
+                <svg
+                  className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
+                </svg>
+                Cart
+              </span>
+              <span className="mx-4 flex-1 h-px bg-gray-200"></span>
+            </li>
+            <li className="flex items-center flex-1 min-w-0 text-cyan-800 ">
+              <span className="flex items-center gap-0.5 whitespace-nowrap">
+                <svg
+                  className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
+                </svg>
+                Checkout
+              </span>
+              <span className="mx-4  flex-1 h-px bg-gray-200"></span>
+            </li>
+            <li className="flex items-center flex-1 min-w-0 text-cyan-700">
+              <span className="flex items-center gap-0.5 whitespace-nowrap">
+                <svg
+                  className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
+                </svg>
+                Order Summary
+              </span>
+              <span className="mx-4  flex-1 h-px bg-gray-200"></span>
+            </li>
+            <li className="flex items-center flex-1 min-w-0 text-gray-300">
+              <span className="flex items-center gap-0.5 whitespace-nowrap">
+                <svg
+                  className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
+                </svg>
+                Payment
+              </span>
+            </li>
+          </ol>
+        </div>
         {/* O form aqui pode envolver apenas a parte principal ou tudo, dependendo da lógica */}
         <form action="#" className="mx-auto max-w-screen-xl px-4 2xl:px-0">
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto max-w-4xl">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl">
               Order summary
             </h2>
@@ -163,143 +259,6 @@ export default function OrderSummaryPage() {
                         $898
                       </td>
                     </tr>
-                    {/* ... outros itens da tabela ... */}
-                    <tr>
-                      <td className="whitespace-nowrap py-4 md:w-[384px]">
-                        <div className="flex items-center gap-4">
-                          <a
-                            href="#"
-                            className="flex items-center aspect-square w-10 h-10 shrink-0"
-                          >
-                            <Image
-                              height={100}
-                              width={100}
-                              className="h-auto w-full max-h-full dark:hidden"
-                              src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/xbox-light.svg"
-                              alt="xbox image"
-                            />
-                            <Image
-                              height={100}
-                              width={100}
-                              className="hidden h-auto w-full max-h-full dark:block"
-                              src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/xbox-dark.svg"
-                              alt="xbox image"
-                            />
-                          </a>
-                          <a href="#" className="hover:underline">
-                            Xbox Series X
-                          </a>
-                        </div>
-                      </td>
-                      <td className="p-4 text-base font-normal text-gray-900 dark:text-white">
-                        x4
-                      </td>
-                      <td className="p-4 text-right text-base font-bold text-gray-900 dark:text-white">
-                        $4,499
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="whitespace-nowrap py-4 md:w-[384px]">
-                        <div className="flex items-center gap-4">
-                          <a
-                            href="#"
-                            className="flex items-center aspect-square w-10 h-10 shrink-0"
-                          >
-                            <Image
-                              height={100}
-                              width={100}
-                              className="h-auto w-full max-h-full dark:hidden"
-                              src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/ps5-light.svg"
-                              alt="playstation image"
-                            />
-                            <Image
-                              height={100}
-                              width={100}
-                              className="hidden h-auto w-full max-h-full dark:block"
-                              src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/ps5-dark.svg"
-                              alt="playstation image"
-                            />
-                          </a>
-                          <a href="#" className="hover:underline">
-                            PlayStation 5
-                          </a>
-                        </div>
-                      </td>
-                      <td className="p-4 text-base font-normal text-gray-900 dark:text-white">
-                        x1
-                      </td>
-                      <td className="p-4 text-right text-base font-bold text-gray-900 dark:text-white">
-                        $499
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="whitespace-nowrap py-4 md:w-[384px]">
-                        <div className="flex items-center gap-4">
-                          <a
-                            href="#"
-                            className="flex items-center aspect-square w-10 h-10 shrink-0"
-                          >
-                            <Image
-                              height={100}
-                              width={100}
-                              className="h-auto w-full max-h-full dark:hidden"
-                              src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/macbook-pro-light.svg"
-                              alt="macbook image"
-                            />
-                            <Image
-                              height={100}
-                              width={100}
-                              className="hidden h-auto w-full max-h-full dark:block"
-                              src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/macbook-pro-dark.svg"
-                              alt="macbook image"
-                            />
-                          </a>
-                          <a href="#" className="hover:underline">
-                            MacBook Pro 16&quot;
-                          </a>
-                        </div>
-                      </td>
-                      <td className="p-4 text-base font-normal text-gray-900 dark:text-white">
-                        x1
-                      </td>
-                      <td className="p-4 text-right text-base font-bold text-gray-900 dark:text-white">
-                        $499
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="whitespace-nowrap py-4 md:w-[384px]">
-                        <div className="flex items-center gap-4">
-                          <a
-                            href="#"
-                            className="flex items-center aspect-square w-10 h-10 shrink-0"
-                          >
-                            <Image
-                              height={100}
-                              width={100}
-                              className="h-auto w-full max-h-full dark:hidden"
-                              src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/apple-watch-light.svg"
-                              alt="watch image"
-                            />
-                            <Image
-                              height={100}
-                              width={100}
-                              className="hidden h-auto w-full max-h-full dark:block"
-                              src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/apple-watch-dark.svg"
-                              alt="watch image"
-                            />
-                          </a>
-                          <a href="#" className="hover:underline">
-                            Apple Watch SE
-                          </a>
-                        </div>
-                      </td>
-                      <td className="p-4 text-base font-normal text-gray-900 dark:text-white">
-                        x2
-                      </td>
-                      <td className="p-4 text-right text-base font-bold text-gray-900 dark:text-white">
-                        $799
-                      </td>
-                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -385,12 +344,13 @@ export default function OrderSummaryPage() {
                   >
                     Return to Shopping
                   </button>
-                  <button
+                  <Link
+                    href="/payment"
                     type="submit"
-                    className="mt-4 flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
+                    className="mt-4 flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
                   >
                     Send the order
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>

@@ -25,9 +25,9 @@ export default function CheckoutPage() {
   return (
     <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
       <form action="#" className="mx-auto max-w-screen-xl px-4 2xl:px-0">
-        {/* --- Barra de Progresso --- */}
-        <ol className="flex w-full max-w-5xl items-center text-sm font-medium text-primary-700 dark:text-primary-500 sm:text-base">
-          <li className="flex items-center flex-1 min-w-0">
+        {/* --- Stepper --- */}
+        <ol className="flex w-full max-w-5xl items-center text-md font-medium">
+          <li className="flex items-center flex-1 min-w-0 text-cyan-700 ">
             <span className="flex items-center gap-0.5 whitespace-nowrap">
               <svg
                 className="me-2 h-4 w-4 sm:h-5 sm:w-5"
@@ -50,7 +50,7 @@ export default function CheckoutPage() {
             </span>
             <span className="mx-4 flex-1 h-px bg-gray-200"></span>
           </li>
-          <li className="flex items-center flex-1 min-w-0">
+          <li className="flex items-center flex-1 min-w-0 text-cyan-800 ">
             <span className="flex items-center gap-0.5 whitespace-nowrap">
               <svg
                 className="me-2 h-4 w-4 sm:h-5 sm:w-5"
@@ -73,7 +73,7 @@ export default function CheckoutPage() {
             </span>
             <span className="mx-4  flex-1 h-px bg-gray-200"></span>
           </li>
-          <li className="flex items-center flex-1 min-w-0">
+          <li className="flex items-center flex-1 min-w-0 text-gray-300">
             <span className="flex items-center gap-0.5 whitespace-nowrap">
               <svg
                 className="me-2 h-4 w-4 sm:h-5 sm:w-5"
@@ -96,7 +96,7 @@ export default function CheckoutPage() {
             </span>
             <span className="mx-4  flex-1 h-px bg-gray-200"></span>
           </li>
-          <li className="flex items-center flex-1 min-w-0">
+          <li className="flex items-center flex-1 min-w-0 text-gray-300">
             <span className="flex items-center gap-0.5 whitespace-nowrap">
               <svg
                 className="me-2 h-4 w-4 sm:h-5 sm:w-5"
@@ -689,7 +689,7 @@ export default function CheckoutPage() {
                   </dl>
                 </div>
                 <Link
-                  href="/checkout"
+                  href="/order-summary"
                   className="flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-2.5 mt-6 text-sm font-medium text-white hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                 >
                   Proceed to Payment

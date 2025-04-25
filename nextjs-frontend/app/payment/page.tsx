@@ -20,6 +20,101 @@ export default function PaymentPage() {
       <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
         <div className="mx-auto max-w-screen-xl px-4 2xl:px-0">
           <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-4xl mb-6">
+              <ol className="flex w-full items-center text-md font-medium">
+                <li className="flex items-center w-64 min-w-0 text-cyan-700 ">
+                  <span className="flex items-center gap-0.5 whitespace-nowrap">
+                    <svg
+                      className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                      />
+                    </svg>
+                    Cart
+                  </span>
+                  <span className="mx-4 flex-1 h-px bg-gray-200"></span>
+                </li>
+                <li className="flex items-center flex-1 min-w-0 text-cyan-800 ">
+                  <span className="flex items-center gap-0.5 whitespace-nowrap">
+                    <svg
+                      className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                      />
+                    </svg>
+                    Checkout
+                  </span>
+                  <span className="mx-4  flex-1 h-px bg-gray-200"></span>
+                </li>
+                <li className="flex items-center flex-1 min-w-0 text-cyan-700">
+                  <span className="flex items-center gap-0.5 whitespace-nowrap">
+                    <svg
+                      className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                      />
+                    </svg>
+                    Order Summary
+                  </span>
+                  <span className="mx-4  flex-1 h-px bg-gray-200"></span>
+                </li>
+                <li className="flex items-center w-24 min-w-0 text-cyan-700">
+                  <span className="flex items-center gap-0.5 whitespace-nowrap">
+                    <svg
+                      className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                      />
+                    </svg>
+                    Payment
+                  </span>
+                </li>
+              </ol>
+            </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl">
               Payment
             </h2>
