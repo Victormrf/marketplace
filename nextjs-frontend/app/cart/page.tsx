@@ -108,6 +108,15 @@ export default function CartPage() {
   const tax = cartItems.reduce((sum, item) => sum + 10 * item.quantity, 0);
   const total = originalPrice - savings + storePickup + tax;
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "order-summary",
+        JSON.stringify({ originalPrice, savings, storePickup, tax, total })
+      );
+    }
+  }, [originalPrice, savings, storePickup, tax, total]);
+
   if (loading) {
     return (
       <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
