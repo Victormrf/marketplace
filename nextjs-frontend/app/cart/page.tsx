@@ -38,6 +38,10 @@ function getRandomImage() {
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [removeConfirm, setRemoveConfirm] = useState<{
+    open: boolean;
+    productId?: string;
+  }>({ open: false });
 
   useEffect(() => {
     async function fetchCart() {
@@ -117,6 +121,48 @@ export default function CartPage() {
     }
   }, [originalPrice, savings, storePickup, tax, total]);
 
+  function handleIncrement(item: CartItem) {
+    if (!item.product) return;
+    if (item.quantity < item.product.stock) {
+      setCartItems((prev) =>
+        prev.map((cartItem) =>
+          cartItem.productId === item.productId
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        )
+      );
+    }
+  }
+
+  function handleDecrement(item: CartItem) {
+    if (item.quantity > 1) {
+      setCartItems((prev) =>
+        prev.map((cartItem) =>
+          cartItem.productId === item.productId
+            ? { ...cartItem, quantity: cartItem.quantity - 1 }
+            : cartItem
+        )
+      );
+    } else if (item.quantity === 1) {
+      setRemoveConfirm({ open: true, productId: item.productId });
+    }
+  }
+
+  function handleRemoveButton(item: CartItem) {
+    setRemoveConfirm({ open: true, productId: item.productId });
+  }
+
+  function handleRemoveConfirmed() {
+    setCartItems((prev) =>
+      prev.filter((cartItem) => cartItem.productId !== removeConfirm.productId)
+    );
+    setRemoveConfirm({ open: false });
+  }
+
+  function handleRemoveCancel() {
+    setRemoveConfirm({ open: false });
+  }
+
   if (loading) {
     return (
       <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
@@ -170,7 +216,7 @@ export default function CartPage() {
                           <button
                             type="button"
                             className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus:ring-gray-700"
-                            // onClick={() => handleDecrement(item)}
+                            onClick={() => handleDecrement(item)}
                           >
                             <svg
                               className="h-2.5 w-2.5 text-gray-900 dark:text-white"
@@ -201,7 +247,10 @@ export default function CartPage() {
                           <button
                             type="button"
                             className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus:ring-gray-700"
-                            // onClick={() => handleIncrement(item)}
+                            onClick={() => handleIncrement(item)}
+                            disabled={
+                              item.quantity >= (item.product?.stock || 0)
+                            }
                           >
                             <svg
                               className="h-2.5 w-2.5 text-gray-900 dark:text-white"
@@ -267,6 +316,7 @@ export default function CartPage() {
                           <button
                             type="button"
                             className="inline-flex items-center text-sm font-medium text-red-600 hover:underline dark:text-red-500"
+                            onClick={() => handleRemoveButton(item)}
                           >
                             <svg
                               className="me-1.5 h-5 w-5"
@@ -368,8 +418,8 @@ export default function CartPage() {
                   {" "}
                   or{" "}
                 </span>
-                <a
-                  href="#"
+                <Link
+                  href="/"
                   title=""
                   className="inline-flex items-center gap-2 text-sm font-bold text-cyan-700 underline hover:no-underline dark:text-primary-500"
                 >
@@ -389,7 +439,7 @@ export default function CartPage() {
                       d="M19 12H5m14 0-4 4m4-4-4-4"
                     />
                   </svg>
-                </a>
+                </Link>
               </div>
             </div>
             <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
@@ -421,6 +471,30 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+      {/* Popup de confirmação de remoção */}
+      {removeConfirm.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
+            <p className="mb-4 text-gray-900">
+              Deseja remover este produto do carrinho?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+                onClick={handleRemoveCancel}
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                onClick={handleRemoveConfirmed}
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -4,6 +4,7 @@ import { Heart, Search } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { jwtDecode } from "jwt-decode";
 
 interface Seller {
   storeName: string;
@@ -22,6 +23,12 @@ interface Product {
   createdAt?: string;
 }
 
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: "customer" | "seller" | "admin";
+}
+
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category");
@@ -31,19 +38,57 @@ export default function ProductsPage() {
 
   // Função para adicionar ao carrinho
   function handleAddToCart(productId: string) {
-    // Tenta obter o carrinho do localStorage, ou inicia como array vazio
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const existing = cart.find(
-      (item: { productId: string; quantity: number }) =>
-        item.productId === productId
-    );
-    if (existing) {
-      existing.quantity += 1;
-    } else {
-      cart.push({ productId, quantity: 1 });
+    // Verifica se existe um usuário logado
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    let userId: string | null = null;
+
+    if (token) {
+      try {
+        const decoded = jwtDecode<DecodedToken>(token);
+        userId = decoded.id;
+      } catch {
+        userId = null;
+      }
     }
-    localStorage.setItem("cart", JSON.stringify(cart));
-    alert("Produto adicionado ao carrinho!");
+
+    if (userId) {
+      // Usuário logado: adiciona no backend
+      fetch("http://localhost:8000/cart-items", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId,
+          productId,
+          quantity: 1,
+        }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Erro ao adicionar ao carrinho");
+          alert("Produto adicionado ao carrinho!");
+        })
+        .catch((error) => {
+          alert("Erro ao adicionar ao carrinho.");
+          console.error(error);
+        });
+    } else {
+      // Tenta obter o carrinho do localStorage, ou inicia como array vazio
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const existing = cart.find(
+        (item: { productId: string; quantity: number }) =>
+          item.productId === productId
+      );
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        cart.push({ productId, quantity: 1 });
+      }
+      localStorage.setItem("cart", JSON.stringify(cart));
+      alert("Produto adicionado ao carrinho!");
+    }
   }
 
   useEffect(() => {
