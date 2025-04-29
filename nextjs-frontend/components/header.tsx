@@ -20,6 +20,7 @@ interface DecodedData {
   id: string;
   email: string;
   role: "customer" | "seller" | "admin";
+  exp?: number;
 }
 
 type UserRole = "customer" | "seller" | "admin" | null;
@@ -42,7 +43,13 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
       if (token) {
         try {
           const decoded: DecodedData = jwtDecode(token);
-          setRole(decoded.role || null);
+          if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+            // Token expirado
+            localStorage.removeItem("token");
+            setRole(null);
+          } else {
+            setRole(decoded.role || null);
+          }
         } catch {
           setRole(null);
         }
