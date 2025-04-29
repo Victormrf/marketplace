@@ -25,9 +25,9 @@ export default function CheckoutPage() {
   const [orderSummary, setOrderSummary] = useState<OrderSummaryData>({});
 
   const initialAddress: Address = {
-    id: Date.now(), // ID inicial
+    id: 1, // ID inicial
     country: "US",
-    city: "SF",
+    city: "",
     zipcode: "",
     district: "",
     street: "",
@@ -60,9 +60,9 @@ export default function CheckoutPage() {
       setAddresses((prevAddresses) => [
         ...prevAddresses,
         {
-          id: Date.now(), // Novo ID único
-          country: "US", // Pode definir padrões ou deixar vazio
-          city: "SF",
+          id: prevAddresses.length + 1,
+          country: "US",
+          city: "",
           zipcode: "",
           district: "",
           street: "",
@@ -176,13 +176,40 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Delivery Details
               </h2>
-              {/* --- NOVO: Loop para renderizar os formulários de endereço --- */}
               {addresses.map((address, index) => (
                 <div
-                  key={address.id} // Key única para o React
-                  className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800"
+                  key={address.id}
+                  className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800 relative"
                 >
-                  {/* --- NOVO: Cabeçalho do Endereço --- */}
+                  {/* Botão X para remover endereço */}
+                  {addresses.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddresses((prev) =>
+                          prev.filter((a) => a.id !== address.id)
+                        );
+                      }}
+                      className="absolute top-2 right-2 text-gray-400 hover:text-red-600 rounded-full p-1 transition"
+                      title="Remover endereço"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                  {/* --- Cabeçalho do Endereço --- */}
                   <h3 className="mb-4 text-lg font-medium text-gray-800 dark:text-white">
                     Address {index + 1}:{" "}
                     <span className="text-gray-600 dark:text-gray-400">
@@ -193,67 +220,40 @@ export default function CheckoutPage() {
                   </h3>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {/* --- Campos do Endereço (com IDs e names ajustados) --- */}
                     <div>
                       <label
-                        htmlFor={`country-${address.id}`} // ID único
+                        htmlFor={`country-${address.id}`}
                         className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                       >
                         {" "}
                         Country*{" "}
                       </label>
                       <select
-                        id={`country-${address.id}`} // ID único
-                        name="country" // Name para o handler
-                        value={address.country} // Valor controlado
-                        onChange={(e) => handleAddressChange(index, e)} // Handler
+                        id={`country-${address.id}`}
+                        name="country"
+                        value={address.country}
+                        onChange={(e) => handleAddressChange(index, e)}
                         className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
                       >
                         <option value="US">United States</option>
-                        <option value="AS">Australia</option>
-                        <option value="FR">France</option>
-                        <option value="ES">Spain</option>
-                        <option value="UK">United Kingdom</option>
+                        <option value="BR">Brasil</option>
                       </select>
                     </div>
 
                     <div>
                       <label
-                        htmlFor={`city-${address.id}`} // ID único
+                        htmlFor={`city-${address.id}`}
                         className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                       >
                         {" "}
                         City*{" "}
                       </label>
-                      <select
-                        id={`city-${address.id}`} // ID único
-                        name="city" // Name para o handler
-                        value={address.city} // Valor controlado
-                        onChange={(e) => handleAddressChange(index, e)} // Handler
-                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-                      >
-                        <option value="SF">San Francisco</option>
-                        <option value="NY">New York</option>
-                        <option value="LA">Los Angeles</option>
-                        <option value="CH">Chicago</option>
-                        <option value="HU">Houston</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor={`zipcode-${address.id}`} // ID único
-                        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                      >
-                        {" "}
-                        Zipcode*{" "}
-                      </label>
                       <input
                         type="text"
-                        id={`zipcode-${address.id}`} // ID único
-                        name="zipcode" // Name para o handler
-                        value={address.zipcode} // Valor controlado
-                        onChange={(e) => handleAddressChange(index, e)} // Handler
+                        id={`zipcode-${address.id}`}
+                        name="zipcode"
+                        value={address.zipcode}
+                        onChange={(e) => handleAddressChange(index, e)}
                         className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
                         required
                       />
@@ -261,7 +261,26 @@ export default function CheckoutPage() {
 
                     <div>
                       <label
-                        htmlFor={`district-${address.id}`} // ID único
+                        htmlFor={`zipcode-${address.id}`}
+                        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                      >
+                        {" "}
+                        Zipcode*{" "}
+                      </label>
+                      <input
+                        type="text"
+                        id={`zipcode-${address.id}`}
+                        name="zipcode"
+                        value={address.zipcode}
+                        onChange={(e) => handleAddressChange(index, e)}
+                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor={`district-${address.id}`}
                         className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                       >
                         {" "}
@@ -269,18 +288,17 @@ export default function CheckoutPage() {
                       </label>
                       <input
                         type="text"
-                        id={`district-${address.id}`} // ID único
-                        name="district" // Name para o handler
-                        value={address.district} // Valor controlado
-                        onChange={(e) => handleAddressChange(index, e)} // Handler
+                        id={`district-${address.id}`}
+                        name="district"
+                        value={address.district}
+                        onChange={(e) => handleAddressChange(index, e)}
                         className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-                        // required (opcional para district)
                       />
                     </div>
 
                     <div>
                       <label
-                        htmlFor={`street-${address.id}`} // ID único
+                        htmlFor={`street-${address.id}`}
                         className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                       >
                         {" "}
@@ -299,33 +317,30 @@ export default function CheckoutPage() {
 
                     <div>
                       <label
-                        htmlFor={`number-${address.id}`} // ID único
+                        htmlFor={`number-${address.id}`}
                         className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                       >
                         {" "}
                         Number{" "}
                       </label>
                       <input
-                        type="text"
-                        id={`number-${address.id}`} // ID único
-                        name="number" // Name para o handler
-                        value={address.number} // Valor controlado
-                        onChange={(e) => handleAddressChange(index, e)} // Handler
-                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                        type="number"
+                        id={`number-${address.id}`}
+                        name="number"
+                        value={address.number}
+                        onChange={(e) => handleAddressChange(index, e)}
+                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500 no-spinner"
                         placeholder="123"
-                        // required (opcional para number)
                       />
                     </div>
                   </div>
                 </div>
               ))}{" "}
-              {/* --- Fim do loop de endereços --- */}
-              {/* --- Botão "Add new address" (atualizado) --- */}
-              {addresses.length < 3 && ( // Só mostra o botão se houver menos de 3 endereços
+              {addresses.length < 3 && (
                 <div className="sm:col-span-2">
                   <button
-                    type="button" // MUDOU: de submit para button
-                    onClick={handleAddAddress} // Chama a função para adicionar
+                    type="button"
+                    onClick={handleAddAddress}
                     className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
                   >
                     <svg
@@ -350,8 +365,6 @@ export default function CheckoutPage() {
                 </div>
               )}
             </div>{" "}
-            {/* Fim Delivery Details Wrapper */}
-            {/* --- Seção de Pagamento --- (mantida) */}
             <div className="space-y-4">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Payment
@@ -497,7 +510,6 @@ export default function CheckoutPage() {
                 </div>
               </div>
             </div>
-            {/* --- Seção de Métodos de Entrega --- (mantida) */}
             <div className="space-y-4">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Delivery Methods
@@ -505,8 +517,6 @@ export default function CheckoutPage() {
               {/* ... (código das opções de entrega omitido para brevidade) ... */}
             </div>
           </div>{" "}
-          {/* Fim da Coluna Principal */}
-          {/* --- Resumo do Pedido --- (mantido) */}
           {orderSummary.originalPrice &&
             orderSummary.savings &&
             orderSummary.storePickup &&
@@ -582,7 +592,6 @@ export default function CheckoutPage() {
               </div>
             )}
         </div>{" "}
-        {/* Fim do Flex Container Principal */}
       </form>
     </section>
   );

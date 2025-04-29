@@ -10,10 +10,11 @@ export default function CategoryCard({
   return (
     <Link
       href={`/products?category=${encodeURIComponent(label)}`}
-      className="p-16 border rounded-lg flex flex-col items-center hover:shadow transition cursor-pointer no-underline text-inherit"
+      className="p-6 border rounded-lg flex flex-col items-center hover:shadow transition cursor-pointer no-underline text-inherit"
     >
-      <div className="mb-2 text-gray-700">{icon}</div>
-      <p className="font-medium">{label}</p>
+      <div className="mb-2 text-4xl">{icon}</div> {/* aumenta o ícone */}
+      <p className="font-semibold text-lg text-slate-800">{label}</p>{" "}
+      {/* aumenta o texto */}
     </Link>
   );
 }
