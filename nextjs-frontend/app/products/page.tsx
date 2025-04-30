@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import ProductOverview from "@/components/productOverview";
 
 interface Seller {
   storeName: string;
@@ -32,6 +33,8 @@ interface DecodedToken {
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +114,16 @@ export default function ProductsPage() {
     }
   }, [category]);
 
+  function handleProductClick(product: Product) {
+    setSelectedProduct(product);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setSelectedProduct(null);
+  }
+
   return (
     <div>
       <div className="bg-gray-100">
@@ -151,7 +164,10 @@ export default function ProductsPage() {
               </div>
               <div className="px-5 pb-5 flex-1 flex flex-col justify-between">
                 <div>
-                  <h5 className="text-gray-800 text-xl font-semibold tracking-tight">
+                  <h5
+                    className="text-gray-800 text-xl font-semibold tracking-tight"
+                    onClick={() => handleProductClick(product)}
+                  >
                     {product.name}
                   </h5>
                   <div className="flex items-center mt-2.5 mb-3">
@@ -204,6 +220,20 @@ export default function ProductsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {modalOpen && selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full relative p-6">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-red-600 text-2xl"
+              onClick={closeModal}
+              aria-label="Fechar"
+            >
+              &times;
+            </button>
+            <ProductOverview {...selectedProduct} />
+          </div>
         </div>
       )}
     </div>

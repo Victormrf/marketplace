@@ -3,11 +3,24 @@
 import Image from "next/image";
 import React from "react";
 
-export default function ProductOverview() {
-  // const params = useParams();
-  // const { product, isLoading } = useFetchProduct(params.productId);
+interface Seller {
+  storeName: string;
+}
 
-  // Usando dados estáticos do HTML original por enquanto:
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+  seller: Seller;
+  stock: number;
+  description?: string;
+  category?: string;
+  averageRating?: number;
+  createdAt?: string;
+}
+
+export default function ProductOverview(productData: Product) {
   const product = {
     imageUrlLight:
       "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front.svg",
@@ -15,13 +28,10 @@ export default function ProductOverview() {
       "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front-dark.svg",
     title:
       'Apple iMac 24" All-In-One Computer, Apple M1, 8GB RAM, 256GB SSD, Mac OS, Pink',
-    price: "$1,249.99",
-    ratingValue: 5.0,
+    price: `$ ${productData.price}`,
+    ratingValue: productData.averageRating,
     reviewCount: 345,
-    description1:
-      "Studio quality three mic array for crystal clear calls and voice recordings. Six-speaker sound system for a remarkably robust and high-quality audio experience. Up to 256GB of ultrafast SSD storage.",
-    description2:
-      "Two Thunderbolt USB 4 ports and up to two USB 3 ports. Ultrafast Wi-Fi 6 and Bluetooth 5.0 wireless. Color matched Magic Mouse with Magic Keyboard or Magic Keyboard with Touch ID.",
+    description: productData.description,
   };
 
   return (
@@ -30,7 +40,6 @@ export default function ProductOverview() {
         <div className="lg:grid lg:grid-cols-2 lg:gap-8 xl:gap-16">
           {/* --- Coluna da Imagem --- */}
           <div className="shrink-0 max-w-md lg:max-w-lg mx-auto">
-            {/* Usando <img> padrão. Considere <Image> do Next.js */}
             <Image
               height={100}
               width={100}
@@ -77,15 +86,8 @@ export default function ProductOverview() {
                   ))}
                 </div>
                 <p className="text-sm font-medium leading-none text-gray-500 dark:text-gray-400">
-                  ({product.ratingValue.toFixed(1)}) {/* Exibe a nota */}
+                  ({product.ratingValue?.toFixed(1)}) {/* Exibe a nota */}
                 </p>
-                <a
-                  href="#"
-                  className="text-sm font-medium leading-none text-gray-900 underline hover:no-underline dark:text-white"
-                >
-                  {product.reviewCount} Reviews{" "}
-                  {/* Exibe o número de reviews */}
-                </a>
               </div>
             </div>
 
@@ -152,10 +154,7 @@ export default function ProductOverview() {
 
             {/* --- Descrição --- */}
             <p className="mb-6 text-gray-500 dark:text-gray-400">
-              {product.description1}
-            </p>
-            <p className="text-gray-500 dark:text-gray-400">
-              {product.description2}
+              {product.description}
             </p>
           </div>
         </div>
