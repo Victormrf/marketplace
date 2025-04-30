@@ -86,7 +86,6 @@ export default function CartPage() {
           if (!res.ok) throw new Error("Erro ao buscar produtos do carrinho");
           const data = await res.json();
           const products: Product[] = data.products;
-          // Associa cada item do carrinho ao produto correspondente
           const merged = localCart.map((item) => ({
             ...item,
             product: products.find((p) => p.id === item.productId),
@@ -178,7 +177,7 @@ export default function CartPage() {
   return (
     <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
       <div className="mx-auto max-w-screen-xl px-4 2xl:px-0">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl">
+        <h2 className="text-xl font-semibold text-slate-800 dark:text-white sm:text-2xl">
           Shopping Cart
         </h2>
 
@@ -186,7 +185,7 @@ export default function CartPage() {
           <div className="mx-auto w-full flex-none lg:max-w-2xl xl:max-w-4xl">
             <div className="space-y-6">
               {cartItems.length === 0 ? (
-                <div className="text-gray-500 dark:text-gray-400">
+                <div className="text-slate-500 dark:text-gray-400">
                   Seu carrinho está vazio.
                 </div>
               ) : (
@@ -270,7 +269,7 @@ export default function CartPage() {
                           </button>
                         </div>
                         <div className="text-end md:order-4 md:w-32 ml-6">
-                          <p className="text-base font-bold text-gray-900 dark:text-white">
+                          <p className="text-base font-bold text-slate-800 dark:text-white">
                             {item.product
                               ? `R$ ${(
                                   item.product.price * item.quantity
@@ -282,17 +281,17 @@ export default function CartPage() {
                       <div className="w-full min-w-0 flex-1 space-y-4 md:order-2 md:max-w-md">
                         <a
                           href="#"
-                          className="text-base font-medium text-gray-900 hover:underline dark:text-white"
+                          className="text-base font-medium text-slate-800 hover:underline dark:text-white"
                         >
                           {item.product?.name || "Produto"}
                         </a>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-sm text-slate-500 dark:text-gray-400">
                           {item.product?.description || ""}
                         </p>
                         <div className="flex items-center gap-4">
                           <button
                             type="button"
-                            className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-white"
+                            className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 hover:underline dark:text-gray-400 dark:hover:text-white"
                           >
                             <svg
                               className="me-1.5 h-5 w-5"
@@ -349,13 +348,13 @@ export default function CartPage() {
           {/* Order Summary e Gift Card */}
           <div className="mx-auto mt-6 max-w-4xl flex-1 space-y-6 lg:mt-0 lg:w-full">
             <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+              <p className="text-xl font-semibold text-slate-800 dark:text-white">
                 Order summary
               </p>
               <div className="space-y-4">
-                <div className="space-y-2">
+                <div className="space-y-2 text-slate-500">
                   <dl className="flex items-center justify-between gap-4">
-                    <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                    <dt className="text-base font-normal dark:text-gray-400">
                       Original price
                     </dt>
                     <dd className="text-base font-medium text-gray-900 dark:text-white">
@@ -365,7 +364,7 @@ export default function CartPage() {
                     </dd>
                   </dl>
                   <dl className="flex items-center justify-between gap-4">
-                    <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                    <dt className="text-base font-normal dark:text-gray-400">
                       Savings
                     </dt>
                     <dd className="text-base font-medium text-green-600">
@@ -376,7 +375,7 @@ export default function CartPage() {
                     </dd>
                   </dl>
                   <dl className="flex items-center justify-between gap-4">
-                    <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                    <dt className="text-base font-normal dark:text-gray-400">
                       Store Pickup
                     </dt>
                     <dd className="text-base font-medium text-gray-900 dark:text-white">
@@ -386,7 +385,7 @@ export default function CartPage() {
                     </dd>
                   </dl>
                   <dl className="flex items-center justify-between gap-4">
-                    <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                    <dt className="text-base font-normal dark:text-gray-400">
                       Tax
                     </dt>
                     <dd className="text-base font-medium text-gray-900 dark:text-white">
@@ -397,10 +396,10 @@ export default function CartPage() {
                   </dl>
                 </div>
                 <dl className="flex items-center justify-between gap-4 border-t border-gray-200 pt-2 dark:border-gray-700">
-                  <dt className="text-base font-bold text-gray-900 dark:text-white">
+                  <dt className="text-base font-bold text-slate-800 dark:text-white">
                     Total
                   </dt>
-                  <dd className="text-base font-bold text-gray-900 dark:text-white">
+                  <dd className="text-base font-bold text-slate-800 dark:text-white">
                     {`R$ ${total.toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
                     })}`}
@@ -409,7 +408,7 @@ export default function CartPage() {
               </div>
               <Link
                 href="/checkout"
-                className="flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                className="flex w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
               >
                 Proceed to Checkout
               </Link>
@@ -421,7 +420,7 @@ export default function CartPage() {
                 <Link
                   href="/"
                   title=""
-                  className="inline-flex items-center gap-2 text-sm font-bold text-cyan-700 underline hover:no-underline dark:text-primary-500"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-slate-800 underline hover:no-underline dark:text-primary-500"
                 >
                   Continue Shopping
                   <svg
@@ -462,7 +461,7 @@ export default function CartPage() {
                 </div>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                  className="flex w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                 >
                   Apply Code
                 </button>

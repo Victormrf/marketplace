@@ -77,7 +77,7 @@ export default function CheckoutPage() {
       <form action="#" className="mx-auto max-w-screen-xl px-4 2xl:px-0">
         {/* --- Stepper --- (mantido) */}
         <ol className="flex w-full max-w-5xl items-center text-md font-medium">
-          <li className="flex items-center flex-1 min-w-0 text-cyan-700 ">
+          <li className="flex items-center flex-1 min-w-0 text-slate-900 ">
             <span className="flex items-center gap-0.5 whitespace-nowrap">
               <svg
                 className="me-2 h-4 w-4 sm:h-5 sm:w-5"
@@ -100,7 +100,7 @@ export default function CheckoutPage() {
             </span>
             <span className="mx-4 flex-1 h-px bg-gray-200"></span>
           </li>
-          <li className="flex items-center flex-1 min-w-0 text-cyan-800 ">
+          <li className="flex items-center flex-1 min-w-0 text-slate-900 ">
             <span className="flex items-center gap-0.5 whitespace-nowrap">
               <svg
                 className="me-2 h-4 w-4 sm:h-5 sm:w-5"
@@ -173,7 +173,7 @@ export default function CheckoutPage() {
           <div className="min-w-0 lg:col-span-2 space-y-8">
             {/* --- Detalhes da Entrega --- */}
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-semibold text-slate-800 dark:text-white">
                 Delivery Details
               </h2>
               {addresses.map((address, index) => (
@@ -210,9 +210,9 @@ export default function CheckoutPage() {
                     </button>
                   )}
                   {/* --- Cabeçalho do Endereço --- */}
-                  <h3 className="mb-4 text-lg font-medium text-gray-800 dark:text-white">
+                  <h3 className="mb-4 text-lg font-medium text-slate-800 dark:text-white">
                     Address {index + 1}:{" "}
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-slate-600 dark:text-gray-400">
                       {address.street || "[Street]"},{" "}
                       {address.district || "[District]"},{" "}
                       {address.city || "[City]"}
@@ -366,7 +366,7 @@ export default function CheckoutPage() {
               )}
             </div>{" "}
             <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-xl font-semibold text-slate-800 dark:text-white">
                 Payment
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -397,52 +397,6 @@ export default function CheckoutPage() {
                         className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400"
                       >
                         Pay with your credit card
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                    >
-                      Delete
-                    </button>
-                    <div className="h-3 w-px shrink-0 bg-gray-200 dark:bg-gray-700"></div>
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </div>
-
-                {/* Opção 2: Pagamento na Entrega */}
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ps-4 dark:border-gray-700 dark:bg-gray-800">
-                  <div className="flex items-start">
-                    <div className="flex h-5 items-center">
-                      <input
-                        id="pay-on-delivery"
-                        aria-describedby="pay-on-delivery-text"
-                        type="radio"
-                        name="payment-method"
-                        value=""
-                        className="h-4 w-4 border-gray-300 bg-white text-primary-600 focus:ring-2 focus:ring-primary-600 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary-600"
-                      />
-                    </div>
-                    <div className="ms-4 text-sm">
-                      <label
-                        htmlFor="pay-on-delivery"
-                        className="font-medium leading-none text-gray-900 dark:text-white"
-                      >
-                        {" "}
-                        Payment on delivery{" "}
-                      </label>
-                      <p
-                        id="pay-on-delivery-text"
-                        className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400"
-                      >
-                        +$15 payment processing fee
                       </p>
                     </div>
                   </div>
@@ -514,7 +468,40 @@ export default function CheckoutPage() {
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Delivery Methods
               </h3>
-              {/* ... (código das opções de entrega omitido para brevidade) ... */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* Opção 1: DHL */}
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ps-4 dark:border-gray-700 dark:bg-gray-800">
+                  <div className="flex items-start">
+                    <div className="flex h-5 items-center">
+                      <input
+                        id="dhl"
+                        aria-describedby="dhl-text"
+                        type="radio"
+                        name="delivery-method"
+                        value=""
+                        className="h-4 w-4 border-gray-300 bg-white text-primary-600 focus:ring-2 focus:ring-primary-600 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary-600"
+                        defaultChecked
+                      />
+                    </div>
+                    <div className="ms-4 text-sm">
+                      <label
+                        htmlFor="dhl"
+                        className="font-medium leading-none text-gray-900 dark:text-white"
+                      >
+                        {" "}
+                        $15 - DHL Fast Delivery{" "}
+                      </label>
+                      {/* O restante do texto dentro do label foi removido para manter o código mais curto, mas você pode adicioná-lo de volta se precisar */}
+                      <p
+                        id="dhl-text"
+                        className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400"
+                      >
+                        Estimated 3-5 days
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>{" "}
           {orderSummary.originalPrice &&
@@ -528,7 +515,7 @@ export default function CheckoutPage() {
                     <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
                       Subtotal
                     </dt>
-                    <dd className="text-base font-medium text-gray-900 dark:text-white">
+                    <dd className="text-base font-medium text-slate-800 dark:text-white">
                       {`R$ ${orderSummary.originalPrice.toLocaleString(
                         "pt-BR",
                         {
@@ -539,7 +526,7 @@ export default function CheckoutPage() {
                   </dl>
                   <span className="flex h-px bg-gray-200"></span>
                   <dl className="flex items-center justify-between gap-4">
-                    <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                    <dt className="text-base font-normal text-slate-500 dark:text-gray-400">
                       Savings
                     </dt>
                     <dd className="text-base font-medium text-green-600">
@@ -554,7 +541,7 @@ export default function CheckoutPage() {
                     <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
                       Store Pickup
                     </dt>
-                    <dd className="text-base font-medium text-gray-900 dark:text-white">
+                    <dd className="text-base font-medium text-slate-800 dark:text-white">
                       {`R$ ${orderSummary.storePickup.toLocaleString("pt-BR", {
                         minimumFractionDigits: 2,
                       })}`}
@@ -565,7 +552,7 @@ export default function CheckoutPage() {
                     <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
                       Tax
                     </dt>
-                    <dd className="text-base font-medium text-gray-900 dark:text-white">
+                    <dd className="text-base font-medium text-slate-800 dark:text-white">
                       {`R$ ${orderSummary.tax.toLocaleString("pt-BR", {
                         minimumFractionDigits: 2,
                       })}`}
@@ -573,10 +560,10 @@ export default function CheckoutPage() {
                   </dl>
                   <span className="flex h-px bg-gray-200"></span>
                   <dl className="flex items-center justify-between gap-4 ">
-                    <dt className="text-base font-bold text-gray-900 dark:text-white">
+                    <dt className="text-base font-bold text-slate-800 dark:text-white">
                       Total
                     </dt>
-                    <dd className="text-base font-bold text-gray-900 dark:text-white">
+                    <dd className="text-base font-bold text-slate-800 dark:text-white">
                       {`R$ ${orderSummary.total.toLocaleString("pt-BR", {
                         minimumFractionDigits: 2,
                       })}`}
@@ -585,7 +572,7 @@ export default function CheckoutPage() {
                 </div>
                 <Link
                   href="/order-summary"
-                  className="flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-2.5 mt-6 text-sm font-medium text-white hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                  className="flex w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 mt-6 text-sm font-medium text-white hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                 >
                   Proceed to Payment
                 </Link>

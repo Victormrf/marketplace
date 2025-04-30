@@ -98,7 +98,6 @@ export default function ProductsPage() {
           const res = await fetch(
             `http://localhost:8000/products/category/${category}`
           );
-          if (!res.ok) throw new Error("Erro ao buscar produtos");
           const data = await res.json();
           setProducts(Array.isArray(data.products) ? data.products : []);
         } catch (error) {
