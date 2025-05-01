@@ -183,6 +183,7 @@ export default function CartPage() {
         fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
           method: "PUT",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
@@ -230,6 +231,7 @@ export default function CartPage() {
         fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
           method: "PUT",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
