@@ -29,14 +29,14 @@ export class CartItemService {
     return userCart;
   }
 
-  async updateQuantity(id: string, quantity: number) {
-    const cartItem = await CartItemModel.getById(id);
+  async updateQuantity(productId: string, quantity: number) {
+    const cartItem = await CartItemModel.getByProductId(productId);
 
     if (!cartItem) {
       throw new ObjectNotFoundError("Cart item");
     }
 
-    return CartItemModel.updateQuantity(id, quantity);
+    return CartItemModel.updateQuantity(cartItem.id, quantity);
   }
 
   async removeFromCart(id: string) {

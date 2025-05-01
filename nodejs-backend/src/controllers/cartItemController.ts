@@ -55,14 +55,14 @@ cartItemRoutes.get(
 );
 
 cartItemRoutes.put(
-  "/:id",
+  "/product/:productId",
   authMiddleware,
   roleMiddleware("customer"),
   async (req, res) => {
-    const { id } = req.params;
+    const { productId } = req.params;
     const { quantity } = req.body;
     try {
-      const updated = await cartItemService.updateQuantity(id, quantity);
+      const updated = await cartItemService.updateQuantity(productId, quantity);
       res.status(200).json(updated);
     } catch (error) {
       if (error instanceof ObjectNotFoundError) {
