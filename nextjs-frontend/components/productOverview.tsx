@@ -22,12 +22,9 @@ interface Product {
 
 export default function ProductOverview(productData: Product) {
   const product = {
-    imageUrlLight:
-      "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front.svg",
-    imageUrlDark:
-      "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front-dark.svg",
-    title:
-      'Apple iMac 24" All-In-One Computer, Apple M1, 8GB RAM, 256GB SSD, Mac OS, Pink',
+    imageUrlLight: "/images/blank-shirt-model.png",
+    imageUrlDark: "/images/blank-shirt-model.png",
+    title: productData.name,
     price: `$ ${productData.price}`,
     ratingValue: productData.averageRating,
     reviewCount: 345,
@@ -35,41 +32,41 @@ export default function ProductOverview(productData: Product) {
   };
 
   return (
-    <section className="py-8 bg-white md:py-16 dark:bg-gray-900 antialiased">
-      <div className="max-w-screen-xl px-4 mx-auto 2xl:px-0">
-        <div className="lg:grid lg:grid-cols-2 lg:gap-8 xl:gap-16">
+    <section className="bg-white dark:bg-gray-900 antialiased">
+      <div className="max-w-screen-xl mx-auto 2xl:px-0">
+        <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 xl:gap-12 items-center">
           {/* --- Coluna da Imagem --- */}
-          <div className="shrink-0 max-w-md lg:max-w-lg mx-auto">
+          <div className=" flex justify-center items-center">
             <Image
-              height={100}
-              width={100}
-              className="w-full dark:hidden"
+              height={220}
+              width={220}
+              className="w-[240px] h-[240px] object-contain"
               src={product.imageUrlLight}
               alt={product.title}
+              priority
             />
             <Image
-              height={100}
-              width={100}
-              className="w-full hidden dark:block"
+              height={220}
+              width={220}
+              className="w-[180px] h-[180px] object-contain hidden dark:block"
               src={product.imageUrlDark}
               alt={product.title}
+              priority
             />
           </div>
 
           {/* --- Coluna de Detalhes --- */}
-          <div className="mt-6 sm:mt-8 lg:mt-0">
+          <div className="mt-4 lg:mt-0">
             <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl dark:text-white">
               {product.title}
             </h1>
-            <div className="mt-4 sm:items-center sm:gap-4 sm:flex">
+            <div className="mt-3 sm:items-center sm:gap-4 sm:flex">
               <p className="text-2xl font-extrabold text-gray-900 sm:text-3xl dark:text-white">
                 {product.price}
               </p>
-
               {/* --- Avaliações --- */}
               <div className="flex items-center gap-2 mt-2 sm:mt-0">
                 <div className="flex items-center gap-1">
-                  {/* Renderizando 5 estrelas estaticamente. Poderia ser dinâmico com base em product.ratingValue */}
                   {[...Array(5)].map((_, index) => (
                     <svg
                       key={index}
@@ -86,20 +83,19 @@ export default function ProductOverview(productData: Product) {
                   ))}
                 </div>
                 <p className="text-sm font-medium leading-none text-gray-500 dark:text-gray-400">
-                  ({product.ratingValue?.toFixed(1)}) {/* Exibe a nota */}
+                  ({product.ratingValue?.toFixed(1)})
                 </p>
               </div>
             </div>
 
             {/* --- Botões de Ação --- */}
-            <div className="mt-6 sm:gap-4 sm:items-center sm:flex sm:mt-8">
-              {/* Botão Favoritos (precisaria de onClick com lógica) */}
+            <div className="mt-4 sm:gap-4 sm:items-center sm:flex">
+              {/* Botão Favoritos */}
               <a
                 href="#"
                 title="Add to favorites"
                 className="flex items-center justify-center py-2.5 px-5 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
                 role="button"
-                // onClick={handleAddToFavorites} // Exemplo
               >
                 <svg
                   className="w-5 h-5 -ms-2 me-2"
@@ -120,14 +116,12 @@ export default function ProductOverview(productData: Product) {
                 </svg>
                 Add to favorites
               </a>
-
-              {/* Botão Adicionar ao Carrinho (precisaria de onClick com lógica) */}
+              {/* Botão Adicionar ao Carrinho */}
               <a
                 href="#"
                 title="Add to cart"
-                className="text-white mt-4 sm:mt-0 bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-primary-600 dark:hover:bg-primary-700 focus:outline-none dark:focus:ring-primary-800 flex items-center justify-center"
+                className="flex items-center justify-center py-2.5 px-5 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
                 role="button"
-                // onClick={handleAddToCart} // Exemplo
               >
                 <svg
                   className="w-5 h-5 -ms-2 me-2"
@@ -150,10 +144,10 @@ export default function ProductOverview(productData: Product) {
               </a>
             </div>
 
-            <hr className="my-6 md:my-8 border-gray-200 dark:border-gray-800" />
+            <hr className="my-5 md:my-6 border-gray-200 dark:border-gray-800" />
 
             {/* --- Descrição --- */}
-            <p className="mb-6 text-gray-500 dark:text-gray-400">
+            <p className="mb-4 text-gray-500 dark:text-gray-400">
               {product.description}
             </p>
           </div>

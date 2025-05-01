@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import ProductOverview from "@/components/productOverview";
+import SuccessPopup from "@/components/popups/successPopup";
 
 interface Seller {
   storeName: string;
@@ -35,12 +36,16 @@ export default function ProductsPage() {
   const category = searchParams.get("category");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successPosition, setSuccessPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Função para adicionar ao carrinho
-  function handleAddToCart(productId: string) {
+  function handleAddToCart(productId: string, btnElement: HTMLButtonElement) {
     // Verifica se existe um usuário logado
     const token =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -71,7 +76,6 @@ export default function ProductsPage() {
       })
         .then((res) => {
           if (!res.ok) throw new Error("Erro ao adicionar ao carrinho");
-          alert("Produto adicionado ao carrinho!");
         })
         .catch((error) => {
           alert("Erro ao adicionar ao carrinho.");
@@ -90,8 +94,14 @@ export default function ProductsPage() {
         cart.push({ productId, quantity: 1 });
       }
       localStorage.setItem("cart", JSON.stringify(cart));
-      alert("Produto adicionado ao carrinho!");
     }
+
+    const rect = btnElement.getBoundingClientRect();
+    setSuccessPosition({
+      top: rect.top + window.scrollY - 40,
+      left: rect.left + window.scrollX + rect.width / 2,
+    });
+    setShowSuccess(true);
   }
 
   useEffect(() => {
@@ -158,7 +168,7 @@ export default function ProductsPage() {
                   className="rounded-lg object-contain"
                   width={160}
                   height={200}
-                  src={product.image || "/images/blank-shirt-model.jpg"}
+                  src={product.image || "/images/blank-shirt-model.png"}
                   alt="Imagem do produto"
                 />
               </div>
@@ -208,7 +218,9 @@ export default function ProductsPage() {
                   <div className="flex gap-2">
                     <button
                       className="text-white bg-slate-500 hover:bg-slate-700 font-medium rounded-lg text-sm px-4 py-2"
-                      onClick={() => handleAddToCart(product.id)}
+                      onClick={(e) =>
+                        handleAddToCart(product.id, e.currentTarget)
+                      }
                     >
                       Add to cart
                     </button>
@@ -235,6 +247,20 @@ export default function ProductsPage() {
             <ProductOverview {...selectedProduct} />
           </div>
         </div>
+      )}
+      {showSuccess && successPosition && (
+        <SuccessPopup
+          message="Product added to cart"
+          action={{ href: "/cart", text: "Go to your cart" }}
+          onClose={() => setShowSuccess(false)}
+          style={{
+            position: "fixed",
+            top: successPosition.top,
+            left: successPosition.left,
+            transform: "translate(-50%, -100%)", // centraliza acima do botão
+            zIndex: 9999,
+          }}
+        />
       )}
     </div>
   );

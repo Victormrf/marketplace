@@ -13,6 +13,7 @@ import {
   User,
   Star,
   Truck,
+  Heart,
 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
@@ -115,6 +116,15 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   } else if (role === "customer") {
     rightSection = (
       <div className="relative flex items-center gap-4">
+        <div className="relative">
+          <Link
+            href={"/wishlist"}
+            className="inline-flex items-center gap-1 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            <Heart className="w-5 h-5" />
+            <span className="hidden sm:inline">My Favourites</span>
+          </Link>
+        </div>
         <div className="relative">
           <Link
             href={"/cart"}

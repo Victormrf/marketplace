@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import AlertPopup from "@/components/alertPopup";
+import AlertPopup from "@/components/popups/alertPopup";
 
 type Product = {
   id: string;
