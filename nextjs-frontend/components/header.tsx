@@ -16,6 +16,8 @@ import {
   Heart,
 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
+import { useRouter } from "next/navigation";
+import AlertPopup from "./popups/alertPopup";
 
 interface DecodedData {
   id: string;
@@ -29,7 +31,9 @@ type UserRole = "customer" | "seller" | "admin" | null;
 export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   const [role, setRole] = useState<UserRole>(null);
   const [showUserPreferences, setShowUserPreferences] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
   const userPrefButtonRef = useRef<HTMLButtonElement>(null);
+  const router = useRouter();
 
   function logout() {
     localStorage.removeItem("token");
@@ -48,6 +52,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
             // Token expirado
             localStorage.removeItem("token");
             setRole(null);
+            setShowAlert(true);
           } else {
             setRole(decoded.role || null);
           }
@@ -296,44 +301,56 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   }
 
   return (
-    <nav className="bg-white dark:bg-gray-800 antialiased border-b border-gray-200 dark:border-gray-700">
-      <div className="w-full px-6 md:px-10 py-4">
-        <div className="flex items-center justify-between">
-          {/* Lado esquerdo: logo + menu */}
-          <div className="flex items-center gap-8">
-            <Link href="/" className="shrink-0">
-              <Image
-                className="block dark:hidden"
-                src="/v-market-logo.png"
-                alt="Logo"
-                width={80}
-                height={80}
-              />
-              <Image
-                className="hidden dark:block"
-                src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/logo-full-dark.svg"
-                alt="Logo Dark"
-                width={112}
-                height={32}
-              />
-            </Link>
-            <ul className="hidden lg:flex items-center gap-6 text-l font-medium">
-              {features.map((item) => (
-                <li key={item}>
-                  <Link
-                    href="/"
-                    className="text-gray-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-500"
-                  >
-                    {item}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+    <>
+      <nav className="bg-white dark:bg-gray-800 antialiased border-b border-gray-200 dark:border-gray-700">
+        <div className="w-full px-6 md:px-10 py-4">
+          <div className="flex items-center justify-between">
+            {/* Lado esquerdo: logo + menu */}
+            <div className="flex items-center gap-8">
+              <Link href="/" className="shrink-0">
+                <Image
+                  className="block dark:hidden"
+                  src="/v-market-logo.png"
+                  alt="Logo"
+                  width={80}
+                  height={80}
+                />
+                <Image
+                  className="hidden dark:block"
+                  src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/logo-full-dark.svg"
+                  alt="Logo Dark"
+                  width={112}
+                  height={32}
+                />
+              </Link>
+              <ul className="hidden lg:flex items-center gap-6 text-l font-medium">
+                {features.map((item) => (
+                  <li key={item}>
+                    <Link
+                      href="/"
+                      className="text-gray-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-500"
+                    >
+                      {item}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Porção direita */}
+            {rightSection}
           </div>
-          {/* Porção direita */}
-          {rightSection}
         </div>
-      </div>
-    </nav>
+      </nav>
+      {showAlert && (
+        <AlertPopup
+          message="Sua sessão expirou. Faça login novamente."
+          action={{ href: "/", text: "Ir para Home" }}
+          onClose={() => {
+            setShowAlert(false);
+            router.push("/");
+          }}
+        />
+      )}
+    </>
   );
 }
