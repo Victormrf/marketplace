@@ -163,6 +163,41 @@ export default function CartPage() {
             : cartItem
         )
       );
+      // Atualização do localStorage:
+      const localCart: CartItem[] = JSON.parse(
+        localStorage.getItem("cart") || "[]"
+      );
+      localStorage.setItem(
+        "cart",
+        JSON.stringify(
+          localCart.map((cartItem) =>
+            cartItem.productId === item.productId
+              ? { ...cartItem, quantity: cartItem.quantity + 1 }
+              : cartItem
+          )
+        )
+      );
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            quantity: item.quantity + 1,
+          }),
+        })
+          .then((res) => {
+            if (!res.ok)
+              throw new Error("Erro ao atualizar produto do carrinho");
+          })
+          .catch((error) => {
+            alert("Erro ao atualizar produto do carrinho.");
+            console.error(error);
+          });
+      }
     }
   }
 
@@ -175,6 +210,41 @@ export default function CartPage() {
             : cartItem
         )
       );
+      // Atualização do localStorage:
+      const localCart: CartItem[] = JSON.parse(
+        localStorage.getItem("cart") || "[]"
+      );
+      localStorage.setItem(
+        "cart",
+        JSON.stringify(
+          localCart.map((cartItem) =>
+            cartItem.productId === item.productId
+              ? { ...cartItem, quantity: cartItem.quantity - 1 }
+              : cartItem
+          )
+        )
+      );
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            quantity: item.quantity - 1,
+          }),
+        })
+          .then((res) => {
+            if (!res.ok)
+              throw new Error("Erro ao atualizar produto do carrinho");
+          })
+          .catch((error) => {
+            alert("Erro ao atualizar produto do carrinho.");
+            console.error(error);
+          });
+      }
     } else if (item.quantity === 1) {
       setRemoveConfirm({ open: true, productId: item.productId });
     }
@@ -188,7 +258,39 @@ export default function CartPage() {
     setCartItems((prev) =>
       prev.filter((cartItem) => cartItem.productId !== removeConfirm.productId)
     );
+    // Atualização do localStorage:
+    const localCart: CartItem[] = JSON.parse(
+      localStorage.getItem("cart") || "[]"
+    );
+    localStorage.setItem(
+      "cart",
+      JSON.stringify(
+        localCart.filter(
+          (cartItem) => cartItem.productId !== removeConfirm.productId
+        )
+      )
+    );
     setRemoveConfirm({ open: false });
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      fetch(
+        `http://localhost:8000/cart-items/product/${removeConfirm.productId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+        .then((res) => {
+          if (!res.ok) throw new Error("Erro ao remover produto do carrinho");
+        })
+        .catch((error) => {
+          alert("Erro ao remover produto do carrinho.");
+          console.error(error);
+        });
+    }
   }
 
   function handleRemoveCancel() {

@@ -1,4 +1,4 @@
-import { CheckIcon } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 type AlertPopupProps = {
   message: string;
@@ -22,16 +22,9 @@ export default function SuccessPopup({
       onClick={onClose}
     >
       <div className="fixed z-50" style={style}>
-        <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-4 relative">
-          <button
-            className="absolute top-0.5 right-1 text-gray-400 hover:text-red-600 text-2xl"
-            onClick={onClose}
-            aria-label="Fechar"
-          >
-            &times;
-          </button>
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 relative">
           <div className="flex items-center">
-            <CheckIcon className="text-green-600" size={28} />
+            <CheckCircle2 className="text-blue-500" size={28} />
             <div className="mx-4 h-8 border-l border-gray-300" />
             <div className="flex-1 text-slate-800 text-md">{message}</div>
           </div>
@@ -47,11 +40,11 @@ export default function SuccessPopup({
           )}
         </div>
         <div
-          className="absolute left-1/4 -bottom-0.4 -translate-x-1/2 w-0 h-0"
+          className="absolute left-1/2 -bottom-0.4 -translate-x-1/2 w-0 h-0"
           style={{ zIndex: 51 }}
         >
           <div
-            className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-white"
+            className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-white shadow-xl"
             // Ajuste border-b-white para dark mode se necessário
           />
         </div>

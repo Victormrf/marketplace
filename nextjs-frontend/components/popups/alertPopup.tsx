@@ -23,13 +23,6 @@ export default function AlertPopup({
     >
       <div className="fixed z-50" style={style}>
         <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-4 relative">
-          <button
-            className="absolute top-0.5 right-1 text-gray-400 hover:text-red-600 text-2xl"
-            onClick={onClose}
-            aria-label="Fechar"
-          >
-            &times;
-          </button>
           <div className="flex items-center">
             <TriangleAlert className="text-yellow-400" size={28} />
             <div className="mx-4 h-8 border-l border-gray-300" />

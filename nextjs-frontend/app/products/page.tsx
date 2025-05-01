@@ -250,14 +250,13 @@ export default function ProductsPage() {
       )}
       {showSuccess && successPosition && (
         <SuccessPopup
-          message="Product added to cart"
-          action={{ href: "/cart", text: "Go to your cart" }}
+          message="Product added to cart!"
           onClose={() => setShowSuccess(false)}
           style={{
             position: "fixed",
             top: successPosition.top,
             left: successPosition.left,
-            transform: "translate(-50%, -100%)", // centraliza acima do botão
+            transform: "translate(-50%, -50%)", // centraliza acima do botão
             zIndex: 9999,
           }}
         />
