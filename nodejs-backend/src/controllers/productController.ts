@@ -12,7 +12,8 @@ export const productRoutes = Router();
 const productService = new ProductService();
 
 productRoutes.post("/", authMiddleware, async (req, res) => {
-  const { sellerId, name, description, price, stock, category } = req.body;
+  const { sellerId, name, description, price, stock, category, image } =
+    req.body;
 
   try {
     const newProductListing = await productService.createOrRestockProduct({
@@ -22,6 +23,7 @@ productRoutes.post("/", authMiddleware, async (req, res) => {
       price,
       stock,
       category,
+      image,
     });
     res.status(201).json(newProductListing);
   } catch (error) {

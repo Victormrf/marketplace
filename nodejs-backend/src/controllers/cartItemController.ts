@@ -98,6 +98,27 @@ cartItemRoutes.delete(
 );
 
 cartItemRoutes.delete(
+  "/product/:productId",
+  authMiddleware,
+  roleMiddleware("customer"),
+  async (req, res) => {
+    const { productId } = req.params;
+    try {
+      await cartItemService.removeProductFromCart(productId);
+      res.sendStatus(204);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+        return;
+      }
+    }
+  }
+);
+
+cartItemRoutes.delete(
   "/clear/:userId",
   authMiddleware,
   roleMiddleware("customer"),

@@ -49,6 +49,16 @@ export class CartItemService {
     return CartItemModel.delete(id);
   }
 
+  async removeProductFromCart(productId: string) {
+    const cartItem = await CartItemModel.getByProductId(productId);
+
+    if (!cartItem) {
+      throw new ObjectNotFoundError("Cart item");
+    }
+
+    return CartItemModel.delete(cartItem.id);
+  }
+
   async clearUserCart(userId: string) {
     const userCart = await CartItemModel.getByUser(userId);
 

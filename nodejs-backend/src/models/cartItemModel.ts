@@ -6,12 +6,34 @@ export class CartItemModel {
     productId: string;
     quantity: number;
   }) {
-    return prisma.cart_item.create({ data });
+    const existingItem = await prisma.cart_item.findFirst({
+      where: {
+        userId: data.userId,
+        productId: data.productId,
+      },
+    });
+
+    if (existingItem) {
+      return prisma.cart_item.update({
+        where: { id: existingItem.id },
+        data: {
+          quantity: existingItem.quantity + 1,
+        },
+      });
+    } else {
+      return prisma.cart_item.create({ data });
+    }
   }
 
   static async getById(id: string) {
     return prisma.cart_item.findUnique({
       where: { id },
+    });
+  }
+
+  static async getByProductId(productId: string) {
+    return prisma.cart_item.findFirst({
+      where: { productId },
     });
   }
 
