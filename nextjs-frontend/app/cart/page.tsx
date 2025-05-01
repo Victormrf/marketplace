@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import AlertPopup from "@/components/alertPopup";
 
 type Product = {
   id: string;
@@ -38,10 +40,17 @@ function getRandomImage() {
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertPosition, setAlertPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const [removeConfirm, setRemoveConfirm] = useState<{
     open: boolean;
     productId?: string;
   }>({ open: false });
+
+  const checkoutBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     async function fetchCart() {
@@ -119,6 +128,30 @@ export default function CartPage() {
       );
     }
   }, [originalPrice, savings, storePickup, tax, total]);
+
+  const router = useRouter();
+
+  function handleProceedToCheckout() {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    let isLogged = false;
+    if (token) {
+      isLogged = true;
+    }
+    if (isLogged) {
+      router.push("/checkout");
+    } else {
+      // Pega a posição do botão
+      if (checkoutBtnRef.current) {
+        const rect = checkoutBtnRef.current.getBoundingClientRect();
+        setAlertPosition({
+          top: rect.top + window.scrollY - 40, // 80px acima do botão (ajuste conforme altura do popup)
+          left: rect.left + window.scrollX + rect.width / 2, // centraliza horizontalmente
+        });
+      }
+      setShowAlert(true);
+    }
+  }
 
   function handleIncrement(item: CartItem) {
     if (!item.product) return;
@@ -406,12 +439,14 @@ export default function CartPage() {
                   </dd>
                 </dl>
               </div>
-              <Link
-                href="/checkout"
+              <button
+                type="button"
+                ref={checkoutBtnRef}
+                onClick={handleProceedToCheckout}
                 className="flex w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
               >
                 Proceed to Checkout
-              </Link>
+              </button>
               <div className="flex items-center justify-center gap-2">
                 <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
                   {" "}
@@ -493,6 +528,20 @@ export default function CartPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* Popup de alerta */}
+      {showAlert && alertPosition && (
+        <AlertPopup
+          message="Log in to proceed with purchase."
+          onClose={() => setShowAlert(false)}
+          style={{
+            position: "fixed",
+            top: alertPosition.top,
+            left: alertPosition.left,
+            transform: "translate(-50%, -100%)", // centraliza acima do botão
+            zIndex: 9999,
+          }}
+        />
       )}
     </section>
   );
