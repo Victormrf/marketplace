@@ -12,7 +12,12 @@ export async function authMiddleware(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
+  // Lê do header Authorization ou do cookie chamado 'token'
+  const authHeader = req.header("Authorization");
+  const tokenFromHeader = authHeader?.replace("Bearer ", "");
+  const tokenFromCookie = req.cookies?.token;
+
+  const token = tokenFromHeader || tokenFromCookie;
 
   if (!token) {
     res.status(401).json({ message: "Access denied. Token not informed." });
@@ -24,6 +29,7 @@ export async function authMiddleware(
       token,
       process.env.JWT_SECRET || "your-secret-key"
     ) as CustomJwtPayload;
+
     req.user = {
       id: decoded.id,
       email: decoded.email,
@@ -32,7 +38,7 @@ export async function authMiddleware(
 
     next();
   } catch (error) {
-    res.status(401).json({ message: error });
+    res.status(401).json({ message: "Invalid or expired token." });
     return;
   }
 }

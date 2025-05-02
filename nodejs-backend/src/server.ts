@@ -12,6 +12,7 @@ import { reviewRoutes } from "./controllers/reviewController";
 import { dashboardRoutes } from "./controllers/dashboardController";
 import cors from "cors";
 import { cartItemRoutes } from "./controllers/cartItemController";
+import cookieParser from "cookie-parser";
 
 const app = express();
 app.use(express.json());
@@ -28,6 +29,8 @@ app.use(
     credentials: true,
   })
 );
+
+app.use(cookieParser());
 
 app.use("/users", authRoutes);
 app.use("/users", userRoutes);

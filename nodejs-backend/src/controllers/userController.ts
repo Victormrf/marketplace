@@ -27,25 +27,20 @@ userRoutes.post("/register", async (req, res) => {
   }
 });
 
-userRoutes.get(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("admin"),
-  async (req, res) => {
-    const { userId } = req.params;
+userRoutes.get("/me", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
 
-    try {
-      const user = await userService.getById(userId);
-      res.json(user);
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
-      }
+  try {
+    const user = await userService.getById(userId);
+    res.json(user);
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Internal Server Error" });
     }
   }
-);
+});
 
 userRoutes.put(
   "/:userId",

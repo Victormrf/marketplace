@@ -10,9 +10,17 @@ authRoutes.post("/login", async (req, res) => {
 
   try {
     const token = await authService.login(email, password);
+
+    // Define o cookie HttpOnly com o token
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 1000 * 60 * 60 * 24, // 1 dia
+    });
+
     res.send({
       message: "User logged in successfully.",
-      token,
     });
   } catch (e) {
     if (e instanceof InvalidCredentialsError) {
