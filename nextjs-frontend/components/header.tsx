@@ -15,16 +15,8 @@ import {
   Truck,
   Heart,
 } from "lucide-react";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import AlertPopup from "./popups/alertPopup";
-
-interface DecodedData {
-  id: string;
-  email: string;
-  role: "customer" | "seller" | "admin";
-  exp?: number;
-}
 
 type UserRole = "customer" | "seller" | "admin" | null;
 
@@ -43,29 +35,29 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   }
 
   useEffect(() => {
-    function syncRoleWithToken() {
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const decoded: DecodedData = jwtDecode(token);
-          if (decoded.exp && decoded.exp * 1000 < Date.now()) {
-            // Token expirado
-            localStorage.removeItem("token");
-            setRole(null);
-            setShowAlert(true);
-          } else {
-            setRole(decoded.role || null);
-          }
-        } catch {
+    async function fetchUserRole() {
+      try {
+        const res = await fetch("http://localhost:8000/users/me", {
+          method: "GET",
+          credentials: "include", // necessário para enviar o cookie
+        });
+
+        if (!res.ok) {
+          // Token inválido ou expirado
           setRole(null);
+          setShowAlert(true);
+          return;
         }
-      } else {
+
+        const user = await res.json();
+        setRole(user.role || null);
+      } catch (error) {
+        console.error("Erro ao buscar o usuário:", error);
         setRole(null);
       }
     }
-    syncRoleWithToken();
-    window.addEventListener("storage", syncRoleWithToken);
-    return () => window.removeEventListener("storage", syncRoleWithToken);
+
+    fetchUserRole();
   }, []);
 
   useEffect(() => {
@@ -152,7 +144,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
         </button>
         {showUserPreferences && (
           <div
-            className="absolute left-1/2 -translate-x-1/2 mt-2 min-w-[200px] bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 z-50"
+            className="absolute left-80 -translate-x-1/4  min-w-[140px] bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 z-50"
             style={{ top: "100%" }}
           >
             <Link
