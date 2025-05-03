@@ -32,28 +32,36 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
     localStorage.removeItem("cart");
     setRole(null);
     setShowUserPreferences(false);
+    router.push("/");
   }
+
+  const hasAttemptedLoginRef = useRef(false);
 
   useEffect(() => {
     async function fetchUserRole() {
       try {
         const res = await fetch("http://localhost:8000/users/me", {
           method: "GET",
-          credentials: "include", // necessário para enviar o cookie
+          credentials: "include",
         });
 
         if (!res.ok) {
           // Token inválido ou expirado
           setRole(null);
-          setShowAlert(true);
+
+          if (hasAttemptedLoginRef.current) {
+            setShowAlert(true);
+          }
+
           return;
         }
-
         const user = await res.json();
         setRole(user.role || null);
       } catch (error) {
         console.error("Erro ao buscar o usuário:", error);
         setRole(null);
+      } finally {
+        hasAttemptedLoginRef.current = true;
       }
     }
 
@@ -335,8 +343,8 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
       </nav>
       {showAlert && (
         <AlertPopup
-          message="Sua sessão expirou. Faça login novamente."
-          action={{ href: "/", text: "Ir para Home" }}
+          message="Your session expired. Sign in again."
+          action={{ href: "/", text: "Go to homepage" }}
           onClose={() => {
             setShowAlert(false);
             router.push("/");

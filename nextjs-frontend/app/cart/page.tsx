@@ -39,6 +39,7 @@ function getRandomImage() {
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAlert, setShowAlert] = useState(false);
   const [alertPosition, setAlertPosition] = useState<{
@@ -55,17 +56,15 @@ export default function CartPage() {
   useEffect(() => {
     async function fetchCart() {
       setLoading(true);
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        // Usuário logado: busca do backend
-        try {
-          const res = await fetch("http://localhost:8000/cart-items/", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (!res.ok) throw new Error("Erro ao buscar carrinho");
+
+      try {
+        const res = await fetch("http://localhost:8000/cart-items/", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          setIsLoggedIn(true);
           const data = await res.json();
           setCartItems(
             data.map((item: CartItem) => ({
@@ -74,39 +73,45 @@ export default function CartPage() {
               product: item.product,
             }))
           );
-        } catch {
-          setCartItems([]);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        // Não logado: busca do localStorage e depois busca os produtos
-        const localCart: CartItem[] = JSON.parse(
-          localStorage.getItem("cart") || "[]"
-        );
-        if (localCart.length === 0) {
-          setCartItems([]);
-          setLoading(false);
-          return;
-        }
-        const ids = localCart.map((item) => item.productId).join(",");
-        try {
-          const res = await fetch(`http://localhost:8000/products/${ids}`);
-          if (!res.ok) throw new Error("Erro ao buscar produtos do carrinho");
-          const data = await res.json();
-          const products: Product[] = data.products;
+        } else if (res.status === 401) {
+          setIsLoggedIn(false);
+          const localCart: CartItem[] = JSON.parse(
+            localStorage.getItem("cart") || "[]"
+          );
+
+          if (localCart.length === 0) {
+            setCartItems([]);
+            return;
+          }
+
+          const ids = localCart.map((item) => item.productId).join(",");
+          const productRes = await fetch(
+            `http://localhost:8000/products/${ids}`
+          );
+
+          if (!productRes.ok)
+            throw new Error("Erro ao buscar produtos do carrinho");
+
+          const productData = await productRes.json();
+          const products: Product[] = productData.products;
+
           const merged = localCart.map((item) => ({
             ...item,
             product: products.find((p) => p.id === item.productId),
           }));
+
           setCartItems(merged);
-        } catch {
-          setCartItems([]);
-        } finally {
-          setLoading(false);
+        } else {
+          throw new Error("Erro ao buscar carrinho");
         }
+      } catch (error) {
+        console.error("Erro ao buscar carrinho:", error);
+        setCartItems([]);
+      } finally {
+        setLoading(false);
       }
     }
+
     fetchCart();
   }, []);
 
@@ -132,13 +137,7 @@ export default function CartPage() {
   const router = useRouter();
 
   function handleProceedToCheckout() {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    let isLogged = false;
-    if (token) {
-      isLogged = true;
-    }
-    if (isLogged) {
+    if (isLoggedIn) {
       router.push("/checkout");
     } else {
       // Pega a posição do botão
@@ -163,7 +162,8 @@ export default function CartPage() {
             : cartItem
         )
       );
-      // Atualização do localStorage:
+
+      // Atualiza localStorage (para usuários não autenticados)
       const localCart: CartItem[] = JSON.parse(
         localStorage.getItem("cart") || "[]"
       );
@@ -177,28 +177,17 @@ export default function CartPage() {
           )
         )
       );
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            quantity: item.quantity + 1,
-          }),
-        })
-          .then((res) => {
-            if (!res.ok)
-              throw new Error("Erro ao atualizar produto do carrinho");
-          })
-          .catch((error) => {
-            alert("Erro ao atualizar produto do carrinho.");
-            console.error(error);
-          });
-      }
+
+      // Atualiza backend (usuário autenticado via cookie)
+      fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity: item.quantity + 1 }),
+      }).catch((error) => {
+        alert("Erro ao atualizar produto no carrinho.");
+        console.error(error);
+      });
     }
   }
 
@@ -211,7 +200,8 @@ export default function CartPage() {
             : cartItem
         )
       );
-      // Atualização do localStorage:
+
+      // Atualiza localStorage (usuário anônimo)
       const localCart: CartItem[] = JSON.parse(
         localStorage.getItem("cart") || "[]"
       );
@@ -225,28 +215,17 @@ export default function CartPage() {
           )
         )
       );
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            quantity: item.quantity - 1,
-          }),
-        })
-          .then((res) => {
-            if (!res.ok)
-              throw new Error("Erro ao atualizar produto do carrinho");
-          })
-          .catch((error) => {
-            alert("Erro ao atualizar produto do carrinho.");
-            console.error(error);
-          });
-      }
+
+      // Atualiza backend (usuário autenticado via cookie)
+      fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity: item.quantity - 1 }),
+      }).catch((error) => {
+        alert("Erro ao atualizar produto no carrinho.");
+        console.error(error);
+      });
     } else if (item.quantity === 1) {
       setRemoveConfirm({ open: true, productId: item.productId });
     }
@@ -260,7 +239,8 @@ export default function CartPage() {
     setCartItems((prev) =>
       prev.filter((cartItem) => cartItem.productId !== removeConfirm.productId)
     );
-    // Atualização do localStorage:
+
+    // Atualiza localStorage (usuário anônimo)
     const localCart: CartItem[] = JSON.parse(
       localStorage.getItem("cart") || "[]"
     );
@@ -272,27 +252,20 @@ export default function CartPage() {
         )
       )
     );
+
     setRemoveConfirm({ open: false });
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (token) {
-      fetch(
-        `http://localhost:8000/cart-items/product/${removeConfirm.productId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-        .then((res) => {
-          if (!res.ok) throw new Error("Erro ao remover produto do carrinho");
-        })
-        .catch((error) => {
-          alert("Erro ao remover produto do carrinho.");
-          console.error(error);
-        });
-    }
+
+    // Remove do backend (usuário autenticado via cookie)
+    fetch(
+      `http://localhost:8000/cart-items/product/${removeConfirm.productId}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    ).catch((error) => {
+      alert("Erro ao remover produto do carrinho.");
+      console.error(error);
+    });
   }
 
   function handleRemoveCancel() {
@@ -642,7 +615,7 @@ export default function CartPage() {
             position: "fixed",
             top: alertPosition.top,
             left: alertPosition.left,
-            transform: "translate(-50%, -100%)", // centraliza acima do botão
+            transform: "translate(-50%, -50%)", // centraliza acima do botão
             zIndex: 9999,
           }}
         />
