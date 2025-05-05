@@ -571,7 +571,7 @@ export default function CheckoutPage() {
                   </dl>
                 </div>
                 <Link
-                  href="/order-summary"
+                  href="/cart/order-summary"
                   className="flex w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 mt-6 text-sm font-medium text-white hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                 >
                   Proceed to Payment

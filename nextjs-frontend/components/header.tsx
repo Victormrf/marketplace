@@ -14,6 +14,7 @@ import {
   Star,
   Truck,
   Heart,
+  UserCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import AlertPopup from "./popups/alertPopup";
@@ -21,6 +22,8 @@ import AlertPopup from "./popups/alertPopup";
 type UserRole = "customer" | "seller" | "admin" | null;
 
 export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
+  const [name, setName] = useState(null);
+  const [email, setEmail] = useState(null);
   const [role, setRole] = useState<UserRole>(null);
   const [showUserPreferences, setShowUserPreferences] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
@@ -28,11 +31,9 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   const router = useRouter();
 
   function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("cart");
     setRole(null);
     setShowUserPreferences(false);
-    router.push("/");
+    // router.push("/");
   }
 
   const hasAttemptedLoginRef = useRef(false);
@@ -48,6 +49,8 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
         if (!res.ok) {
           // Token inválido ou expirado
           setRole(null);
+          setName(null);
+          setEmail(null);
 
           if (hasAttemptedLoginRef.current) {
             setShowAlert(true);
@@ -57,9 +60,13 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
         }
         const user = await res.json();
         setRole(user.role || null);
+        setName(user.name || null);
+        setEmail(user.email || null);
       } catch (error) {
         console.error("Erro ao buscar o usuário:", error);
         setRole(null);
+        setName(null);
+        setEmail(null);
       } finally {
         hasAttemptedLoginRef.current = true;
       }
@@ -89,7 +96,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   } else if (role === "customer") {
     features = ["Home", "Best Sellers", "Gift Ideas", "Today’s Deals"];
   } else if (role === "seller") {
-    features = ["Dashboard", "Products", "Sales"];
+    features = ["Dashboard", "Customers", "Products"];
   } else if (role === "admin") {
     features = ["Dashboard", "Users", "Support"];
   }
@@ -155,12 +162,27 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
             className="absolute left-80 -translate-x-1/4  min-w-[140px] bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 z-50"
             style={{ top: "100%" }}
           >
+            <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                {name || "Nome do Usuário"}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {email || "email@exemplo.com"}
+              </div>
+            </div>
+            <Link
+              href="#"
+              className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
+            >
+              <UserCircle className="w-5 h-5" />
+              <span>Profile</span>
+            </Link>
             <Link
               href="#"
               className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
             >
               <Settings className="w-5 h-5" />
-              <span>Configuration</span>
+              <span>Settings</span>
             </Link>
             <div className="my-2 border-t border-gray-200 dark:border-gray-700" />
             <Link
@@ -182,7 +204,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
               className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
             >
               <RotateCcw className="w-5 h-5" />
-              <span>Refund</span>
+              <span>Refunds</span>
             </Link>
             <Link
               href="#"
@@ -199,7 +221,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
               className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium mt-2"
             >
               <LogOut className="w-5 h-5" />
-              <span>Exit</span>
+              <span>Log out</span>
             </button>
           </div>
         )}
@@ -223,12 +245,27 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
             className="absolute left-1/2 -translate-x-1/2 mt-2 min-w-[200px] bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 z-50"
             style={{ top: "100%" }}
           >
+            <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                {name || "Nome do Usuário"}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {email || "email@exemplo.com"}
+              </div>
+            </div>
+            <Link
+              href="#"
+              className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
+            >
+              <UserCircle className="w-5 h-5" />
+              <span>Profile</span>
+            </Link>
             <Link
               href="#"
               className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
             >
               <Settings className="w-5 h-5" />
-              <span>Configuration</span>
+              <span>Settings</span>
             </Link>
             <div className="my-2 border-t border-gray-200 dark:border-gray-700" />
             <Link
@@ -277,12 +314,27 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
             className="absolute left-1/2 -translate-x-1/2 mt-2 min-w-[200px] bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 z-50"
             style={{ top: "100%" }}
           >
+            <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                {name || "Nome do Usuário"}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {email || "email@exemplo.com"}
+              </div>
+            </div>
+            <Link
+              href="#"
+              className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
+            >
+              <UserCircle className="w-5 h-5" />
+              <span>Profile</span>
+            </Link>
             <Link
               href="#"
               className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
             >
               <Settings className="w-5 h-5" />
-              <span>Configuration</span>
+              <span>Settings</span>
             </Link>
             <div className="my-2 border-t border-gray-200 dark:border-gray-700" />
 

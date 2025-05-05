@@ -138,7 +138,7 @@ export default function CartPage() {
 
   function handleProceedToCheckout() {
     if (isLoggedIn) {
-      router.push("/checkout");
+      router.push("cart/checkout");
     } else {
       // Pega a posição do botão
       if (checkoutBtnRef.current) {
