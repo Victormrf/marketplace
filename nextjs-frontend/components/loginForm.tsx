@@ -84,7 +84,7 @@ export default function LoginForm({
 
       // 4. Fecha o modal ou redireciona
       if (onClose) onClose();
-      window.location.reload();
+      // window.location.reload();
     } catch (err: unknown) {
       setError(
         `Erro ao fazer login. Tente novamente. ${
