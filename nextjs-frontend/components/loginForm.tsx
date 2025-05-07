@@ -12,6 +12,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
 
 type LoginFormProps = {
   onRegisterClick?: () => void;
@@ -27,6 +28,7 @@ export default function LoginForm({
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   // Função para sincronizar o carrinho local com o backend
   async function syncLocalCartWithBackend() {
@@ -82,9 +84,25 @@ export default function LoginForm({
         await syncLocalCartWithBackend();
       }
 
-      // 4. Fecha o modal ou redireciona
+      // 4. Redirecionamento para seller
+      if (user.role === "seller") {
+        const sellerRes = await fetch("http://localhost:8000/sellers/", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!sellerRes.ok) {
+          throw new Error("Erro ao obter dados do seller");
+        }
+
+        const sellerData = await sellerRes.json();
+        const sellerId = sellerData.profile.id;
+        router.push(`/store/${sellerId}`);
+      }
+
+      // 5. Fecha o modal ou redireciona
       if (onClose) onClose();
-      // window.location.reload();
+      window.location.reload();
     } catch (err: unknown) {
       setError(
         `Erro ao fazer login. Tente novamente. ${
