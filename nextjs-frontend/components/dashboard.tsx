@@ -22,6 +22,10 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import DashboardHeader from "./dashboardHeader";
 
+export interface SellerDashboardProps {
+  storeId: string;
+}
+
 const COLORS = ["#1f283c", "#cbd5e2", "#48556c", "#a1a1a1"];
 
 const sales6Months = [
@@ -88,9 +92,10 @@ const ordersByStatus = [
   { status: "Cancelled", value: 8 },
 ];
 
-export default function SellerDashboard() {
+const SellerDashboard: React.FC<SellerDashboardProps> = ({ storeId }) => {
   const [view, setView] = useState<"6months" | "30days">("6months");
   const salesData = view === "6months" ? sales6Months : sales15Days;
+  console.log(storeId);
 
   return (
     <>
@@ -288,4 +293,6 @@ export default function SellerDashboard() {
       </div>
     </>
   );
-}
+};
+
+export default SellerDashboard;
