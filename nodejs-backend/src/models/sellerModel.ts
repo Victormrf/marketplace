@@ -5,6 +5,7 @@ export class SellerModel {
   id?: string;
   userId?: string;
   storeName?: string;
+  logo?: string;
   description?: string;
 
   constructor(data: Partial<SellerModel> = {}) {
@@ -28,6 +29,14 @@ export class SellerModel {
   static async getByUserId(userId: string): Promise<UserModel> {
     return prisma.seller.findUnique({
       where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
     });
   }
 
@@ -64,6 +73,7 @@ export class SellerModel {
   fill(data: Partial<SellerModel>): void {
     if (data.id !== undefined) this.id = data.id;
     if (data.userId !== undefined) this.userId = data.userId;
+    if (data.logo !== undefined) this.logo = data.logo;
     if (data.storeName !== undefined) this.storeName = data.storeName;
     if (data.description !== undefined) this.description = data.description;
   }

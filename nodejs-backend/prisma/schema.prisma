@@ -34,11 +34,13 @@ model seller {
   id          String    @id @default(uuid())
   userId      String    @unique
   storeName   String
+  logo        String?
   description String?
   rating      Float     @default(0)
   products    product[]
   user        user      @relation(fields: [userId], references: [id])
   reviews     review[]
+  report      seller_sales_report?
 }
 
 model product {
@@ -112,4 +114,13 @@ model review {
   
   @@unique([userId, productId])
   @@unique([userId, sellerId])
+}
+
+model seller_sales_report {
+  sellerId     String   @id
+  totalSales   Float    @default(0)
+  totalOrders  Int      @default(0)
+  avgTicket    Float    @default(0)
+  updatedAt    DateTime @updatedAt
+  seller       seller?   @relation(fields: [sellerId], references: [id])
 }

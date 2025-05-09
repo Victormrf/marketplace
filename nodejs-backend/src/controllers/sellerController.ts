@@ -35,7 +35,7 @@ sellerRoutes.post("/", authMiddleware, async (req, res) => {
 });
 
 sellerRoutes.get(
-  "/",
+  "/all",
   authMiddleware,
   roleMiddleware("admin"),
   async (req, res) => {
@@ -48,25 +48,20 @@ sellerRoutes.get(
   }
 );
 
-sellerRoutes.get(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("admin"),
-  async (req, res) => {
-    const { userId } = req.params;
-    try {
-      const profile = await sellerService.getSellerProfile(userId);
-      res.status(200).json({ profile });
-    } catch (error: any) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-        return;
-      }
-      res.status(500).json({ error: error.message || "Internal Server Error" });
+sellerRoutes.get("/", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const profile = await sellerService.getSellerProfile(userId);
+    res.status(200).json({ profile });
+  } catch (error: any) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: error.message });
       return;
     }
+    res.status(500).json({ error: error.message || "Internal Server Error" });
+    return;
   }
-);
+});
 
 sellerRoutes.put("/:userId", authMiddleware, async (req, res) => {
   const requestorId = req.user.id;
