@@ -97,7 +97,9 @@ export default function LoginForm({
 
         const sellerData = await sellerRes.json();
         const sellerId = sellerData.profile.id;
+        if (onClose) onClose();
         router.push(`/store/${sellerId}`);
+        return;
       }
 
       // 5. Fecha o modal ou redireciona

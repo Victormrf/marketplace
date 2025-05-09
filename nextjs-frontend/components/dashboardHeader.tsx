@@ -2,9 +2,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 
 export default function DashboardHeader({
+  storeLogo,
   storeName,
   userEmail,
 }: {
+  storeLogo: string;
   storeName: string;
   userEmail: string;
 }) {
@@ -13,12 +15,7 @@ export default function DashboardHeader({
       {/* Logo + Nome da loja */}
       <div className="flex items-center gap-4">
         <div className="rounded-full overflow-hidden">
-          <Image
-            src="/v-market-logo.png"
-            alt="Logo da Loja"
-            height={56}
-            width={56}
-          />
+          <Image src={storeLogo} alt="Logo da Loja" height={56} width={56} />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">

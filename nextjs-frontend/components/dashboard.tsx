@@ -18,12 +18,23 @@ import {
   Area,
 } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import DashboardHeader from "./dashboardHeader";
 
 export interface SellerDashboardProps {
   storeId: string;
+}
+
+export interface UserData {
+  email: string;
+}
+
+export interface StoreData {
+  storeName: string;
+  logo?: string;
+  description?: string;
+  user: UserData;
 }
 
 const COLORS = ["#1f283c", "#cbd5e2", "#48556c", "#a1a1a1"];
@@ -92,207 +103,244 @@ const ordersByStatus = [
   { status: "Cancelled", value: 8 },
 ];
 
-const SellerDashboard: React.FC<SellerDashboardProps> = ({ storeId }) => {
+export default function SellerDashboard() {
   const [view, setView] = useState<"6months" | "30days">("6months");
+  const [store, setStore] = useState<StoreData | null>(null);
+  const [loading, setLoading] = useState(true);
   const salesData = view === "6months" ? sales6Months : sales15Days;
-  console.log(storeId);
+
+  useEffect(() => {
+    const fetchStoreData = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/sellers/", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!res.ok) {
+          throw new Error("Failed to fetch store data");
+        }
+        const data = await res.json();
+        setStore(data.profile ? data.profile : null);
+      } catch (error) {
+        console.error("Error retrieving store data:", error);
+        setStore(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStoreData();
+  }, []);
 
   return (
     <>
-      <DashboardHeader storeName="Nome da Loja" userEmail="email@exemplo.com" />
-      <div className="p-6 space-y-8">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <p>Total Sales</p>
-              <p className="text-2xl font-bold">R$ 12.300</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p>Products Listed</p>
-              <p className="text-2xl font-bold">23</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p>Orders</p>
-              <p className="text-2xl font-bold">87</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p>Avg. Rating</p>
-              <p className="text-2xl font-bold">4.6 / 5</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p>Avg. time to Purchase</p>
-              <p className="text-2xl font-bold">2d 4h</p>
-            </CardContent>
-          </Card>
-        </div>
+      {loading ? (
+        <p>Fetching store data...</p>
+      ) : (
+        <>
+          <DashboardHeader
+            storeLogo={store?.logo ? store.logo : "/v-market-logo.png"}
+            storeName={store?.storeName ? store.storeName : "Nome da Loja"}
+            userEmail={
+              store?.user?.email ? store.user.email : "email@exemplo.com"
+            }
+          />
+          <div className="p-6 space-y-8">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <p>Total Sales</p>
+                  <p className="text-2xl font-bold">R$ 12.300</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p>Products Listed</p>
+                  <p className="text-2xl font-bold">23</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p>Orders</p>
+                  <p className="text-2xl font-bold">87</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p>Avg. Rating</p>
+                  <p className="text-2xl font-bold">4.6 / 5</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p>Avg. time to Purchase</p>
+                  <p className="text-2xl font-bold">2d 4h</p>
+                </CardContent>
+              </Card>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-semibold">
-                  Sales ({view === "6months" ? "Last 6 Months" : "Last 30 Days"}
-                  )
-                </h2>
-                <div className="space-x-2">
-                  <Button
-                    variant={view === "6months" ? "default" : "outline"}
-                    onClick={() => setView("6months")}
-                  >
-                    6 Months
-                  </Button>
-                  <Button
-                    variant={view === "30days" ? "default" : "outline"}
-                    onClick={() => setView("30days")}
-                  >
-                    30 Days
-                  </Button>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={salesData}>
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#1f283c"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <h2 className="text-lg font-semibold mb-2">
-                Top Selling Products
-              </h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={topProducts} layout="vertical">
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="name" width={180} />
-                  <Tooltip />
-                  <Bar dataKey="quantity" fill="#1f283c" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h2 className="text-lg font-semibold mb-2">
-                Revenue by Category
-              </h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={categoryRevenue}
-                    dataKey="value"
-                    nameKey="category"
-                    outerRadius={80}
-                  >
-                    {categoryRevenue.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h2 className="text-lg font-semibold">
+                      Sales (
+                      {view === "6months" ? "Last 6 Months" : "Last 30 Days"})
+                    </h2>
+                    <div className="space-x-2">
+                      <Button
+                        variant={view === "6months" ? "default" : "outline"}
+                        onClick={() => setView("6months")}
+                      >
+                        6 Months
+                      </Button>
+                      <Button
+                        variant={view === "30days" ? "default" : "outline"}
+                        onClick={() => setView("30days")}
+                      >
+                        30 Days
+                      </Button>
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={salesData}>
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#1f283c"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
                       />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend
-                    verticalAlign="bottom"
-                    align="right"
-                    iconType="circle"
-                    layout="horizontal"
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <h2 className="text-lg font-semibold mb-2">
-                Recent Orders by Status (Last 14 days)
-              </h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={ordersByStatus}
-                    dataKey="value"
-                    nameKey="status"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label
-                  >
-                    {ordersByStatus.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="text-lg font-semibold mb-2">
+                    Top Selling Products
+                  </h2>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={topProducts} layout="vertical">
+                      <XAxis type="number" />
+                      <YAxis type="category" dataKey="name" width={180} />
+                      <Tooltip />
+                      <Bar dataKey="quantity" fill="#1f283c" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="text-lg font-semibold mb-2">
+                    Revenue by Category
+                  </h2>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={categoryRevenue}
+                        dataKey="value"
+                        nameKey="category"
+                        outerRadius={80}
+                      >
+                        {categoryRevenue.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="right"
+                        iconType="circle"
+                        layout="horizontal"
                       />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <h2 className="text-lg font-semibold mb-2">
-                New customers per Month
-              </h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={newCustomersByMonth}>
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="count"
-                    stroke="#1f283c"
-                    fill="#1f283c"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="text-lg font-semibold mb-2">
+                    Recent Orders by Status (Last 14 days)
+                  </h2>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={ordersByStatus}
+                        dataKey="value"
+                        nameKey="status"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label
+                      >
+                        {ordersByStatus.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend verticalAlign="bottom" height={36} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <h2 className="text-lg font-semibold mb-2">
-                Rating Distribution
-              </h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={ratingDistribution}>
-                  <XAxis dataKey="stars" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#1f283c" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="text-lg font-semibold mb-2">
+                    New customers per Month
+                  </h2>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <AreaChart data={newCustomersByMonth}>
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#1f283c"
+                        fill="#1f283c"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="text-lg font-semibold mb-2">
+                    Rating Distribution
+                  </h2>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={ratingDistribution}>
+                      <XAxis dataKey="stars" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#1f283c" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
-};
-
-export default SellerDashboard;
+}
