@@ -31,40 +31,60 @@ export interface UserData {
 }
 
 export interface StoreData {
+  id: string;
   storeName: string;
   logo?: string;
   description?: string;
   user: UserData;
 }
 
+export interface ProductData {
+  id: string;
+  sellerId: string;
+  name: string;
+  description?: string;
+  price: number;
+  stock: number;
+  category: string;
+  image?: string;
+  createdAt: Date;
+}
+
+export interface OrderData {
+  id: string;
+  customerId: string;
+  totalPrice: number;
+  createdAt: Date;
+}
+
 const COLORS = ["#1f283c", "#cbd5e2", "#48556c", "#a1a1a1"];
 
-const sales6Months = [
-  { date: "December", revenue: 2000 },
-  { date: "January", revenue: 1200 },
-  { date: "February", revenue: 800 },
-  { date: "March", revenue: 1000 },
-  { date: "April", revenue: 1800 },
-  { date: "May", revenue: 750 },
-];
+// const sales6Months = [
+//   { date: "December", revenue: 2000 },
+//   { date: "January", revenue: 1200 },
+//   { date: "February", revenue: 800 },
+//   { date: "March", revenue: 1000 },
+//   { date: "April", revenue: 1800 },
+//   { date: "May", revenue: 750 },
+// ];
 
-const sales15Days = [
-  { date: "04/01", revenue: 150 },
-  { date: "04/02", revenue: 120 },
-  { date: "04/03", revenue: 90 },
-  { date: "04/04", revenue: 110 },
-  { date: "04/05", revenue: 130 },
-  { date: "04/06", revenue: 100 },
-  { date: "04/07", revenue: 160 },
-  { date: "04/08", revenue: 135 },
-  { date: "04/09", revenue: 90 },
-  { date: "04/10", revenue: 110 },
-  { date: "04/11", revenue: 80 },
-  { date: "04/12", revenue: 70 },
-  { date: "04/13", revenue: 85 },
-  { date: "04/14", revenue: 100 },
-  { date: "04/15", revenue: 80 },
-];
+// const sales15Days = [
+//   { date: "04/01", revenue: 150 },
+//   { date: "04/02", revenue: 120 },
+//   { date: "04/03", revenue: 90 },
+//   { date: "04/04", revenue: 110 },
+//   { date: "04/05", revenue: 130 },
+//   { date: "04/06", revenue: 100 },
+//   { date: "04/07", revenue: 160 },
+//   { date: "04/08", revenue: 135 },
+//   { date: "04/09", revenue: 90 },
+//   { date: "04/10", revenue: 110 },
+//   { date: "04/11", revenue: 80 },
+//   { date: "04/12", revenue: 70 },
+//   { date: "04/13", revenue: 85 },
+//   { date: "04/14", revenue: 100 },
+//   { date: "04/15", revenue: 80 },
+// ];
 
 const topProducts = [
   { name: "Wireless Mouse", quantity: 45 },
@@ -107,10 +127,16 @@ export default function SellerDashboard() {
   const [view, setView] = useState<"6months" | "30days">("6months");
   const [store, setStore] = useState<StoreData | null>(null);
   const [loading, setLoading] = useState(true);
-  const salesData = view === "6months" ? sales6Months : sales15Days;
+  const [totalSales, setTotalSales] = useState(0);
+  const [storeProducts, setStoreProducts] = useState<ProductData[]>([]);
+  const [storeOrders, setStoreOrders] = useState<OrderData[]>([]);
+  const [avgRating, setAvgRating] = useState(0);
+  const [revenuePerDate, setRevenuePerDate] = useState<
+    { date: string; revenue: number }[]
+  >([]);
 
   useEffect(() => {
-    const fetchStoreData = async () => {
+    async function fetchStoreData() {
       try {
         const res = await fetch("http://localhost:8000/sellers/", {
           method: "GET",
@@ -119,21 +145,141 @@ export default function SellerDashboard() {
             "Content-Type": "application/json",
           },
         });
+
         if (!res.ok) {
           throw new Error("Failed to fetch store data");
         }
+
         const data = await res.json();
-        setStore(data.profile ? data.profile : null);
+        const storeData = data.profile ? data.profile : null;
+        setStore(storeData);
+
+        // Only fetch dashboard data if we have store data
+        if (storeData?.id) {
+          try {
+            // Total sales
+            const salesRes = await fetch(
+              `http://localhost:8000/dashboard/sellers/salesStats/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (!salesRes.ok) {
+              const errorText = await salesRes.text();
+              throw new Error(`Failed to fetch dashboard data: ${errorText}`);
+            }
+
+            const salesData = await salesRes.json();
+            setTotalSales(salesData.totalSales);
+
+            // Total products
+            const productsRes = await fetch(
+              `http://localhost:8000/products/seller/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (!productsRes.ok) {
+              const errorText = await productsRes.text();
+              throw new Error(
+                `Failed to fetch products from store: ${errorText}`
+              );
+            }
+
+            const productsData = await productsRes.json();
+            setStoreProducts(productsData.products);
+
+            // Total orders
+            const ordersRes = await fetch(
+              `http://localhost:8000/dashboard/sellers/orders/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (!ordersRes.ok) {
+              const errorText = await ordersRes.text();
+              throw new Error(
+                `Failed to fetch orders from store: ${errorText}`
+              );
+            }
+
+            const ordersData = await ordersRes.json();
+            setStoreOrders(ordersData);
+
+            // Average store rating
+            const reviewRes = await fetch(
+              `http://localhost:8000/review/seller/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (!reviewRes.ok) {
+              const errorText = await reviewRes.text();
+              throw new Error(
+                `Failed to fetch review from store: ${errorText}`
+              );
+            }
+
+            const reviewData = await reviewRes.json();
+            setAvgRating(reviewData.averageRating);
+
+            // Sales revenue for last 6 months
+            const monthlySalesRes = await fetch(
+              `http://localhost:8000/dashboard/sellers/lastSixMonthsSalesStats/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (!monthlySalesRes.ok) {
+              const errorText = await monthlySalesRes.text();
+              throw new Error(
+                `Failed to fetch review from store: ${errorText}`
+              );
+            }
+
+            const monthlySalesData = await monthlySalesRes.json();
+            setRevenuePerDate(monthlySalesData);
+          } catch (error) {
+            console.error("Error retrieving dashboard data:", error);
+          }
+        }
       } catch (error) {
         console.error("Error retrieving store data:", error);
         setStore(null);
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchStoreData();
   }, []);
+
+  // const salesData = view === "6months" ? revenuePerDate : sales15Days;
 
   return (
     <>
@@ -153,25 +299,33 @@ export default function SellerDashboard() {
               <Card>
                 <CardContent className="p-4">
                   <p>Total Sales</p>
-                  <p className="text-2xl font-bold">R$ 12.300</p>
+                  <p className="text-2xl font-bold">
+                    {totalSales ? `$ ${totalSales}` : "$ 12.300"}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
                   <p>Products Listed</p>
-                  <p className="text-2xl font-bold">23</p>
+                  <p className="text-2xl font-bold">
+                    {storeProducts.length ?? 23}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
                   <p>Orders</p>
-                  <p className="text-2xl font-bold">87</p>
+                  <p className="text-2xl font-bold">
+                    {storeOrders.length ?? 87}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
                   <p>Avg. Rating</p>
-                  <p className="text-2xl font-bold">4.6 / 5</p>
+                  <p className="text-2xl font-bold">
+                    {avgRating ? `${avgRating} / 5` : "4.6 / 5"}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -206,7 +360,7 @@ export default function SellerDashboard() {
                     </div>
                   </div>
                   <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={salesData}>
+                    <LineChart data={revenuePerDate}>
                       <XAxis dataKey="date" />
                       <YAxis />
                       <Tooltip />

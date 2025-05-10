@@ -19,7 +19,7 @@ import {
 import { useRouter } from "next/navigation";
 import AlertPopup from "./popups/alertPopup";
 
-type UserRole = "customer" | "seller" | "admin" | null;
+type UserRole = "CUSTOMER" | "SELLER" | "ADMIN" | null;
 
 export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   const [name, setName] = useState(null);
@@ -93,11 +93,11 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   let features: string[] = [];
   if (!role) {
     features = ["Home", "Best Sellers", "Gift Ideas", "Today’s Deals"];
-  } else if (role === "customer") {
+  } else if (role === "CUSTOMER") {
     features = ["Home", "Best Sellers", "Gift Ideas", "Today’s Deals"];
-  } else if (role === "seller") {
+  } else if (role === "SELLER") {
     features = ["Dashboard", "Customers", "Products"];
-  } else if (role === "admin") {
+  } else if (role === "ADMIN") {
     features = ["Dashboard", "Users", "Support"];
   }
 
@@ -125,7 +125,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
         </button>
       </div>
     );
-  } else if (role === "customer") {
+  } else if (role === "CUSTOMER") {
     rightSection = (
       <div className="relative flex items-center gap-4">
         <div className="relative">
@@ -227,7 +227,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
         )}
       </div>
     );
-  } else if (role === "seller") {
+  } else if (role === "SELLER") {
     rightSection = (
       <div className="relative flex items-center gap-4">
         <button
@@ -296,7 +296,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
         )}
       </div>
     );
-  } else if (role === "admin") {
+  } else if (role === "ADMIN") {
     rightSection = (
       <div className="relative flex items-center gap-4">
         <button

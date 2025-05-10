@@ -80,12 +80,12 @@ export default function LoginForm({
       const user = await userRes.json();
 
       // 3. Sincroniza o carrinho local com o backend se o usuário for customer
-      if (user.role === "customer") {
+      if (user.role === "CUSTOMER") {
         await syncLocalCartWithBackend();
       }
 
       // 4. Redirecionamento para seller
-      if (user.role === "seller") {
+      if (user.role === "SELLER") {
         const sellerRes = await fetch("http://localhost:8000/sellers/", {
           method: "GET",
           credentials: "include",
