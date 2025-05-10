@@ -45,7 +45,7 @@ userRoutes.get("/me", authMiddleware, async (req, res) => {
 userRoutes.put(
   "/:userId",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     const { userId } = req.params;
     const updateData = req.body;
@@ -72,7 +72,7 @@ userRoutes.put(
 userRoutes.delete(
   "/:userId",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     const { userId } = req.params;
 

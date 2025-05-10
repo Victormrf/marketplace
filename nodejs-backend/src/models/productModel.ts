@@ -1,5 +1,19 @@
 import prisma from "../config/db";
 
+export enum Category {
+  Office = "Office",
+  Sports = "Sports",
+  Books = "Books",
+  Beauty = "Beauty",
+  Clothing = "Clothing",
+  Toys = "Toys",
+  TvProjectors = "TvProjectors",
+  SmartphonesTablets = "SmartphonesTablets",
+  Eletronics = "Eletronics",
+  Pets = "Pets",
+  Furniture = "Furniture",
+}
+
 export class ProductModel {
   id?: string;
   sellerId?: string;
@@ -7,7 +21,7 @@ export class ProductModel {
   description?: string;
   price?: number;
   stock?: number;
-  category?: string;
+  category?: Category;
   image?: string;
   createdAt?: Date;
 

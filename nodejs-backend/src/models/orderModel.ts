@@ -1,10 +1,20 @@
 import prisma from "../config/db";
 
+export enum OrderStatus {
+  PENDING = "PENDING",
+  PAID = "PAID",
+  PROCESSING = "PROCESSING",
+  SHIPPED = "SHIPPED",
+  DELIVERED = "DELIVERED",
+  CANCELLED = "CANCELLED",
+  REFUNDED = "REFUNDED",
+}
+
 export class OrderModel {
   id?: string;
   customerId?: string;
   totalPrice?: number;
-  status?: string;
+  status?: OrderStatus;
   createdAt?: string;
 
   constructor(data: Partial<OrderModel> = {}) {
@@ -44,7 +54,7 @@ export class OrderModel {
   ): Promise<OrderModel[]> {
     return prisma.order.findMany({
       where: {
-        status: "completed",
+        status: "DELIVERED",
         orderItems: {
           some: {
             product: {
@@ -55,6 +65,46 @@ export class OrderModel {
       },
       include: {
         orderItems: true,
+      },
+    });
+  }
+
+  static async getMonthlySalesBySeller(sellerId: string) {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1); // Garante o início do mês
+
+    return prisma.order.findMany({
+      where: {
+        status: "DELIVERED",
+        createdAt: {
+          gte: sixMonthsAgo,
+        },
+        orderItems: {
+          some: {
+            product: {
+              sellerId: sellerId,
+            },
+          },
+        },
+      },
+      select: {
+        totalPrice: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  static async getOrdersBySeller(sellerId: string): Promise<OrderModel[]> {
+    return prisma.order.findMany({
+      where: {
+        orderItems: {
+          some: {
+            product: {
+              sellerId: sellerId,
+            },
+          },
+        },
       },
     });
   }

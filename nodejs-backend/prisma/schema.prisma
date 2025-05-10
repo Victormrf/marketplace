@@ -7,12 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum user_role {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
 model user {
   id        String    @id @default(uuid())
   name      String
   email     String    @unique
   password  String
-  role      String
+  role      user_role
   createdAt DateTime  @default(now())
   Customer  customer?
   Seller    seller?
@@ -40,7 +46,20 @@ model seller {
   products    product[]
   user        user      @relation(fields: [userId], references: [id])
   reviews     review[]
-  report      seller_sales_report?
+}
+
+enum category {
+  Office
+  Sports
+  Books
+  Beauty
+  Clothing
+  Toys
+  TvProjectors
+  SmartphonesTablets
+  Eletronics
+  Pets
+  Furniture
 }
 
 model product {
@@ -50,7 +69,7 @@ model product {
   description String?
   price       Float
   stock       Int
-  category    String
+  category    category
   image       String?
   createdAt   DateTime     @default(now())
   cartItems   cart_item[]   
@@ -70,11 +89,21 @@ model cart_item {
   product product @relation(fields: [productId], references: [id])
 }
 
+enum order_status {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
 model order {
   id         String       @id @default(uuid())
   customerId String
   totalPrice Float
-  status     String
+  status     order_status  @default(PENDING)
   createdAt  DateTime     @default(now())
   customer   customer     @relation(fields: [customerId], references: [id])
   orderItems order_item[]
@@ -114,13 +143,4 @@ model review {
   
   @@unique([userId, productId])
   @@unique([userId, sellerId])
-}
-
-model seller_sales_report {
-  sellerId     String   @id
-  totalSales   Float    @default(0)
-  totalOrders  Int      @default(0)
-  avgTicket    Float    @default(0)
-  updatedAt    DateTime @updatedAt
-  seller       seller?   @relation(fields: [sellerId], references: [id])
 }

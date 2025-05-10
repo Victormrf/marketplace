@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { UserModel } from "../models/userModel";
+import { UserModel, UserRole } from "../models/userModel";
 import {
   ConflictError,
   ObjectNotFoundError,
@@ -10,7 +10,7 @@ interface UserInputData {
   name: string;
   email: string;
   password: string;
-  role: string;
+  role: UserRole;
 }
 
 export class UserService {

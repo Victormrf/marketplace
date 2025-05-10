@@ -3,13 +3,15 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 async function main() {
-  // Deleting all products first to avoid foreign key constraints when deleting the seller
+  // Ordem correta para deletar evitando violação de chave estrangeira
+  await prisma.review.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.order_item.deleteMany();
+  await prisma.cart_item.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.product.deleteMany();
-
-  // Delete the seller records
   await prisma.seller.deleteMany();
-
-  // Delete users
+  await prisma.customer.deleteMany();
   await prisma.user.deleteMany();
 
   console.log("Database cleared successfully!");

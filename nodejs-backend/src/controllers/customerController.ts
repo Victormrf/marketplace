@@ -35,9 +35,9 @@ customerRoutes.post("/", authMiddleware, async (req, res) => {
 });
 
 customerRoutes.get(
-  "/",
+  "/all",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     try {
       const profiles = await customerService.getAllCustomers();
@@ -48,25 +48,20 @@ customerRoutes.get(
   }
 );
 
-customerRoutes.get(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("admin"),
-  async (req, res) => {
-    const { userId } = req.params;
-    try {
-      const profile = await customerService.getCustomerProfile(userId);
-      res.status(200).json({ profile });
-    } catch (error: any) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-        return;
-      }
-      res.status(500).json({ error: error.message || "Internal Server Error" });
+customerRoutes.get("/", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const profile = await customerService.getCustomerProfile(userId);
+    res.status(200).json({ profile });
+  } catch (error: any) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: error.message });
       return;
     }
+    res.status(500).json({ error: error.message || "Internal Server Error" });
+    return;
   }
-);
+});
 
 customerRoutes.put("/:userId", authMiddleware, async (req, res) => {
   const requestorId = req.user.id;
@@ -74,7 +69,7 @@ customerRoutes.put("/:userId", authMiddleware, async (req, res) => {
   const { userId } = req.params;
   const updateData = req.body;
 
-  if (requestorId !== userId && requestorRole !== "admin") {
+  if (requestorId !== userId && requestorRole !== "ADMIN") {
     res.status(403).json({ error: `Access restricted` });
     return;
   }
@@ -103,7 +98,7 @@ customerRoutes.put("/:userId", authMiddleware, async (req, res) => {
 customerRoutes.delete(
   "/:userId",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     const { userId } = req.params;
 

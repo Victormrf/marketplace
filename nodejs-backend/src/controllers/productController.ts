@@ -96,7 +96,7 @@ productRoutes.put("/:productId", authMiddleware, async (req, res) => {
   const { productId } = req.params;
   const updateData = req.body;
 
-  if (requestorRole !== "admin" && requestorRole !== "seller") {
+  if (requestorRole !== "ADMIN" && requestorRole !== "SELLER") {
     res.status(403).json({ error: "Access denied." });
     return;
   }

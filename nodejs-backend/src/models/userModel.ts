@@ -1,12 +1,18 @@
 import prisma from "../config/db";
 import bcrypt from "bcrypt";
 
+export enum UserRole {
+  CUSTOMER = "CUSTOMER",
+  SELLER = "SELLER",
+  ADMIN = "ADMIN",
+}
+
 export class UserModel {
   id?: string;
   name?: string;
   email?: string;
   password?: string;
-  role?: string;
+  role?: UserRole;
   createdAt?: Date;
 
   constructor(data: Partial<UserModel> = {}) {

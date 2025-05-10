@@ -1,4 +1,4 @@
-import { ProductModel } from "../models/productModel";
+import { Category, ProductModel } from "../models/productModel";
 import {
   ObjectNotFoundError,
   ObjectsNotFoundError,
@@ -11,7 +11,7 @@ interface ProductData {
   description?: string;
   price: number;
   stock: number;
-  category: string;
+  category: Category;
   image: string;
 }
 

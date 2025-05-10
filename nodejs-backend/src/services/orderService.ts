@@ -1,5 +1,5 @@
 import prisma from "../config/db";
-import { OrderModel } from "../models/orderModel";
+import { OrderModel, OrderStatus } from "../models/orderModel";
 import {
   ObjectNotFoundError,
   ObjectsNotFoundError,
@@ -9,7 +9,7 @@ import {
 interface OrderData {
   customerId: string;
   totalPrice: number;
-  status: string;
+  status: OrderStatus;
 }
 
 interface OrderItemInput {

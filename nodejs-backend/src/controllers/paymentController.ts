@@ -115,7 +115,7 @@ paymentRoutes.put("/:paymentId/status", authMiddleware, async (req, res) => {
 paymentRoutes.delete(
   "/:paymentId",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     const { paymentId } = req.params;
 

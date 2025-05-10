@@ -15,7 +15,7 @@ reviewRoutes.post("/product", authMiddleware, async (req, res) => {
   const requestorRole = req.user.role;
   const { productId, rating, comment } = req.body;
 
-  if (requestorRole !== "customer") {
+  if (requestorRole !== "CUSTOMER") {
     res.status(403).json({ error: "Only customers can send reviews." });
     return;
   }
@@ -44,7 +44,7 @@ reviewRoutes.post("/seller", authMiddleware, async (req, res) => {
   const requestorRole = req.user.role;
   const { sellerId, rating, comment } = req.body;
 
-  if (requestorRole !== "customer") {
+  if (requestorRole !== "CUSTOMER") {
     res.status(403).json({ error: "Only customers can send reviews." });
     return;
   }

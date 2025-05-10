@@ -10,7 +10,7 @@ const cartItemService = new CartItemService();
 cartItemRoutes.post(
   "/",
   authMiddleware,
-  roleMiddleware("customer"),
+  roleMiddleware("CUSTOMER"),
   async (req, res) => {
     const { productId, quantity } = req.body;
     const userId = req.user.id;
@@ -36,7 +36,7 @@ cartItemRoutes.post(
 cartItemRoutes.get(
   "/",
   authMiddleware,
-  roleMiddleware("customer"),
+  roleMiddleware("CUSTOMER"),
   async (req, res) => {
     const userId = req.user.id;
     try {
@@ -57,7 +57,7 @@ cartItemRoutes.get(
 cartItemRoutes.put(
   "/product/:productId",
   authMiddleware,
-  roleMiddleware("customer"),
+  roleMiddleware("CUSTOMER"),
   async (req, res) => {
     const { productId } = req.params;
     const { quantity } = req.body;
@@ -79,7 +79,7 @@ cartItemRoutes.put(
 cartItemRoutes.delete(
   "/:id",
   authMiddleware,
-  roleMiddleware("customer"),
+  roleMiddleware("CUSTOMER"),
   async (req, res) => {
     const { id } = req.params;
     try {
@@ -100,7 +100,7 @@ cartItemRoutes.delete(
 cartItemRoutes.delete(
   "/product/:productId",
   authMiddleware,
-  roleMiddleware("customer"),
+  roleMiddleware("CUSTOMER"),
   async (req, res) => {
     const { productId } = req.params;
     try {
@@ -121,7 +121,7 @@ cartItemRoutes.delete(
 cartItemRoutes.delete(
   "/clear/:userId",
   authMiddleware,
-  roleMiddleware("customer"),
+  roleMiddleware("CUSTOMER"),
   async (req, res) => {
     const { userId } = req.params;
     try {

@@ -65,7 +65,7 @@ orderRoutes.get("/customer/:customerId", authMiddleware, async (req, res) => {
 orderRoutes.put(
   "/:orderId",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     const { orderId } = req.params;
     const updateData = req.body;
@@ -110,7 +110,7 @@ orderRoutes.put("/:orderId/status", authMiddleware, async (req, res) => {
 orderRoutes.delete(
   "/:orderId",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     const { orderId } = req.params;
 

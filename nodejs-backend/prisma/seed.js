@@ -1,65 +1,171 @@
 const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcrypt");
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create users and store the inserted users
-  const alice = await prisma.user.create({
+  const password = await bcrypt.hash("test1234", 10);
+
+  // Admin
+  await prisma.user.create({
     data: {
-      name: "Alice",
-      email: "alice@example.com",
-      password: "test123",
-      role: "customer",
+      name: "Admin User",
+      email: "vmrf2000@hotmail.com",
+      password,
+      role: "ADMIN",
     },
   });
 
-  const bob = await prisma.user.create({
-    data: {
-      name: "Bob",
-      email: "bob@example.com",
-      password: "test123",
-      role: "seller",
-    },
-  });
+  // Customers
+  const customers = await Promise.all(
+    [1, 2, 3].map(async (i) => {
+      const user = await prisma.user.create({
+        data: {
+          name: `Customer ${i}`,
+          email: `customer${i}@email.com`,
+          password,
+          role: "CUSTOMER",
+          Customer: {
+            create: {
+              address: `Street ${i}`,
+              phone: `555-000${i}`,
+            },
+          },
+        },
+        include: {
+          Customer: true,
+        },
+      });
+      return {
+        ...user.Customer,
+        userId: user.id,
+      };
+    })
+  );
 
-  // Create customer using Alice's userId
-  const aliceCustomer = await prisma.customer.create({
-    data: {
-      userId: alice.id,
-      address: "wonderland, rainbow road, number 123",
-      phone: "+55 (32) 98765-4321",
-    },
-  });
+  // Sellers
+  const sellers = await Promise.all(
+    [1, 2, 3].map(async (i) => {
+      const user = await prisma.user.create({
+        data: {
+          name: `Seller ${i}`,
+          email: `seller${i}@email.com`,
+          password,
+          role: "SELLER",
+          Seller: {
+            create: {
+              storeName: `Store ${i}`,
+              description: `Awesome store ${i}`,
+              logo: null,
+            },
+          },
+        },
+        include: {
+          Seller: true,
+        },
+      });
+      return {
+        ...user.Seller,
+        storeName: `Store ${i}`,
+        userId: user.id,
+      };
+    })
+  );
 
-  // Create seller using Bob's userId
-  const bobSeller = await prisma.seller.create({
-    data: {
-      userId: bob.id,
-      storeName: "Fake Store",
-      description: "This is a fake description",
-      rating: 4.4,
-    },
-  });
+  // Lista manual de categorias
+  const categories = [
+    "Office",
+    "Sports",
+    "Books",
+    "Beauty",
+    "Clothing",
+    "Toys",
+    "TvProjectors",
+    "SmartphonesTablets",
+    "Eletronics",
+    "Pets",
+    "Furniture",
+  ];
 
-  // Create products using Bob's sellerId
-  await prisma.product.createMany({
-    data: [
-      {
-        name: "Laptop",
-        price: 1200.0,
-        sellerId: bobSeller.id,
-        stock: 2,
-        category: "tech",
+  const sellersToUse = Array.from(
+    { length: categories.length },
+    (_, i) => sellers[i % sellers.length]
+  );
+
+  // Produtos
+  const products = await Promise.all(
+    categories.map((category, index) => {
+      return prisma.product.create({
+        data: {
+          name: `Product ${category}`,
+          description: `Descrição do produto de ${category}`,
+          price: Math.floor(Math.random() * 1000) + 50,
+          stock: 20,
+          category,
+          sellerId: sellersToUse[index].id,
+        },
+      });
+    })
+  );
+
+  const orderStatuses = [
+    "PENDING",
+    "PAID",
+    "PROCESSING",
+    "SHIPPED",
+    "DELIVERED",
+    "CANCELLED",
+    "REFUNDED",
+  ];
+
+  for (let i = 0; i < orderStatuses.length; i++) {
+    const order = await prisma.order.create({
+      data: {
+        customerId: customers[i % customers.length].id,
+        totalPrice: products[i].price,
+        status: orderStatuses[i],
+        orderItems: {
+          create: [
+            {
+              productId: products[i].id,
+              quantity: 1,
+              unitPrice: products[i].price,
+            },
+          ],
+        },
+        payment: {
+          create: {
+            amount: products[i].price,
+            status: "PAID",
+          },
+        },
       },
-      {
-        name: "Phone",
-        price: 800.0,
-        sellerId: bobSeller.id,
-        stock: 3,
-        category: "tech",
+    });
+  }
+
+  // Product Reviews
+  for (let i = 0; i < products.length; i++) {
+    await prisma.review.create({
+      data: {
+        userId: customers[i % customers.length].userId,
+        productId: products[i].id,
+        rating: 4,
+        comment: `Great product in category ${products[i].category}`,
       },
-    ],
-  });
+    });
+  }
+
+  // Seller Reviews
+  for (let i = 0; i < sellers.length; i++) {
+    await prisma.review.create({
+      data: {
+        userId: customers[i % customers.length].userId,
+        sellerId: sellers[i].id,
+        rating: 5,
+        comment: `Excellent service from ${sellers[i].storeName}`,
+      },
+    });
+  }
 
   console.log("Database seeded successfully!");
 }

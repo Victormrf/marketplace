@@ -37,7 +37,7 @@ sellerRoutes.post("/", authMiddleware, async (req, res) => {
 sellerRoutes.get(
   "/all",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     try {
       const profiles = await sellerService.getAllSellers();
@@ -98,7 +98,7 @@ sellerRoutes.put("/:userId", authMiddleware, async (req, res) => {
 sellerRoutes.delete(
   "/:userId",
   authMiddleware,
-  roleMiddleware("admin"),
+  roleMiddleware("ADMIN"),
   async (req, res) => {
     const { userId } = req.params;
 
