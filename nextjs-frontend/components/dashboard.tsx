@@ -135,6 +135,33 @@ export default function SellerDashboard() {
     { date: string; revenue: number }[]
   >([]);
 
+  const fetchRevenueData = async (
+    storeId: string,
+    dateFormat: "6months" | "30days"
+  ) => {
+    const endpoint =
+      dateFormat === "6months"
+        ? `http://localhost:8000/dashboard/sellers/lastSixMonthsSalesStats/${storeId}`
+        : `http://localhost:8000/dashboard/sellers/lastThirtyDaysSalesStats/${storeId}`;
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch revenue data: ${errorText}`);
+    }
+
+    const data = await response.json();
+    setRevenuePerDate(data);
+    setView(dateFormat);
+  };
+
   useEffect(() => {
     async function fetchStoreData() {
       try {
@@ -243,27 +270,8 @@ export default function SellerDashboard() {
             const reviewData = await reviewRes.json();
             setAvgRating(reviewData.averageRating);
 
-            // Sales revenue for last 6 months
-            const monthlySalesRes = await fetch(
-              `http://localhost:8000/dashboard/sellers/lastSixMonthsSalesStats/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-            if (!monthlySalesRes.ok) {
-              const errorText = await monthlySalesRes.text();
-              throw new Error(
-                `Failed to fetch review from store: ${errorText}`
-              );
-            }
-
-            const monthlySalesData = await monthlySalesRes.json();
-            setRevenuePerDate(monthlySalesData);
+            // Initial revenue data fetch
+            await fetchRevenueData(storeData.id, "6months");
           } catch (error) {
             console.error("Error retrieving dashboard data:", error);
           }
@@ -279,7 +287,12 @@ export default function SellerDashboard() {
     fetchStoreData();
   }, []);
 
-  // const salesData = view === "6months" ? revenuePerDate : sales15Days;
+  const handleRevenuePerDateSwitch = async (
+    dateFormat: "6months" | "30days"
+  ) => {
+    if (!store?.id) return;
+    await fetchRevenueData(store.id, dateFormat);
+  };
 
   return (
     <>
@@ -347,13 +360,13 @@ export default function SellerDashboard() {
                     <div className="space-x-2">
                       <Button
                         variant={view === "6months" ? "default" : "outline"}
-                        onClick={() => setView("6months")}
+                        onClick={() => handleRevenuePerDateSwitch("6months")}
                       >
                         6 Months
                       </Button>
                       <Button
                         variant={view === "30days" ? "default" : "outline"}
-                        onClick={() => setView("30days")}
+                        onClick={() => handleRevenuePerDateSwitch("30days")}
                       >
                         30 Days
                       </Button>
