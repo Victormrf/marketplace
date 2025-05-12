@@ -95,6 +95,31 @@ export class OrderModel {
     });
   }
 
+  static async getDailySalesBySeller(sellerId: string) {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    return prisma.order.findMany({
+      where: {
+        status: "DELIVERED",
+        createdAt: {
+          gte: thirtyDaysAgo,
+        },
+        orderItems: {
+          some: {
+            product: {
+              sellerId: sellerId,
+            },
+          },
+        },
+      },
+      select: {
+        totalPrice: true,
+        createdAt: true,
+      },
+    });
+  }
+
   static async getOrdersBySeller(sellerId: string): Promise<OrderModel[]> {
     return prisma.order.findMany({
       where: {

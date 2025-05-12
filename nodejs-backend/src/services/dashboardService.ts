@@ -56,6 +56,39 @@ export class DashboardService {
     return result;
   }
 
+  async getDailySalesStats(sellerId: string) {
+    const orders = await OrderModel.getDailySalesBySeller(sellerId);
+
+    if (!orders.length) {
+      throw new ObjectsNotFoundError("Orders");
+    }
+
+    const dailySalesMap: Record<string, number> = {};
+
+    for (const order of orders) {
+      const dayKey = format(order.createdAt, "yyyy-MM-dd"); // Ex: "2025-05-05"
+      if (!dailySalesMap[dayKey]) {
+        dailySalesMap[dayKey] = 0;
+      }
+      dailySalesMap[dayKey] += order.totalPrice || 0;
+    }
+
+    // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
+    const result: { date: string; revenue: number }[] = [];
+    const now = new Date();
+    for (let i = 30; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      const key = format(date, "yyyy-MM-dd");
+      result.push({
+        date: key,
+        revenue: dailySalesMap[key] || 0,
+      });
+    }
+
+    return result;
+  }
+
   async getOrdersBySeller(sellerId: string) {
     const orders = await OrderModel.getOrdersBySeller(sellerId);
 
