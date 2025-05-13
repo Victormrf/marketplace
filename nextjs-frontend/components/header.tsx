@@ -21,7 +21,13 @@ import AlertPopup from "./popups/alertPopup";
 
 type UserRole = "CUSTOMER" | "SELLER" | "ADMIN" | null;
 
-export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
+export default function Header({
+  onAuthClick,
+  refreshTrigger = 0,
+}: {
+  onAuthClick?: () => void;
+  refreshTrigger?: number;
+}) {
   const [name, setName] = useState(null);
   const [email, setEmail] = useState(null);
   const [role, setRole] = useState<UserRole>(null);
@@ -33,7 +39,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
   function logout() {
     setRole(null);
     setShowUserPreferences(false);
-    // router.push("/");
+    router.push("/");
   }
 
   const hasAttemptedLoginRef = useRef(false);
@@ -54,6 +60,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
 
           if (hasAttemptedLoginRef.current) {
             setShowAlert(true);
+            router.push("/");
           }
 
           return;
@@ -62,18 +69,24 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
         setRole(user.role || null);
         setName(user.name || null);
         setEmail(user.email || null);
+        hasAttemptedLoginRef.current = true;
       } catch (error) {
         console.error("Erro ao buscar o usuário:", error);
         setRole(null);
         setName(null);
         setEmail(null);
+
+        if (hasAttemptedLoginRef.current) {
+          setShowAlert(true);
+          router.push("/");
+        }
       } finally {
         hasAttemptedLoginRef.current = true;
       }
     }
 
     fetchUserRole();
-  }, []);
+  }, [router, refreshTrigger]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

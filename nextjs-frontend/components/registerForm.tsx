@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 type RegisterFormProps = {
   onBackToLogin?: () => void;
   onClose?: () => void;
+  onAuthSuccess?: () => void;
 };
 
 export default function RegisterForm({

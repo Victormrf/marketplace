@@ -17,11 +17,13 @@ import { useRouter } from "next/navigation";
 type LoginFormProps = {
   onRegisterClick?: () => void;
   onClose?: () => void;
+  onAuthSuccess?: () => void;
 };
 
 export default function LoginForm({
   onRegisterClick,
   onClose,
+  onAuthSuccess,
 }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -97,14 +99,23 @@ export default function LoginForm({
 
         const sellerData = await sellerRes.json();
         const sellerId = sellerData.profile.id;
+
+        // Primeiro atualizamos o header
+        onAuthSuccess?.();
+
+        // Pequeno delay para garantir que o estado foi atualizado
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Depois fechamos o modal e navegamos
         if (onClose) onClose();
-        router.push(`/store/${sellerId}`);
+        await router.push(`/store/${sellerId}`);
         return;
       }
 
       // 5. Fecha o modal ou redireciona
+      onAuthSuccess?.();
       if (onClose) onClose();
-      window.location.reload();
+      router.refresh();
     } catch (err: unknown) {
       setError(
         `Erro ao fazer login. Tente novamente. ${

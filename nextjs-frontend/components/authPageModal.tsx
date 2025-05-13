@@ -6,9 +6,14 @@ import RegisterForm from "@/components/registerForm";
 type AuthPageModalProps = {
   open: boolean;
   onClose: () => void;
+  onAuthSuccess: () => void;
 };
 
-export default function AuthPageModal({ open, onClose }: AuthPageModalProps) {
+export default function AuthPageModal({
+  open,
+  onClose,
+  onAuthSuccess,
+}: AuthPageModalProps) {
   const [showRegister, setShowRegister] = useState(false);
 
   if (!open) return null;
@@ -29,11 +34,13 @@ export default function AuthPageModal({ open, onClose }: AuthPageModalProps) {
           <RegisterForm
             onBackToLogin={() => setShowRegister(false)}
             onClose={onClose}
+            onAuthSuccess={onAuthSuccess}
           />
         ) : (
           <LoginForm
             onRegisterClick={() => setShowRegister(true)}
             onClose={onClose}
+            onAuthSuccess={onAuthSuccess}
           />
         )}
       </div>

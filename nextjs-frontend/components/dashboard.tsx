@@ -48,6 +48,7 @@ export interface ProductData {
   category: string;
   image?: string;
   createdAt: Date;
+  totalSold?: number;
 }
 
 export interface OrderData {
@@ -86,14 +87,6 @@ const COLORS = ["#1f283c", "#cbd5e2", "#48556c", "#a1a1a1"];
 //   { date: "04/15", revenue: 80 },
 // ];
 
-const topProducts = [
-  { name: "Wireless Mouse", quantity: 45 },
-  { name: "Laptop Stand", quantity: 32 },
-  { name: "Mechanical Keyboard", quantity: 28 },
-  { name: "Smartwatch", quantity: 25 },
-  { name: "Mouse Pad", quantity: 21 },
-];
-
 const categoryRevenue = [
   { category: "Office", value: 4200 },
   { category: "Electronics", value: 3100 },
@@ -126,6 +119,9 @@ const ordersByStatus = [
 export default function SellerDashboard() {
   const [view, setView] = useState<"6months" | "30days">("6months");
   const [store, setStore] = useState<StoreData | null>(null);
+  const [selectedTab, setSelectedTab] = useState<
+    "overview" | "sales" | "customers"
+  >("overview");
   const [loading, setLoading] = useState(true);
   const [totalSales, setTotalSales] = useState(0);
   const [storeProducts, setStoreProducts] = useState<ProductData[]>([]);
@@ -134,6 +130,9 @@ export default function SellerDashboard() {
   const [revenuePerDate, setRevenuePerDate] = useState<
     { date: string; revenue: number }[]
   >([]);
+  const [bestSellingProducts, setBestSellingProducts] = useState<ProductData[]>(
+    []
+  );
 
   const fetchRevenueData = async (
     storeId: string,
@@ -272,6 +271,21 @@ export default function SellerDashboard() {
 
             // Initial revenue data fetch
             await fetchRevenueData(storeData.id, "6months");
+
+            // Top selling products
+            const bestSellingProductsRes = await fetch(
+              `http://localhost:8000/dashboard/sellers/bestSellingProducts/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            const bestSellingProductsData = await bestSellingProductsRes.json();
+            setBestSellingProducts(bestSellingProductsData);
           } catch (error) {
             console.error("Error retrieving dashboard data:", error);
           }
@@ -306,6 +320,8 @@ export default function SellerDashboard() {
             userEmail={
               store?.user?.email ? store.user.email : "email@exemplo.com"
             }
+            selectedTab={selectedTab}
+            onTabChange={(tab) => setSelectedTab(tab)}
           />
           <div className="p-6 space-y-8">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -395,11 +411,11 @@ export default function SellerDashboard() {
                     Top Selling Products
                   </h2>
                   <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={topProducts} layout="vertical">
+                    <BarChart data={bestSellingProducts} layout="vertical">
                       <XAxis type="number" />
                       <YAxis type="category" dataKey="name" width={180} />
                       <Tooltip />
-                      <Bar dataKey="quantity" fill="#1f283c" />
+                      <Bar dataKey="totalSold" fill="#1f283c" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>

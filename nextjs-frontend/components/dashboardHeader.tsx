@@ -1,17 +1,23 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 
+interface DashboardHeaderProps {
+  storeLogo: string;
+  storeName: string;
+  userEmail: string;
+  selectedTab: "overview" | "sales" | "customers";
+  onTabChange: (tab: "overview" | "sales" | "customers") => void;
+}
+
 export default function DashboardHeader({
   storeLogo,
   storeName,
   userEmail,
-}: {
-  storeLogo: string;
-  storeName: string;
-  userEmail: string;
-}) {
+  selectedTab,
+  onTabChange,
+}: DashboardHeaderProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex flex-wrap items-center justify-between gap-y-4">
+    <div className="relative bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex flex-wrap items-center justify-between gap-y-4">
       {/* Logo + Nome da loja */}
       <div className="flex items-center gap-4">
         <div className="rounded-full overflow-hidden">
@@ -29,10 +35,15 @@ export default function DashboardHeader({
 
       {/* Tabs de navegação */}
       <div className="absolute left-1/2 transform -translate-x-1/2">
-        <Tabs defaultValue="overview">
+        <Tabs
+          value={selectedTab}
+          onValueChange={(value) =>
+            onTabChange(value as "overview" | "sales" | "customers")
+          }
+        >
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsTrigger value="sales">Sales</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
           </TabsList>
         </Tabs>
