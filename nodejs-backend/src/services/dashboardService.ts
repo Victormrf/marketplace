@@ -31,21 +31,23 @@ export class DashboardService {
       throw new ObjectsNotFoundError("Orders");
     }
 
-    const categoryCount: Record<string, number> = {};
+    const categoryTotals: Record<string, number> = {};
 
     for (const order of orders) {
       for (const item of order.orderItems) {
         const category = item.product.category;
+        const totalItemValue = item.quantity * item.unitPrice;
         if (category) {
-          categoryCount[category] = (categoryCount[category] || 0) + 1;
+          categoryTotals[category] =
+            (categoryTotals[category] || 0) + totalItemValue;
         }
       }
     }
 
     // Formata o retorno como um array opcionalmente
-    return Object.entries(categoryCount).map(([category, count]) => ({
+    return Object.entries(categoryTotals).map(([category, totalSales]) => ({
       category,
-      totalSales: count,
+      totalSales,
     }));
   }
 

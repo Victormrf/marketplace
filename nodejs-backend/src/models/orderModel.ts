@@ -84,6 +84,8 @@ export class OrderModel {
       select: {
         orderItems: {
           select: {
+            quantity: true,
+            unitPrice: true,
             product: {
               select: {
                 category: true,
