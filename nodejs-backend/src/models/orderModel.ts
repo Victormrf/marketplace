@@ -69,6 +69,32 @@ export class OrderModel {
     });
   }
 
+  static async getCompletedOrdersByCategory(sellerId: string) {
+    return prisma.order.findMany({
+      where: {
+        status: "DELIVERED",
+        orderItems: {
+          some: {
+            product: {
+              sellerId,
+            },
+          },
+        },
+      },
+      select: {
+        orderItems: {
+          select: {
+            product: {
+              select: {
+                category: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   static async getMonthlySalesBySeller(sellerId: string) {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);

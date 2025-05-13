@@ -24,6 +24,31 @@ export class DashboardService {
     };
   }
 
+  async getSalesCountByCategory(sellerId: string) {
+    const orders = await OrderModel.getCompletedOrdersByCategory(sellerId);
+
+    if (!orders.length) {
+      throw new ObjectsNotFoundError("Orders");
+    }
+
+    const categoryCount: Record<string, number> = {};
+
+    for (const order of orders) {
+      for (const item of order.orderItems) {
+        const category = item.product.category;
+        if (category) {
+          categoryCount[category] = (categoryCount[category] || 0) + 1;
+        }
+      }
+    }
+
+    // Formata o retorno como um array opcionalmente
+    return Object.entries(categoryCount).map(([category, count]) => ({
+      category,
+      totalSales: count,
+    }));
+  }
+
   async getMonthlySalesStats(sellerId: string) {
     const orders = await OrderModel.getMonthlySalesBySeller(sellerId);
 

@@ -27,6 +27,24 @@ dashboardRoutes.get(
 );
 
 dashboardRoutes.get(
+  "/sellers/salesByCategory/:sellerId",
+  authMiddleware,
+  async (req, res) => {
+    const { sellerId } = req.params;
+    try {
+      const data = await dashboardService.getSalesCountByCategory(sellerId);
+      res.status(200).json(data);
+    } catch (error) {
+      if (error instanceof ObjectsNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+dashboardRoutes.get(
   "/sellers/orders/:sellerId",
   authMiddleware,
   async (req, res) => {
