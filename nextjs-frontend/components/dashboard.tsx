@@ -87,12 +87,12 @@ const COLORS = ["#1f283c", "#cbd5e2", "#48556c", "#a1a1a1"];
 //   { date: "04/15", revenue: 80 },
 // ];
 
-const categoryRevenue = [
-  { category: "Office", value: 4200 },
-  { category: "Electronics", value: 3100 },
-  { category: "Accessories", value: 2700 },
-  { category: "Fitness", value: 1500 },
-];
+// const categoryRevenue = [
+//   { category: "Office", value: 4200 },
+//   { category: "Electronics", value: 3100 },
+//   { category: "Accessories", value: 2700 },
+//   { category: "Fitness", value: 1500 },
+// ];
 
 const ratingDistribution = [
   { stars: "5★", count: 40 },
@@ -129,6 +129,9 @@ export default function SellerDashboard() {
   const [avgRating, setAvgRating] = useState(0);
   const [revenuePerDate, setRevenuePerDate] = useState<
     { date: string; revenue: number }[]
+  >([]);
+  const [revenuePerCategory, setRevenuePerCategory] = useState<
+    { category: string; totalSales: number }[]
   >([]);
   const [bestSellingProducts, setBestSellingProducts] = useState<ProductData[]>(
     []
@@ -286,6 +289,21 @@ export default function SellerDashboard() {
 
             const bestSellingProductsData = await bestSellingProductsRes.json();
             setBestSellingProducts(bestSellingProductsData);
+
+            // Revenue per category
+            const revenuePerCategoryRes = await fetch(
+              `http://localhost:8000/dashboard/sellers/salesByCategory/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            const revenuePerCategoryData = await revenuePerCategoryRes.json();
+            setRevenuePerCategory(revenuePerCategoryData);
           } catch (error) {
             console.error("Error retrieving dashboard data:", error);
           }
@@ -430,12 +448,12 @@ export default function SellerDashboard() {
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
-                        data={categoryRevenue}
-                        dataKey="value"
+                        data={revenuePerCategory}
+                        dataKey="totalSales"
                         nameKey="category"
                         outerRadius={80}
                       >
-                        {categoryRevenue.map((entry, index) => (
+                        {revenuePerCategory.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
