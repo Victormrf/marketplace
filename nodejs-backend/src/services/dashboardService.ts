@@ -1,6 +1,7 @@
 import { OrderItem, OrderItemModel } from "../models/orderItemModel";
 import { OrderModel } from "../models/orderModel";
 import { ProductModel } from "../models/productModel";
+import { ReviewModel } from "../models/reviewModel";
 import { ObjectsNotFoundError } from "../utils/customErrors";
 import { format } from "date-fns";
 
@@ -189,5 +190,17 @@ export class DashboardService {
     }
 
     return newCustomersData;
+  }
+
+  async getRatingDistributionOfSeller(sellerId: string) {
+    const distribution = await ReviewModel.getRatingDistributionBySeller(
+      sellerId
+    );
+
+    if (!distribution.length) {
+      throw new ObjectsNotFoundError("Reviews");
+    }
+
+    return distribution;
   }
 }

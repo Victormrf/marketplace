@@ -56,6 +56,31 @@ export class ReviewModel {
     };
   }
 
+  static async getRatingDistributionBySeller(sellerId: string) {
+    const result = await prisma.review.groupBy({
+      by: ["rating"],
+      where: {
+        product: {
+          sellerId: sellerId, // passado como parâmetro
+        },
+      },
+      _count: {
+        rating: true,
+      },
+    });
+
+    return [1, 2, 3, 4, 5].map((rating) => {
+      const found = result.find(
+        (r: { rating: number; _count: { rating: number } }) =>
+          r.rating === rating
+      );
+      return {
+        rating,
+        count: found ? found._count.rating : 0,
+      };
+    });
+  }
+
   static async updateReview(
     reviewId: string,
     data: { rating?: number; comment?: string }
