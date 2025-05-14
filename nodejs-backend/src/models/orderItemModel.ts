@@ -7,6 +7,14 @@ type BestSellingProductGroup = {
   };
 };
 
+export interface OrderItem {
+  id?: string;
+  orderId?: string;
+  productId?: string;
+  quantity?: number;
+  createdAt?: Date;
+}
+
 export class OrderItemModel {
   id?: string;
   orderId?: string;

@@ -1,4 +1,4 @@
-import { OrderItemModel } from "../models/orderItemModel";
+import { OrderItem, OrderItemModel } from "../models/orderItemModel";
 import { OrderModel } from "../models/orderModel";
 import { ProductModel } from "../models/productModel";
 import { ObjectsNotFoundError } from "../utils/customErrors";
@@ -6,45 +6,72 @@ import { format } from "date-fns";
 
 export class DashboardService {
   async getSalesStats(sellerId: string) {
-    const orders = await OrderModel.getCompletedOrdersBySeller(sellerId);
+    const items = await OrderModel.getCompletedOrderItemsBySeller(sellerId);
+
+    if (!items.length) {
+      throw new ObjectsNotFoundError("OrderItems");
+    }
+
+    const totalSales = items.reduce(
+      (sum: number, item: { quantity: number; unitPrice: number }) =>
+        sum + item.quantity * item.unitPrice,
+      0
+    );
+
+    const totalItemsSold = items.reduce(
+      (sum: number, item: { quantity: number }) => sum + item.quantity,
+      0
+    );
+
+    return {
+      totalSales,
+      totalItemsSold,
+    };
+  }
+
+  async getOrdersCountByStatus(sellerId: string) {
+    const orders = await OrderModel.getOrdersByStatus(sellerId);
 
     if (!orders.length) {
       throw new ObjectsNotFoundError("Orders");
     }
 
-    const totalSales = orders.reduce(
-      (sum, order) => sum + order.totalPrice!,
-      0
-    );
-    const totalOrders = orders.length;
+    const statusTotals: Record<string, number> = {};
 
-    return {
-      totalSales,
-      totalOrders,
-    };
+    for (const order of orders) {
+      const status = order.status;
+
+      if (status) {
+        statusTotals[status] = (statusTotals[status] || 0) + 1;
+      }
+    }
+
+    return Object.entries(statusTotals).map(([status, count]) => ({
+      status: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
+      count,
+    }));
   }
 
   async getSalesCountByCategory(sellerId: string) {
-    const orders = await OrderModel.getCompletedOrdersByCategory(sellerId);
+    const orderItems = await OrderModel.getCompletedOrderItemsByCategory(
+      sellerId
+    );
 
-    if (!orders.length) {
-      throw new ObjectsNotFoundError("Orders");
+    if (!orderItems.length) {
+      throw new ObjectsNotFoundError("Order Items");
     }
 
     const categoryTotals: Record<string, number> = {};
 
-    for (const order of orders) {
-      for (const item of order.orderItems) {
-        const category = item.product.category;
-        const totalItemValue = item.quantity * item.unitPrice;
-        if (category) {
-          categoryTotals[category] =
-            (categoryTotals[category] || 0) + totalItemValue;
-        }
+    for (const item of orderItems) {
+      const category = item.product.category;
+      const totalItemValue = item.quantity * item.unitPrice;
+      if (category) {
+        categoryTotals[category] =
+          (categoryTotals[category] || 0) + totalItemValue;
       }
     }
 
-    // Formata o retorno como um array opcionalmente
     return Object.entries(categoryTotals).map(([category, totalSales]) => ({
       category,
       totalSales,

@@ -1,4 +1,5 @@
 import prisma from "../config/db";
+import { OrderItem } from "./orderItemModel";
 
 export enum OrderStatus {
   PENDING = "PENDING",
@@ -8,6 +9,15 @@ export enum OrderStatus {
   DELIVERED = "DELIVERED",
   CANCELLED = "CANCELLED",
   REFUNDED = "REFUNDED",
+}
+
+interface Order {
+  id?: string;
+  customerId?: string;
+  totalPrice?: number;
+  status?: OrderStatus;
+  createdAt?: string;
+  orderItems?: OrderItem[];
 }
 
 export class OrderModel {
@@ -49,28 +59,8 @@ export class OrderModel {
     });
   }
 
-  static async getCompletedOrdersBySeller(
-    sellerId: string
-  ): Promise<OrderModel[]> {
-    return prisma.order.findMany({
-      where: {
-        status: "DELIVERED",
-        orderItems: {
-          some: {
-            product: {
-              sellerId: sellerId,
-            },
-          },
-        },
-      },
-      include: {
-        orderItems: true,
-      },
-    });
-  }
-
-  static async getCompletedOrdersByCategory(sellerId: string) {
-    return prisma.order.findMany({
+  static async getCompletedOrderItemsBySeller(sellerId: string) {
+    const orders = await prisma.order.findMany({
       where: {
         status: "DELIVERED",
         orderItems: {
@@ -83,6 +73,61 @@ export class OrderModel {
       },
       select: {
         orderItems: {
+          where: {
+            product: {
+              sellerId,
+            },
+          },
+          select: {
+            quantity: true,
+            unitPrice: true,
+          },
+        },
+      },
+    });
+
+    return orders.flatMap((order: Order) => order.orderItems);
+  }
+
+  static async getOrdersByStatus(sellerId: string) {
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    return prisma.order.findMany({
+      where: {
+        orderItems: {
+          some: {
+            product: {
+              sellerId,
+            },
+          },
+        },
+        createdAt: {
+          gte: fourteenDaysAgo,
+        },
+      },
+    });
+  }
+
+  static async getCompletedOrderItemsByCategory(sellerId: string) {
+    const orders = await prisma.order.findMany({
+      where: {
+        status: "DELIVERED",
+        orderItems: {
+          some: {
+            product: {
+              sellerId,
+            },
+          },
+        },
+      },
+      select: {
+        orderItems: {
+          where: {
+            product: {
+              sellerId,
+            },
+          },
           select: {
             quantity: true,
             unitPrice: true,
@@ -95,6 +140,9 @@ export class OrderModel {
         },
       },
     });
+
+    // Flatten the orderItems across all orders
+    return orders.flatMap((order: Order) => order.orderItems);
   }
 
   static async getMonthlySalesBySeller(sellerId: string) {
