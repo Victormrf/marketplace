@@ -180,4 +180,14 @@ export class DashboardService {
 
     return result;
   }
+
+  async getNewCustomersPerMonth(sellerId: string) {
+    const newCustomersData = await OrderModel.getNewCustomersByMonth(sellerId);
+
+    if (!newCustomersData.length) {
+      throw new ObjectsNotFoundError("New customers");
+    }
+
+    return newCustomersData;
+  }
 }

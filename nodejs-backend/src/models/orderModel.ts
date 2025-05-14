@@ -210,6 +210,41 @@ export class OrderModel {
     });
   }
 
+  static async getNewCustomersByMonth(sellerId: string) {
+    const result = (await prisma.$queryRawUnsafe(
+      `
+  SELECT 
+    DATE_TRUNC('month', MIN(o."createdAt")) AS month,
+    COUNT(DISTINCT o."customerId") AS new_customers
+  FROM "order" o
+  JOIN "order_item" oi ON oi."orderId" = o."id"
+  JOIN "product" p ON p."id" = oi."productId"
+  WHERE p."sellerId" = $1
+  GROUP BY o."customerId"
+  HAVING MIN(o."createdAt") >= NOW() - INTERVAL '6 months'
+  `,
+      sellerId
+    )) as { month: Date; new_customers: number }[];
+
+    return Array.from({ length: 6 }, (_, i) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (5 - i)); // do mais antigo ao mais recente
+      const key = date.toLocaleString("en-US", { month: "short" });
+
+      const found = result.find((r) => {
+        const rMonth = new Date(r.month).toLocaleString("en-US", {
+          month: "short",
+        });
+        return rMonth === key;
+      });
+
+      return {
+        month: key,
+        newCustomers: found ? Number(found.new_customers) : 0,
+      };
+    });
+  }
+
   static async update(id: string, data: Partial<OrderModel>): Promise<void> {
     return prisma.order.update({
       where: { id },

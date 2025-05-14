@@ -138,3 +138,23 @@ dashboardRoutes.get(
     }
   }
 );
+
+dashboardRoutes.get(
+  "/sellers/newCustomersByMonth/:sellerId",
+  authMiddleware,
+  async (req, res) => {
+    const { sellerId } = req.params;
+    try {
+      const products = await dashboardService.getNewCustomersPerMonth(sellerId);
+      res.status(200).json(products);
+    } catch (error) {
+      console.error("Erro em /sellers/newCustomersByMonth:", error);
+      if (error instanceof ObjectsNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: "Internal Server Error" });
+      return;
+    }
+  }
+);
