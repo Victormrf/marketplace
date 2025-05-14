@@ -58,62 +58,14 @@ export interface OrderData {
   createdAt: Date;
 }
 
-const COLORS = ["#1f283c", "#cbd5e2", "#48556c", "#a1a1a1"];
-
-// const sales6Months = [
-//   { date: "December", revenue: 2000 },
-//   { date: "January", revenue: 1200 },
-//   { date: "February", revenue: 800 },
-//   { date: "March", revenue: 1000 },
-//   { date: "April", revenue: 1800 },
-//   { date: "May", revenue: 750 },
-// ];
-
-// const sales15Days = [
-//   { date: "04/01", revenue: 150 },
-//   { date: "04/02", revenue: 120 },
-//   { date: "04/03", revenue: 90 },
-//   { date: "04/04", revenue: 110 },
-//   { date: "04/05", revenue: 130 },
-//   { date: "04/06", revenue: 100 },
-//   { date: "04/07", revenue: 160 },
-//   { date: "04/08", revenue: 135 },
-//   { date: "04/09", revenue: 90 },
-//   { date: "04/10", revenue: 110 },
-//   { date: "04/11", revenue: 80 },
-//   { date: "04/12", revenue: 70 },
-//   { date: "04/13", revenue: 85 },
-//   { date: "04/14", revenue: 100 },
-//   { date: "04/15", revenue: 80 },
-// ];
-
-// const categoryRevenue = [
-//   { category: "Office", value: 4200 },
-//   { category: "Electronics", value: 3100 },
-//   { category: "Accessories", value: 2700 },
-//   { category: "Fitness", value: 1500 },
-// ];
+const COLORS = ["#1f283c", "#7a7e8a", "#48556c", "#a1a1a1"];
 
 const ratingDistribution = [
-  { stars: "5★", count: 40 },
-  { stars: "4★", count: 15 },
-  { stars: "3★", count: 5 },
-  { stars: "2★", count: 2 },
-];
-
-const newCustomersByMonth = [
-  { month: "January", count: 20 },
-  { month: "February", count: 35 },
-  { month: "March", count: 25 },
-  { month: "April", count: 40 },
-  { month: "May", count: 30 },
-  { month: "June", count: 45 },
-];
-
-const ordersByStatus = [
-  { status: "Pending", value: 24 },
-  { status: "Shipped", value: 40 },
-  { status: "Cancelled", value: 8 },
+  { stars: "5★", count: 5 },
+  { stars: "4★", count: 3 },
+  { stars: "3★", count: 1 },
+  { stars: "2★", count: 1 },
+  { stars: "1★", count: 0 },
 ];
 
 export default function SellerDashboard() {
@@ -136,6 +88,12 @@ export default function SellerDashboard() {
   const [bestSellingProducts, setBestSellingProducts] = useState<ProductData[]>(
     []
   );
+  const [ordersPerStatus, setOrdersPerStatus] = useState<
+    { status: string; count: number }[]
+  >([]);
+  const [newCustomers, setNewCustomers] = useState<
+    { month: string; newCustomers: number }[]
+  >([]);
 
   const fetchRevenueData = async (
     storeId: string,
@@ -304,6 +262,37 @@ export default function SellerDashboard() {
 
             const revenuePerCategoryData = await revenuePerCategoryRes.json();
             setRevenuePerCategory(revenuePerCategoryData);
+
+            // Orders per status
+            const ordersPerStatusRes = await fetch(
+              `http://localhost:8000/dashboard/sellers/ordersByStatus/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            const ordersPerStatusData = await ordersPerStatusRes.json();
+            setOrdersPerStatus(ordersPerStatusData);
+
+            // New customers per month
+            const newCustomersPerMonthRes = await fetch(
+              `http://localhost:8000/dashboard/sellers/newCustomersByMonth/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            const newCustomersPerMonthData =
+              await newCustomersPerMonthRes.json();
+            setNewCustomers(newCustomersPerMonthData);
           } catch (error) {
             console.error("Error retrieving dashboard data:", error);
           }
@@ -331,16 +320,18 @@ export default function SellerDashboard() {
       {loading ? (
         <p>Fetching store data...</p>
       ) : (
-        <>
-          <DashboardHeader
-            storeLogo={store?.logo ? store.logo : "/v-market-logo.png"}
-            storeName={store?.storeName ? store.storeName : "Nome da Loja"}
-            userEmail={
-              store?.user?.email ? store.user.email : "email@exemplo.com"
-            }
-            selectedTab={selectedTab}
-            onTabChange={(tab) => setSelectedTab(tab)}
-          />
+        <div className="min-h-screen">
+          <div className="sticky top-0 z-10 border-b">
+            <DashboardHeader
+              storeLogo={store?.logo ? store.logo : "/v-market-logo.png"}
+              storeName={store?.storeName ? store.storeName : "Nome da Loja"}
+              userEmail={
+                store?.user?.email ? store.user.email : "email@exemplo.com"
+              }
+              selectedTab={selectedTab}
+              onTabChange={(tab) => setSelectedTab(tab)}
+            />
+          </div>
           <div className="p-6 space-y-8">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <Card>
@@ -452,6 +443,7 @@ export default function SellerDashboard() {
                         dataKey="totalSales"
                         nameKey="category"
                         outerRadius={80}
+                        label
                       >
                         {revenuePerCategory.map((entry, index) => (
                           <Cell
@@ -480,15 +472,15 @@ export default function SellerDashboard() {
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
-                        data={ordersByStatus}
-                        dataKey="value"
+                        data={ordersPerStatus}
+                        dataKey="count"
                         nameKey="status"
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
                         label
                       >
-                        {ordersByStatus.map((entry, index) => (
+                        {ordersPerStatus.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
@@ -508,13 +500,13 @@ export default function SellerDashboard() {
                     New customers per Month
                   </h2>
                   <ResponsiveContainer width="100%" height={250}>
-                    <AreaChart data={newCustomersByMonth}>
+                    <AreaChart data={newCustomers}>
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
                       <Area
                         type="monotone"
-                        dataKey="count"
+                        dataKey="newCustomers"
                         stroke="#1f283c"
                         fill="#1f283c"
                       />
@@ -540,7 +532,7 @@ export default function SellerDashboard() {
               </Card>
             </div>
           </div>
-        </>
+        </div>
       )}
     </>
   );
