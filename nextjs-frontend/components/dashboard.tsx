@@ -60,14 +60,6 @@ export interface OrderData {
 
 const COLORS = ["#1f283c", "#7a7e8a", "#48556c", "#a1a1a1"];
 
-const ratingDistribution = [
-  { stars: "5★", count: 5 },
-  { stars: "4★", count: 3 },
-  { stars: "3★", count: 1 },
-  { stars: "2★", count: 1 },
-  { stars: "1★", count: 0 },
-];
-
 export default function SellerDashboard() {
   const [view, setView] = useState<"6months" | "30days">("6months");
   const [store, setStore] = useState<StoreData | null>(null);
@@ -93,6 +85,9 @@ export default function SellerDashboard() {
   >([]);
   const [newCustomers, setNewCustomers] = useState<
     { month: string; newCustomers: number }[]
+  >([]);
+  const [ratingDistribution, setRatingDistribution] = useState<
+    { rating: number; count: number }[]
   >([]);
 
   const fetchRevenueData = async (
@@ -293,6 +288,21 @@ export default function SellerDashboard() {
             const newCustomersPerMonthData =
               await newCustomersPerMonthRes.json();
             setNewCustomers(newCustomersPerMonthData);
+
+            // New customers per month
+            const ratingDistributionRes = await fetch(
+              `http://localhost:8000/dashboard/sellers/ratingDistribution/${storeData.id}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            const ratingDistributionData = await ratingDistributionRes.json();
+            setRatingDistribution(ratingDistributionData);
           } catch (error) {
             console.error("Error retrieving dashboard data:", error);
           }
@@ -522,7 +532,7 @@ export default function SellerDashboard() {
                   </h2>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={ratingDistribution}>
-                      <XAxis dataKey="stars" />
+                      <XAxis dataKey="rating" />
                       <YAxis />
                       <Tooltip />
                       <Bar dataKey="count" fill="#1f283c" />
