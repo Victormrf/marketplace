@@ -31,6 +31,7 @@ export default function Header({
   const [name, setName] = useState(null);
   const [email, setEmail] = useState(null);
   const [role, setRole] = useState<UserRole>(null);
+  const [sellerId, setSellerId] = useState<string | null>(null);
   const [showUserPreferences, setShowUserPreferences] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const userPrefButtonRef = useRef<HTMLButtonElement>(null);
@@ -102,16 +103,54 @@ export default function Header({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  async function fetchSellerData() {
+    try {
+      const res = await fetch("http://localhost:8000/sellers/", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        setSellerId(null);
+        return;
+      }
+
+      const seller = await res.json();
+      setSellerId(seller.profile.id);
+    } catch (error) {
+      console.error("Seller data fetching error:", error);
+    }
+  }
+
   // Features do menu
-  let features: string[] = [];
+  let features: { name: string; href: string }[] = [];
   if (!role) {
-    features = ["Home", "Best Sellers", "Gift Ideas", "Today’s Deals"];
+    features = [
+      { name: "Home", href: "/" },
+      { name: "Best Sellers", href: "/" },
+      { name: "Gift Ideas", href: "/" },
+      { name: "Today’s Deals", href: "/" },
+    ];
   } else if (role === "CUSTOMER") {
-    features = ["Home", "Best Sellers", "Gift Ideas", "Today’s Deals"];
+    features = [
+      { name: "Home", href: "/" },
+      { name: "Best Sellers", href: "/" },
+      { name: "Gift Ideas", href: "/" },
+      { name: "Today’s Deals", href: "/" },
+    ];
   } else if (role === "SELLER") {
-    features = ["Dashboard", "Customers", "Products"];
+    fetchSellerData();
+    features = [
+      { name: "Dashboard", href: `/store/${sellerId}/` },
+      { name: "Customers", href: `/` },
+      { name: "Products", href: `/store/${sellerId}/products` },
+    ];
   } else if (role === "ADMIN") {
-    features = ["Dashboard", "Users", "Support"];
+    features = [
+      { name: "Dashboard", href: "/" },
+      { name: "Users", href: "/" },
+      { name: "Support", href: "/" },
+    ];
   }
 
   // JSX da seção direita
@@ -389,13 +428,13 @@ export default function Header({
                 />
               </Link>
               <ul className="hidden lg:flex items-center gap-6 text-l font-medium">
-                {features.map((item) => (
-                  <li key={item}>
+                {features.map((item, index) => (
+                  <li key={index}>
                     <Link
-                      href="/"
-                      className="text-gray-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-500"
+                      href={item.href}
+                      className="text-gray-900 hover:text-primary-700 hover:underline dark:text-white dark:hover:text-primary-500"
                     >
-                      {item}
+                      {item.name}
                     </Link>
                   </li>
                 ))}
