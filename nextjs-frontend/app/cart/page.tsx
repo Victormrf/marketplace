@@ -13,6 +13,7 @@ type Product = {
   price: number;
   stock: number;
   category: string;
+  image?: string;
   createdAt: string;
 };
 
@@ -24,18 +25,6 @@ type CartItem = {
   createdAt?: string;
   product?: Product;
 };
-
-const productImages = [
-  "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front.svg",
-  "https://flowbite.s3.amazonaws.com/blocks/e-commerce/apple-watch-light.svg",
-  "https://flowbite.s3.amazonaws.com/blocks/e-commerce/macbook-pro-light.svg",
-  "https://flowbite.s3.amazonaws.com/blocks/e-commerce/ipad-light.svg",
-  "https://flowbite.s3.amazonaws.com/blocks/e-commerce/iphone-light.svg",
-];
-
-function getRandomImage() {
-  return productImages[Math.floor(Math.random() * productImages.length)];
-}
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -308,7 +297,7 @@ export default function CartPage() {
                       <a href="#" className="shrink-0 md:order-1">
                         <Image
                           className="h-20 w-20"
-                          src={getRandomImage()}
+                          src={item.product?.image || "/placeholder.svg"}
                           alt={item.product?.name || "Produto"}
                           width={80}
                           height={80}

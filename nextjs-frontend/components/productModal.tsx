@@ -153,19 +153,29 @@ export function ProductModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex justify-between items-center">
+          <DialogTitle className="pt-4 flex justify-between items-center">
             {isEditing ? "Editar Produto" : "Detalhes do Produto"}
-            <Button variant="ghost" size="icon" onClick={toggleEditMode}>
-              {isEditing ? (
-                <X className="h-4 w-4" />
-              ) : (
-                <Edit className="h-4 w-4" />
-              )}
-            </Button>
+            <div className="relative group">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleEditMode}
+                className="h-12 w-12 rounded-full border border-solid hover:bg-gray-100"
+              >
+                {isEditing ? (
+                  <X className="h-6 w-6 scale-125" />
+                ) : (
+                  <Edit className="h-6 w-6 scale-125" />
+                )}
+              </Button>
+              <span className="absolute -bottom-8 right-0 scale-0 transition-all rounded bg-gray-800 p-2 text-xs text-white group-hover:scale-100">
+                {isEditing ? "Cancelar edição" : "Editar produto"}
+              </span>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Imagem do Produto */}
           <div className="space-y-4">
             <div className="relative aspect-square rounded-md overflow-hidden border">
@@ -192,120 +202,124 @@ export function ProductModal({
           </div>
 
           {/* Detalhes do Produto */}
-          <div className="space-y-4">
-            {isEditing ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Produto</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={editedProduct.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={editedProduct.description || ""}
-                    onChange={handleChange}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col h-full">
+            <div className="flex-grow space-y-4">
+              {isEditing ? (
+                <>
                   <div className="space-y-2">
-                    <Label htmlFor="price">Preço (R$)</Label>
+                    <Label htmlFor="name">Nome do Produto</Label>
                     <Input
-                      id="price"
-                      name="price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editedProduct.price}
+                      id="name"
+                      name="name"
+                      value={editedProduct.name}
                       onChange={handleChange}
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="stock">Estoque</Label>
-                    <Input
-                      id="stock"
-                      name="stock"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={editedProduct.stock}
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      value={editedProduct.description || ""}
                       onChange={handleChange}
-                      required
+                      rows={4}
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="category">Categoria</Label>
-                  <Select
-                    value={editedProduct.category}
-                    onValueChange={handleCategoryChange}
-                  >
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <h2 className="text-2xl font-bold">{product.name}</h2>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge>{product.category}</Badge>
-                    <Badge variant={stockStatus.variant}>
-                      {stockStatus.label}
-                    </Badge>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Preço (R$)</Label>
+                      <Input
+                        id="price"
+                        name="price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editedProduct.price}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="stock">Estoque</Label>
+                      <Input
+                        id="stock"
+                        name="stock"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={editedProduct.stock}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="text-3xl font-bold">
-                  {formatCurrency(product.price)}
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Categoria</Label>
+                    <Select
+                      value={editedProduct.category}
+                      onValueChange={handleCategoryChange}
+                    >
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Selecione uma categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <h2 className="text-2xl font-bold">{product.name}</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge>{product.category}</Badge>
+                      <Badge variant={stockStatus.variant}>
+                        {stockStatus.label}
+                      </Badge>
+                    </div>
+                  </div>
 
+                  <div className="text-3xl font-bold">
+                    {formatCurrency(product.price)}
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Descrição
+                    </h3>
+                    <p className="text-sm">
+                      {product.description || "Sem descrição disponível."}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            {/* Product details at bottom */}
+            {isEditing || (
+              <div className="grid grid-cols-2 gap-4 text-sm mt-auto pt-4 ">
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                    Descrição
+                  <h3 className="font-medium text-muted-foreground mb-1">
+                    ID do Produto
                   </h3>
-                  <p className="text-sm">
-                    {product.description || "Sem descrição disponível."}
-                  </p>
+                  <p className="font-mono">{product.id}</p>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <h3 className="font-medium text-muted-foreground mb-1">
-                      ID do Produto
-                    </h3>
-                    <p className="font-mono">{product.id}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-muted-foreground mb-1">
-                      Data de Criação
-                    </h3>
-                    <p>{formattedDate}</p>
-                  </div>
+                <div>
+                  <h3 className="font-medium text-muted-foreground mb-1">
+                    Data de Criação
+                  </h3>
+                  <p>{formattedDate}</p>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>

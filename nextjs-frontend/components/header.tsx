@@ -39,7 +39,11 @@ export default function Header({
 
   function logout() {
     setRole(null);
+    setName(null);
+    setEmail(null);
+    setSellerId(null);
     setShowUserPreferences(false);
+    localStorage.removeItem("cart");
     router.push("/");
   }
 
@@ -58,35 +62,49 @@ export default function Header({
           setRole(null);
           setName(null);
           setEmail(null);
+          setSellerId(null);
 
           if (hasAttemptedLoginRef.current) {
             setShowAlert(true);
+            localStorage.removeItem("cart"); // Limpa o carrinho local se existir
             router.push("/");
           }
-
           return;
         }
+
         const user = await res.json();
         setRole(user.role || null);
         setName(user.name || null);
         setEmail(user.email || null);
         hasAttemptedLoginRef.current = true;
+
+        // If user is a seller, fetch seller data
+        if (user.role === "SELLER") {
+          await fetchSellerData();
+        }
       } catch (error) {
         console.error("Erro ao buscar o usuário:", error);
         setRole(null);
         setName(null);
         setEmail(null);
+        setSellerId(null);
 
         if (hasAttemptedLoginRef.current) {
           setShowAlert(true);
+          localStorage.removeItem("cart");
           router.push("/");
         }
-      } finally {
-        hasAttemptedLoginRef.current = true;
       }
     }
 
+    // Set up an interval to check the token status every minute
+    const intervalId = setInterval(fetchUserRole, 60000);
+
+    // Initial fetch
     fetchUserRole();
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
   }, [router, refreshTrigger]);
 
   useEffect(() => {
@@ -139,7 +157,6 @@ export default function Header({
       { name: "Today’s Deals", href: "/" },
     ];
   } else if (role === "SELLER") {
-    fetchSellerData();
     features = [
       { name: "Dashboard", href: `/store/${sellerId}/` },
       { name: "Customers", href: `/` },

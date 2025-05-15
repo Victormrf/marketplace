@@ -4,7 +4,6 @@ import { Heart, Search } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { jwtDecode } from "jwt-decode";
 import ProductOverview from "@/components/productOverview";
 import SuccessPopup from "@/components/popups/successPopup";
 
@@ -25,12 +24,6 @@ interface Product {
   createdAt?: string;
 }
 
-interface DecodedToken {
-  id: string;
-  email: string;
-  role: "customer" | "seller" | "admin";
-}
-
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category");
@@ -45,63 +38,62 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
 
   // Função para adicionar ao carrinho
-  function handleAddToCart(productId: string, btnElement: HTMLButtonElement) {
-    // Verifica se existe um usuário logado
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    let userId: string | null = null;
+  async function handleAddToCart(
+    productId: string,
+    btnElement: HTMLButtonElement
+  ) {
+    try {
+      // Verifica se existe um usuário logado usando a rota /me
+      const userRes = await fetch("http://localhost:8000/users/me", {
+        method: "GET",
+        credentials: "include",
+      });
 
-    if (token) {
-      try {
-        const decoded = jwtDecode<DecodedToken>(token);
-        userId = decoded.id;
-      } catch {
-        userId = null;
-      }
-    }
-
-    if (userId) {
-      // Usuário logado: adiciona no backend
-      fetch("http://localhost:8000/cart-items", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId,
-          productId,
-          quantity: 1,
-        }),
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error("Erro ao adicionar ao carrinho");
-        })
-        .catch((error) => {
-          alert("Erro ao adicionar ao carrinho.");
-          console.error(error);
+      if (userRes.ok) {
+        // Usuário está logado, adiciona no backend
+        const addToCartRes = await fetch("http://localhost:8000/cart-items", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            productId,
+            quantity: 1,
+          }),
         });
-    } else {
-      // Tenta obter o carrinho do localStorage, ou inicia como array vazio
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      const existing = cart.find(
-        (item: { productId: string; quantity: number }) =>
-          item.productId === productId
-      );
-      if (existing) {
-        existing.quantity += 1;
-      } else {
-        cart.push({ productId, quantity: 1 });
-      }
-      localStorage.setItem("cart", JSON.stringify(cart));
-    }
 
-    const rect = btnElement.getBoundingClientRect();
-    setSuccessPosition({
-      top: rect.top + window.scrollY - 40,
-      left: rect.left + window.scrollX + rect.width / 2,
-    });
-    setShowSuccess(true);
+        if (!addToCartRes.ok) {
+          throw new Error("Erro ao adicionar ao carrinho");
+        }
+      } else {
+        // Usuário não está logado, salva no localStorage
+        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+        const existing = cart.find(
+          (item: { productId: string; quantity: number }) =>
+            item.productId === productId
+        );
+
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          cart.push({ productId, quantity: 1 });
+        }
+
+        localStorage.setItem("cart", JSON.stringify(cart));
+      }
+
+      // Mostra popup de sucesso
+      const rect = btnElement.getBoundingClientRect();
+      setSuccessPosition({
+        top: rect.top + window.scrollY - 40,
+        left: rect.left + window.scrollX + rect.width / 2,
+      });
+      setShowSuccess(true);
+    } catch (error) {
+      console.error("Erro ao adicionar ao carrinho:", error);
+      alert("Erro ao adicionar ao carrinho.");
+    }
   }
 
   useEffect(() => {
@@ -168,7 +160,7 @@ export default function ProductsPage() {
                   className="rounded-lg object-contain"
                   width={160}
                   height={200}
-                  src={product.image || "/images/blank-shirt-model.png"}
+                  src={product.image || "/placeholder.svg"}
                   alt="Imagem do produto"
                 />
               </div>
