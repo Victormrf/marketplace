@@ -1,4 +1,3 @@
-// listagem de produtos
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,7 +18,6 @@ import { ProductModal } from "@/components/editProductModal";
 import { toast } from "@/hooks/use-toast";
 import { NewProductModal } from "@/components/newProductModal";
 
-// Tipos baseados no modelo fornecido
 export type Product = {
   id: string;
   sellerId: string;
@@ -32,7 +30,6 @@ export type Product = {
   createdAt: Date;
 };
 
-// Categorias de exemplo
 const CATEGORIES = [
   "Todos",
   "Eletrônicos",
@@ -47,95 +44,51 @@ const CATEGORIES = [
   "Outros",
 ];
 
-// Produtos de exemplo
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    sellerId: "seller1",
-    name: "Smartphone Galaxy S23",
-    description:
-      "Smartphone Samsung Galaxy S23 com 256GB de armazenamento e 8GB de RAM.",
-    price: 4999.99,
-    stock: 15,
-    category: "Eletrônicos",
-    image: "/placeholder.svg",
-    createdAt: new Date("2023-10-15"),
-  },
-  {
-    id: "2",
-    sellerId: "seller1",
-    name: "Notebook Dell Inspiron",
-    description:
-      "Notebook Dell Inspiron com processador Intel i7, 16GB de RAM e SSD de 512GB.",
-    price: 5499.99,
-    stock: 8,
-    category: "Eletrônicos",
-    image: "/placeholder.svg",
-    createdAt: new Date("2023-09-20"),
-  },
-  {
-    id: "3",
-    sellerId: "seller1",
-    name: "Camiseta Básica",
-    description: "Camiseta básica 100% algodão, disponível em várias cores.",
-    price: 59.9,
-    stock: 100,
-    category: "Roupas",
-    image: "/placeholder.svg",
-    createdAt: new Date("2023-11-05"),
-  },
-  {
-    id: "4",
-    sellerId: "seller1",
-    name: "Tênis Esportivo",
-    description:
-      "Tênis esportivo para corrida e caminhada, com amortecimento e suporte.",
-    price: 299.9,
-    stock: 25,
-    category: "Esportes",
-    image: "/placeholder.svg",
-    createdAt: new Date("2023-10-25"),
-  },
-  {
-    id: "5",
-    sellerId: "seller1",
-    name: "Fone de Ouvido Bluetooth",
-    description:
-      "Fone de ouvido sem fio com cancelamento de ruído e bateria de longa duração.",
-    price: 349.9,
-    stock: 30,
-    category: "Eletrônicos",
-    image: "/placeholder.svg",
-    createdAt: new Date("2023-11-10"),
-  },
-  {
-    id: "6",
-    sellerId: "seller1",
-    name: "Livro - O Senhor dos Anéis",
-    description: "Edição completa da trilogia O Senhor dos Anéis, capa dura.",
-    price: 149.9,
-    stock: 12,
-    category: "Livros",
-    image: "/placeholder.svg",
-    createdAt: new Date("2023-09-15"),
-  },
-];
-
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [filteredProducts, setFilteredProducts] =
-    useState<Product[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
 
-  // Filtrar produtos quando a busca ou categoria mudar
+  // Fetch dos produtos do seller
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch("/api/seller/products", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // Se necessário, inclua o token:
+            // Authorization: `Bearer ${token}`
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error("Erro ao buscar produtos");
+        }
+
+        const data = await res.json();
+        setProducts(data);
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar os produtos do vendedor.",
+          variant: "destructive",
+        });
+        console.error(error);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Filtragem dinâmica
   useEffect(() => {
     let filtered = [...products];
 
-    // Filtrar por busca
     if (searchQuery) {
       filtered = filtered.filter(
         (product) =>
@@ -144,7 +97,6 @@ export default function ProductsPage() {
       );
     }
 
-    // Filtrar por categoria
     if (selectedCategory !== "Todos") {
       filtered = filtered.filter(
         (product) => product.category === selectedCategory
@@ -154,18 +106,14 @@ export default function ProductsPage() {
     setFilteredProducts(filtered);
   }, [searchQuery, selectedCategory, products]);
 
-  // Função para abrir o modal com o produto selecionado
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
 
-  // Função para atualizar um produto
   const handleUpdateProduct = (updatedProduct: Product) => {
-    setProducts((prevProducts) =>
-      prevProducts.map((product) =>
-        product.id === updatedProduct.id ? updatedProduct : product
-      )
+    setProducts((prev) =>
+      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
     );
 
     toast({
@@ -181,7 +129,7 @@ export default function ProductsPage() {
       <div className="sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h1 className="text-3xl font-bold">Ypur Products</h1>
+            <h1 className="text-3xl font-bold">Your Products</h1>
             <Button onClick={() => setIsNewProductModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               New Product
@@ -251,7 +199,6 @@ export default function ProductsPage() {
         />
       )}
 
-      {/* New product modal */}
       <NewProductModal
         isOpen={isNewProductModalOpen}
         onClose={() => setIsNewProductModalOpen(false)}
