@@ -12,7 +12,7 @@ interface ProductData {
   price: number;
   stock: number;
   category: Category;
-  image: string;
+  image?: string;
 }
 
 export class ProductService {

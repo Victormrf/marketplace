@@ -36,7 +36,7 @@ export class ProductModel {
     price: number;
     stock: number;
     category: string;
-    image: string;
+    image?: string;
   }): Promise<ProductModel> {
     return prisma.product.create({
       data: {

@@ -20,7 +20,7 @@ productRoutes.post(
     const { sellerId, name, description, price, stock, category } = req.body;
 
     // A imagem processada pelo Cloudinary já retorna a URL pública em req.file.path
-    const image = (req.file as any)?.path;
+    const imageUrl = (req.file as any)?.path || null;
 
     try {
       const newProductListing = await productService.createOrRestockProduct({
@@ -30,15 +30,21 @@ productRoutes.post(
         price: parseFloat(price),
         stock: parseInt(stock),
         category,
-        image,
+        image: imageUrl,
       });
 
       res.status(201).json(newProductListing);
     } catch (error) {
-      if (error instanceof ValidationError) {
+      if (error instanceof Error) {
+        console.error("Erro ao criar produto:", error.message);
+        console.error("Stack:", error.stack);
+      } else if (error instanceof ValidationError) {
         res.status(400).json({ error: error.message });
       } else {
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({
+          message: "Erro interno ao criar produto",
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }

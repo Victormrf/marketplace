@@ -31,3 +31,13 @@ authRoutes.post("/login", async (req, res) => {
     return;
   }
 });
+
+authRoutes.post("/logout", (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  res.status(200).json({ message: "User logged out successfully." });
+});
