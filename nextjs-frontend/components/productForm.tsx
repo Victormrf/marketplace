@@ -27,19 +27,24 @@ import { toast } from "@/hooks/use-toast";
 
 // Categorias de exemplo - substitua pelas categorias reais do seu marketplace
 const CATEGORIES = [
-  "Eletrônicos",
-  "Roupas",
-  "Acessórios",
-  "Casa e Decoração",
-  "Esportes",
-  "Livros",
-  "Brinquedos",
-  "Saúde e Beleza",
-  "Alimentos",
-  "Outros",
+  "Office",
+  "Sports",
+  "Books",
+  "Beauty",
+  "Clothing",
+  "Toys",
+  "TvProjectors",
+  "SmartphonesTablets",
+  "Eletronics",
+  "Pets",
+  "Furniture",
 ];
 
-export default function ProductForm() {
+interface ProductFormProps {
+  onSuccess?: () => void;
+}
+
+export default function ProductForm({ onSuccess }: ProductFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -81,8 +86,8 @@ export default function ProductForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    // Validação básica
     if (
       !formData.name ||
       !formData.price ||
@@ -94,54 +99,49 @@ export default function ProductForm() {
         description: "Por favor, preencha todos os campos obrigatórios.",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      // Aqui você implementaria a lógica para fazer upload da imagem
-      // e obter a URL para salvar no banco de dados
-      let imageUrl = "";
+      const sellerDataRes = await fetch("http://localhost:8000/sellers/", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const seller = await sellerDataRes.json();
+      const sellerId = seller.profile.id;
+
+      const data = new FormData();
+      data.append("sellerId", sellerId);
+      data.append("name", formData.name);
+      data.append("description", formData.description);
+      data.append("price", formData.price);
+      data.append("stock", formData.stock);
+      data.append("category", formData.category);
+
+      console.log(data);
+
       if (imageFile) {
-        // Exemplo de como seria o upload (pseudocódigo)
-        // const uploadedImage = await uploadImage(imageFile)
-        // imageUrl = uploadedImage.url
-        imageUrl = "https://exemplo.com/imagem-temporaria.jpg"; // Placeholder
+        data.append("image", imageFile);
       }
 
-      // Criar o objeto do produto
-      const productData = {
-        name: formData.name,
-        description: formData.description,
-        price: Number.parseFloat(formData.price),
-        stock: Number.parseInt(formData.stock),
-        category: formData.category,
-        image: imageUrl,
-        // sellerId seria obtido do contexto de autenticação
-        // sellerId: currentUser.id
-      };
+      const productRes = await fetch("http://localhost:8000/products/", {
+        method: "POST",
+        body: data,
+        credentials: "include",
+      });
 
-      // Aqui você implementaria a chamada à API para salvar o produto
-      // const response = await fetch('/api/products', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(productData)
-      // })
-
-      // if (!response.ok) throw new Error('Falha ao criar produto')
+      if (!productRes.ok) {
+        throw new Error("Falha ao criar produto");
+      }
 
       toast({
         title: "Produto criado com sucesso!",
         description: "Seu produto foi adicionado ao marketplace.",
       });
 
-      // Redirecionar para a página de produtos ou dashboard
-      // router.push('/dashboard/products')
-
-      console.log("Produto criado:", productData);
-
-      // Reset do formulário
+      // Reset
       setFormData({
         name: "",
         description: "",
@@ -152,6 +152,7 @@ export default function ProductForm() {
       });
       setImageFile(null);
       setImagePreview(null);
+      onSuccess?.();
     } catch (error) {
       console.error("Erro ao criar produto:", error);
       toast({

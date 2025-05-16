@@ -15,8 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProductCard } from "@/components/productCard";
-import { ProductModal } from "@/components/productModal";
+import { ProductModal } from "@/components/editProductModal";
 import { toast } from "@/hooks/use-toast";
+import { NewProductModal } from "@/components/newProductModal";
 
 // Tipos baseados no modelo fornecido
 export type Product = {
@@ -128,6 +129,7 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
 
   // Filtrar produtos quando a busca ou categoria mudar
   useEffect(() => {
@@ -179,13 +181,11 @@ export default function ProductsPage() {
       <div className="sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h1 className="text-3xl font-bold">Produtos</h1>
-            <Link href="/dashboard/products/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Produto
-              </Button>
-            </Link>
+            <h1 className="text-3xl font-bold">Ypur Products</h1>
+            <Button onClick={() => setIsNewProductModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Product
+            </Button>
           </div>
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_200px] gap-4">
@@ -250,6 +250,12 @@ export default function ProductsPage() {
           onUpdate={handleUpdateProduct}
         />
       )}
+
+      {/* New product modal */}
+      <NewProductModal
+        isOpen={isNewProductModalOpen}
+        onClose={() => setIsNewProductModalOpen(false)}
+      />
     </div>
   );
 }

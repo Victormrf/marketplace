@@ -37,14 +37,34 @@ export default function Header({
   const userPrefButtonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
 
-  function logout() {
-    setRole(null);
-    setName(null);
-    setEmail(null);
-    setSellerId(null);
-    setShowUserPreferences(false);
-    localStorage.removeItem("cart");
-    router.push("/");
+  async function logout() {
+    try {
+      const res = await fetch("http://localhost:8000/users/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        throw new Error("Logout failed");
+      }
+
+      setRole(null);
+      setName(null);
+      setEmail(null);
+      setSellerId(null);
+      setShowUserPreferences(false);
+      localStorage.removeItem("cart");
+      router.push("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      setRole(null);
+      setName(null);
+      setEmail(null);
+      setSellerId(null);
+      setShowUserPreferences(false);
+      localStorage.removeItem("cart");
+      router.push("/");
+    }
   }
 
   const hasAttemptedLoginRef = useRef(false);

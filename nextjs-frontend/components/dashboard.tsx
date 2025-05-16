@@ -333,7 +333,7 @@ export default function SellerDashboard() {
         <div className="min-h-screen">
           <div className="sticky top-0 z-10 border-b">
             <DashboardHeader
-              storeLogo={store?.logo ? store.logo : "/v-market-logo.png"}
+              storeLogo={store?.logo ? store.logo : "/store-placeholder.png"}
               storeName={store?.storeName ? store.storeName : "Nome da Loja"}
               userEmail={
                 store?.user?.email ? store.user.email : "email@exemplo.com"
