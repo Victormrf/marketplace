@@ -153,7 +153,7 @@ export default function SellerDashboard() {
 
             if (!salesRes.ok) {
               const errorText = await salesRes.text();
-              throw new Error(`Failed to fetch dashboard data: ${errorText}`);
+              throw new Error(`Failed to fetch sales data: ${errorText}`);
             }
 
             const salesData = await salesRes.json();

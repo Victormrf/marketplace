@@ -45,6 +45,7 @@ const CATEGORIES = [
 ];
 
 export default function ProductsPage() {
+  const [storeId, setStoreId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,21 +58,34 @@ export default function ProductsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch("/api/seller/products", {
+        const storeRes = await fetch("http://localhost:8000/sellers/", {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            // Se necessário, inclua o token:
-            // Authorization: `Bearer ${token}`
-          },
+          credentials: "include",
         });
 
-        if (!res.ok) {
-          throw new Error("Erro ao buscar produtos");
+        if (!storeRes.ok) {
+          throw new Error("Error fetching store data");
         }
 
-        const data = await res.json();
-        setProducts(data);
+        const store = await storeRes.json();
+        setStoreId(store.profile.id);
+
+        if (storeId) {
+          const res = await fetch(
+            `http://localhost:8000/products/seller/${storeId}`,
+            {
+              method: "GET",
+              credentials: "include",
+            }
+          );
+
+          if (!res.ok) {
+            throw new Error("Erro ao buscar produtos");
+          }
+
+          const data = await res.json();
+          setProducts(data.products);
+        }
       } catch (error) {
         toast({
           title: "Erro",
@@ -83,7 +97,7 @@ export default function ProductsPage() {
     };
 
     fetchProducts();
-  }, []);
+  }, [storeId]);
 
   // Filtragem dinâmica
   useEffect(() => {

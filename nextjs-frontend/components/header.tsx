@@ -17,6 +17,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import AlertPopup from "./popups/alertPopup";
 
 type UserRole = "CUSTOMER" | "SELLER" | "ADMIN" | null;
@@ -36,6 +37,7 @@ export default function Header({
   const [showAlert, setShowAlert] = useState(false);
   const userPrefButtonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   async function logout() {
     try {
@@ -109,7 +111,7 @@ export default function Header({
         setEmail(null);
         setSellerId(null);
 
-        if (hasAttemptedLoginRef.current) {
+        if (hasAttemptedLoginRef.current && !pathname?.includes("/store/")) {
           setShowAlert(true);
           localStorage.removeItem("cart");
           router.push("/");
@@ -125,7 +127,7 @@ export default function Header({
 
     // Cleanup interval on component unmount
     return () => clearInterval(intervalId);
-  }, [router, refreshTrigger]);
+  }, [router, refreshTrigger, pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

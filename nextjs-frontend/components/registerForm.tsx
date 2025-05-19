@@ -1,5 +1,7 @@
 "use client";
 
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +25,11 @@ type RegisterFormProps = {
 export default function RegisterForm({
   onBackToLogin,
   onClose,
+  onAuthSuccess,
 }: RegisterFormProps) {
+  const { toast } = useToast();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const [userType, setUserType] = useState<"customer" | "seller" | "">("");
   const [formData, setFormData] = useState({
     name: "",
@@ -42,10 +48,113 @@ export default function RegisterForm({
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ userType, ...formData });
-    // Aqui vai a lógica para registrar o usuário com base no tipo selecionado
+    setIsLoading(true);
+
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Erro de validação",
+        description: "As senhas não coincidem",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // 1. Register user
+      const registerRes = await fetch("http://localhost:8000/users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: userType.toUpperCase(),
+        }),
+      });
+
+      if (!registerRes.ok) {
+        throw new Error("Falha ao registrar usuário");
+      }
+
+      // 2. Login with new account to get JWT
+      const loginRes = await fetch("http://localhost:8000/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      if (!loginRes.ok) {
+        throw new Error("Falha ao realizar login");
+      }
+
+      // 3. Create profile based on user type
+      if (userType === "customer") {
+        const customerRes = await fetch("http://localhost:8000/customers/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            address: formData.address,
+            phone: formData.phone,
+          }),
+        });
+
+        if (!customerRes.ok) {
+          throw new Error("Falha ao criar perfil do cliente");
+        }
+      } else if (userType === "seller") {
+        const sellerRes = await fetch("http://localhost:8000/sellers/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            storeName: formData.companyName,
+            description: formData.companyDescription,
+          }),
+        });
+
+        if (!sellerRes.ok) {
+          throw new Error("Falha ao criar perfil do vendedor");
+        }
+      }
+
+      // Success - notify parent components and close modal
+      toast({
+        title: "Conta criada com sucesso!",
+        description: "Você já está logado no sistema.",
+      });
+
+      onAuthSuccess?.();
+      onClose?.();
+
+      // Redirect based on user type
+      if (userType === "seller") {
+        const sellerData = await fetch("http://localhost:8000/sellers/", {
+          credentials: "include",
+        }).then((res) => res.json());
+        router.push(`/store/${sellerData.profile.id}`);
+      } else {
+        router.push("/");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Erro no registro",
+        description:
+          error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -220,8 +329,12 @@ export default function RegisterForm({
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={!userType}>
-              Registrar
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!userType || isLoading}
+            >
+              {isLoading ? "Registrando..." : "Registrar"}
             </Button>
             <div className="text-center text-sm">
               Já possui uma conta?{" "}
