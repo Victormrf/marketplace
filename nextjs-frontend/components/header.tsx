@@ -181,7 +181,7 @@ export default function Header({
   } else if (role === "SELLER") {
     features = [
       { name: "Dashboard", href: `/store/${sellerId}/` },
-      { name: "Customers", href: `/` },
+      { name: "Customers", href: `/store/${sellerId}/customers` },
       { name: "Products", href: `/store/${sellerId}/products` },
     ];
   } else if (role === "ADMIN") {

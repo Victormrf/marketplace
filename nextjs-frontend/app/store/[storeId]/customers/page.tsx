@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-export default function WishlistPage() {
+export default function CustomersPage() {
   return (
     <div className="h-[calc(80vh-80px)] flex items-center justify-center">
       <div className="flex flex-col items-center">

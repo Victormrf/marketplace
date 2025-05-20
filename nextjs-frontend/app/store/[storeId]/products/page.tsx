@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Search, Plus } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +30,7 @@ export type Product = {
 };
 
 const CATEGORIES = [
-  "Todos",
+  "All",
   "Eletrônicos",
   "Roupas",
   "Acessórios",
@@ -49,7 +48,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
@@ -107,7 +106,7 @@ export default function ProductsPage() {
       );
     }
 
-    if (selectedCategory !== "Todos") {
+    if (selectedCategory !== "All") {
       filtered = filtered.filter(
         (product) => product.category === selectedCategory
       );
@@ -150,7 +149,7 @@ export default function ProductsPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Buscar produtos..."
+                placeholder="Search products..."
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -179,12 +178,13 @@ export default function ProductsPage() {
         {filteredProducts.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-10">
-              <p className="text-muted-foreground mb-4">
-                Nenhum produto encontrado.
-              </p>
-              <Link href="/dashboard/products/new">
-                <Button variant="outline">Adicionar Produto</Button>
-              </Link>
+              <p className="text-muted-foreground mb-4">No products found.</p>
+              <Button
+                onClick={() => setIsNewProductModalOpen(true)}
+                variant="outline"
+              >
+                List your first product
+              </Button>
             </CardContent>
           </Card>
         ) : (

@@ -150,12 +150,6 @@ export default function SellerDashboard() {
                 },
               }
             );
-
-            if (!salesRes.ok) {
-              const errorText = await salesRes.text();
-              throw new Error(`Failed to fetch sales data: ${errorText}`);
-            }
-
             const salesData = await salesRes.json();
             setTotalSales(salesData.totalSales);
 
@@ -170,14 +164,6 @@ export default function SellerDashboard() {
                 },
               }
             );
-
-            if (!productsRes.ok) {
-              const errorText = await productsRes.text();
-              throw new Error(
-                `Failed to fetch products from store: ${errorText}`
-              );
-            }
-
             const productsData = await productsRes.json();
             setStoreProducts(productsData.products);
 
@@ -192,14 +178,6 @@ export default function SellerDashboard() {
                 },
               }
             );
-
-            if (!ordersRes.ok) {
-              const errorText = await ordersRes.text();
-              throw new Error(
-                `Failed to fetch orders from store: ${errorText}`
-              );
-            }
-
             const ordersData = await ordersRes.json();
             setStoreOrders(ordersData);
 
@@ -214,12 +192,6 @@ export default function SellerDashboard() {
                 },
               }
             );
-
-            if (!reviewRes.ok) {
-              const errorText = await reviewRes.text();
-              throw new Error(`Failed to fetch reviews of store: ${errorText}`);
-            }
-
             const reviewData = await reviewRes.json();
             setAvgRating(reviewData.averageRating);
 
@@ -237,7 +209,6 @@ export default function SellerDashboard() {
                 },
               }
             );
-
             const bestSellingProductsData = await bestSellingProductsRes.json();
             setBestSellingProducts(bestSellingProductsData);
 
@@ -252,7 +223,6 @@ export default function SellerDashboard() {
                 },
               }
             );
-
             const revenuePerCategoryData = await revenuePerCategoryRes.json();
             setRevenuePerCategory(revenuePerCategoryData);
 
@@ -267,7 +237,6 @@ export default function SellerDashboard() {
                 },
               }
             );
-
             const ordersPerStatusData = await ordersPerStatusRes.json();
             setOrdersPerStatus(ordersPerStatusData);
 
@@ -282,12 +251,11 @@ export default function SellerDashboard() {
                 },
               }
             );
-
             const newCustomersPerMonthData =
               await newCustomersPerMonthRes.json();
             setNewCustomers(newCustomersPerMonthData);
 
-            // New customers per month
+            // Rating distribution
             const ratingDistributionRes = await fetch(
               `http://localhost:8000/dashboard/sellers/ratingDistribution/${storeData.id}`,
               {
@@ -298,7 +266,6 @@ export default function SellerDashboard() {
                 },
               }
             );
-
             const ratingDistributionData = await ratingDistributionRes.json();
             setRatingDistribution(ratingDistributionData);
           } catch (error) {
@@ -346,7 +313,7 @@ export default function SellerDashboard() {
                 <CardContent className="p-4">
                   <p>Total Sales</p>
                   <p className="text-2xl font-bold">
-                    {totalSales ? `$ ${totalSales}` : "$ 12.300"}
+                    {totalSales ? `$ ${totalSales}` : "$ 0,00"}
                   </p>
                 </CardContent>
               </Card>
@@ -370,7 +337,7 @@ export default function SellerDashboard() {
                 <CardContent className="p-4">
                   <p>Avg. Rating</p>
                   <p className="text-2xl font-bold">
-                    {avgRating ? `${avgRating} / 5` : "4.6 / 5"}
+                    {avgRating ? `${avgRating} / 5` : "-.- / 5"}
                   </p>
                 </CardContent>
               </Card>
@@ -427,14 +394,24 @@ export default function SellerDashboard() {
                   <h2 className="text-lg font-semibold mb-2">
                     Top Selling Products
                   </h2>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={bestSellingProducts} layout="vertical">
-                      <XAxis type="number" />
-                      <YAxis type="category" dataKey="name" width={180} />
-                      <Tooltip />
-                      <Bar dataKey="totalSold" fill="#1f283c" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {bestSellingProducts.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={bestSellingProducts} layout="vertical">
+                        <XAxis type="number" />
+                        <YAxis type="category" dataKey="name" width={180} />
+                        <Tooltip />
+                        <Bar dataKey="totalSold" fill="#1f283c" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground text-center">
+                        No products have been sold yet.
+                        <br />
+                        Your top selling products will appear here.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -444,31 +421,41 @@ export default function SellerDashboard() {
                   <h2 className="text-lg font-semibold mb-2">
                     Revenue by Category
                   </h2>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={revenuePerCategory}
-                        dataKey="totalSales"
-                        nameKey="category"
-                        outerRadius={80}
-                        label
-                      >
-                        {revenuePerCategory.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend
-                        verticalAlign="bottom"
-                        align="right"
-                        iconType="circle"
-                        layout="horizontal"
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {revenuePerCategory.length ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={revenuePerCategory}
+                          dataKey="totalSales"
+                          nameKey="category"
+                          outerRadius={80}
+                          label
+                        >
+                          {revenuePerCategory.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend
+                          verticalAlign="bottom"
+                          align="right"
+                          iconType="circle"
+                          layout="horizontal"
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground text-center">
+                        No products have been sold yet.
+                        <br />
+                        Your revenue per category will appear here.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -477,28 +464,38 @@ export default function SellerDashboard() {
                   <h2 className="text-lg font-semibold mb-2">
                     Recent Orders by Status (Last 14 days)
                   </h2>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={ordersPerStatus}
-                        dataKey="count"
-                        nameKey="status"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        label
-                      >
-                        {ordersPerStatus.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend verticalAlign="bottom" height={36} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {ordersPerStatus.length ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={ordersPerStatus}
+                          dataKey="count"
+                          nameKey="status"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label
+                        >
+                          {ordersPerStatus.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend verticalAlign="bottom" height={36} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground text-center">
+                        No orders have been made recently.
+                        <br />
+                        Your order per status information will appear here.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
