@@ -217,9 +217,7 @@ export default function SellerDashboard() {
 
             if (!reviewRes.ok) {
               const errorText = await reviewRes.text();
-              throw new Error(
-                `Failed to fetch review from store: ${errorText}`
-              );
+              throw new Error(`Failed to fetch reviews of store: ${errorText}`);
             }
 
             const reviewData = await reviewRes.json();

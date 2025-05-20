@@ -79,10 +79,6 @@ export default function ProductsPage() {
             }
           );
 
-          if (!res.ok) {
-            throw new Error("Erro ao buscar produtos");
-          }
-
           const data = await res.json();
           setProducts(data.products);
         }
