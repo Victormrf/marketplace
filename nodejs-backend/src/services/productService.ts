@@ -73,13 +73,7 @@ export class ProductService {
   }
 
   async getProductsBySellerId(sellerId: string) {
-    const products = await ProductModel.getProductsBySeller(sellerId);
-
-    if (!products.length) {
-      throw new ObjectsNotFoundError("Products");
-    }
-
-    return products;
+    return await ProductModel.getProductsBySeller(sellerId);
   }
 
   async getProductsByCategory(category: string) {
