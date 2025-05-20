@@ -5,6 +5,7 @@ import {
   ValidationError,
   ObjectNotFoundError,
   ConflictError,
+  ObjectsNotFoundError,
 } from "../utils/customErrors";
 
 export const reviewRoutes = Router();
@@ -85,11 +86,7 @@ reviewRoutes.get("/seller/:sellerId", async (req, res) => {
     const reviews = await reviewService.getSellerReviews(req.params.sellerId);
     res.status(200).json(reviews);
   } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: "Internal Server Error" });
-    }
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

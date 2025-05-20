@@ -73,11 +73,7 @@ export class ReviewService {
   }
 
   async getSellerReviews(sellerId: string) {
-    const data = await ReviewModel.getBySeller(sellerId);
-    if (!data.reviews.length) {
-      throw new ObjectsNotFoundError("reviews");
-    }
-    return data;
+    return await ReviewModel.getBySeller(sellerId);
   }
 
   async updateReview(reviewId: string, rating?: number, comment?: string) {

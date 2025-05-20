@@ -1,17 +1,12 @@
-import { OrderItem, OrderItemModel } from "../models/orderItemModel";
+import { OrderItemModel } from "../models/orderItemModel";
 import { OrderModel } from "../models/orderModel";
 import { ProductModel } from "../models/productModel";
 import { ReviewModel } from "../models/reviewModel";
-import { ObjectsNotFoundError } from "../utils/customErrors";
 import { format } from "date-fns";
 
 export class DashboardService {
   async getSalesStats(sellerId: string) {
     const items = await OrderModel.getCompletedOrderItemsBySeller(sellerId);
-
-    if (!items.length) {
-      throw new ObjectsNotFoundError("OrderItems");
-    }
 
     const totalSales = items.reduce(
       (sum: number, item: { quantity: number; unitPrice: number }) =>
@@ -32,10 +27,6 @@ export class DashboardService {
 
   async getOrdersCountByStatus(sellerId: string) {
     const orders = await OrderModel.getOrdersByStatus(sellerId);
-
-    if (!orders.length) {
-      throw new ObjectsNotFoundError("Orders");
-    }
 
     const statusTotals: Record<string, number> = {};
 
@@ -58,10 +49,6 @@ export class DashboardService {
       sellerId
     );
 
-    if (!orderItems.length) {
-      throw new ObjectsNotFoundError("Order Items");
-    }
-
     const categoryTotals: Record<string, number> = {};
 
     for (const item of orderItems) {
@@ -81,10 +68,6 @@ export class DashboardService {
 
   async getMonthlySalesStats(sellerId: string) {
     const orders = await OrderModel.getMonthlySalesBySeller(sellerId);
-
-    if (!orders.length) {
-      throw new ObjectsNotFoundError("Orders");
-    }
 
     const monthlySalesMap: Record<string, number> = {};
 
@@ -114,10 +97,6 @@ export class DashboardService {
   async getDailySalesStats(sellerId: string) {
     const orders = await OrderModel.getDailySalesBySeller(sellerId);
 
-    if (!orders.length) {
-      throw new ObjectsNotFoundError("Orders");
-    }
-
     const dailySalesMap: Record<string, number> = {};
 
     for (const order of orders) {
@@ -145,23 +124,13 @@ export class DashboardService {
   }
 
   async getOrdersBySeller(sellerId: string) {
-    const orders = await OrderModel.getOrdersBySeller(sellerId);
-
-    if (!orders.length) {
-      throw new ObjectsNotFoundError("Orders");
-    }
-
-    return orders;
+    return await OrderModel.getOrdersBySeller(sellerId);
   }
 
   async getBestSellingProducts(sellerId: string) {
     const groupedData = await OrderItemModel.getBestSellingProductsBySeller(
       sellerId
     );
-
-    if (!groupedData.length) {
-      throw new ObjectsNotFoundError("Products");
-    }
 
     const productIds = groupedData
       .map((item) => item.productId)
@@ -183,24 +152,10 @@ export class DashboardService {
   }
 
   async getNewCustomersPerMonth(sellerId: string) {
-    const newCustomersData = await OrderModel.getNewCustomersByMonth(sellerId);
-
-    if (!newCustomersData.length) {
-      throw new ObjectsNotFoundError("New customers");
-    }
-
-    return newCustomersData;
+    return await OrderModel.getNewCustomersByMonth(sellerId);
   }
 
   async getRatingDistributionOfSeller(sellerId: string) {
-    const distribution = await ReviewModel.getRatingDistributionBySeller(
-      sellerId
-    );
-
-    if (!distribution.length) {
-      throw new ObjectsNotFoundError("Reviews");
-    }
-
-    return distribution;
+    return await ReviewModel.getRatingDistributionBySeller(sellerId);
   }
 }
