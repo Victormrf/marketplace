@@ -31,6 +31,8 @@ export default function RegisterForm({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [userType, setUserType] = useState<"customer" | "seller" | "">("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -41,6 +43,20 @@ export default function RegisterForm({
     companyName: "",
     companyDescription: "",
   });
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setLogoFile(file);
+
+      // Create image preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setLogoPreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -111,18 +127,28 @@ export default function RegisterForm({
           throw new Error("Falha ao criar perfil do cliente");
         }
       } else if (userType === "seller") {
+        // Create FormData for multipart/form-data request
+        const formDataObj = new FormData();
+        formDataObj.append("storeName", formData.companyName);
+        formDataObj.append("description", formData.companyDescription);
+
+        // Append logo file if it exists
+        if (logoFile) {
+          formDataObj.append("logo", logoFile);
+        }
+
         const sellerRes = await fetch("http://localhost:8000/sellers/", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            storeName: formData.companyName,
-            description: formData.companyDescription,
-          }),
+          // Remove Content-Type header to let browser set it with boundary
+          body: formDataObj,
         });
 
         if (!sellerRes.ok) {
-          throw new Error("Falha ao criar perfil do vendedor");
+          const errorData = await sellerRes.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || "Falha ao criar perfil do vendedor"
+          );
         }
       }
 
@@ -323,6 +349,30 @@ export default function RegisterForm({
                     onChange={handleChange}
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="logo">Logo da Empresa</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <Input
+                      id="logo"
+                      name="logo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoChange}
+                      className="cursor-pointer"
+                    />
+                    {logoPreview && (
+                      <div className="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-md border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={logoPreview}
+                          alt="Logo Preview"
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
