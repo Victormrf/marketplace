@@ -1,17 +1,26 @@
-// app/payment/page.tsx (ou o caminho que preferir)
+"use client";
 
 import Image from "next/image";
-import React from "react";
-// Importe o componente Script se for usar o datepicker do Flowbite via CDN
-// import Script from 'next/script';
+import { useEffect, useState } from "react";
 
-// Nota: Este componente converte a estrutura HTML/CSS.
-// Funcionalidades que dependem de JavaScript externo (como Datepicker e Tooltip do Flowbite)
-// precisarão de implementação adicional em React (usando estado, bibliotecas React ou
-// integrando o JS do Flowbite corretamente com o ciclo de vida do Next.js/React).
+type OrderSummaryData = {
+  originalPrice?: number;
+  savings?: number;
+  storePickup?: number;
+  tax?: number;
+  total?: number;
+};
 
 export default function PaymentPage() {
-  // Estados seriam necessários para controlar os inputs, exibir tooltips, etc.
+  const [orderSummary, setOrderSummary] = useState<OrderSummaryData>({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrderSummary(
+        JSON.parse(localStorage.getItem("order-summary") || "{}")
+      );
+    }
+  }, []);
 
   return (
     <>
@@ -260,98 +269,124 @@ export default function PaymentPage() {
               </form>
 
               {/* --- Resumo do Pedido (Sidebar) --- */}
-              <div className="mt-6 grow sm:mt-8 lg:mt-0">
-                <div className="space-y-4 rounded-lg border border-gray-100 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
-                  <div className="space-y-2">
-                    <dl className="flex items-center justify-between gap-4">
-                      <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
-                        Original price
-                      </dt>
-                      <dd className="text-base font-medium text-gray-900 dark:text-white">
-                        $6,592.00
-                      </dd>
-                    </dl>
-                    <dl className="flex items-center justify-between gap-4">
-                      <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
-                        Savings
-                      </dt>
-                      <dd className="text-base font-medium text-green-500">
-                        -$299.00
-                      </dd>
-                    </dl>
-                    <dl className="flex items-center justify-between gap-4">
-                      <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
-                        Store Pickup
-                      </dt>
-                      <dd className="text-base font-medium text-gray-900 dark:text-white">
-                        $99
-                      </dd>
-                    </dl>
-                    <dl className="flex items-center justify-between gap-4">
-                      <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
-                        Tax
-                      </dt>
-                      <dd className="text-base font-medium text-gray-900 dark:text-white">
-                        $799
-                      </dd>
-                    </dl>
-                  </div>
-                  <dl className="flex items-center justify-between gap-4 border-t border-gray-200 pt-2 dark:border-gray-700">
-                    <dt className="text-base font-bold text-gray-900 dark:text-white">
-                      Total
-                    </dt>
-                    <dd className="text-base font-bold text-gray-900 dark:text-white">
-                      $7,191.00
-                    </dd>
-                  </dl>
-                </div>
+              {orderSummary.originalPrice &&
+                orderSummary.savings &&
+                orderSummary.storePickup &&
+                orderSummary.tax &&
+                orderSummary.total && (
+                  <div className="mt-6 grow sm:mt-8 lg:mt-0">
+                    <div className="space-y-4 rounded-lg border border-gray-100 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
+                      <div className="space-y-2">
+                        <dl className="flex items-center justify-between gap-4">
+                          <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                            Original price
+                          </dt>
+                          <dd className="text-base font-medium text-gray-900 dark:text-white">
+                            {`R$ ${orderSummary.originalPrice.toLocaleString(
+                              "pt-BR",
+                              {
+                                minimumFractionDigits: 2,
+                              }
+                            )}`}
+                          </dd>
+                        </dl>
+                        <dl className="flex items-center justify-between gap-4">
+                          <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                            Savings
+                          </dt>
+                          <dd className="text-base font-medium text-green-500">
+                            -
+                            {`R$ ${orderSummary.savings.toLocaleString(
+                              "pt-BR",
+                              {
+                                minimumFractionDigits: 2,
+                              }
+                            )}`}
+                          </dd>
+                        </dl>
+                        <dl className="flex items-center justify-between gap-4">
+                          <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                            Store Pickup
+                          </dt>
+                          <dd className="text-base font-medium text-gray-900 dark:text-white">
+                            {`R$ ${orderSummary.storePickup.toLocaleString(
+                              "pt-BR",
+                              {
+                                minimumFractionDigits: 2,
+                              }
+                            )}`}
+                          </dd>
+                        </dl>
+                        <dl className="flex items-center justify-between gap-4">
+                          <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
+                            Tax
+                          </dt>
+                          <dd className="text-base font-medium text-gray-900 dark:text-white">
+                            {`R$ ${orderSummary.tax.toLocaleString("pt-BR", {
+                              minimumFractionDigits: 2,
+                            })}`}
+                          </dd>
+                        </dl>
+                      </div>
+                      <dl className="flex items-center justify-between gap-4 border-t border-gray-200 pt-2 dark:border-gray-700">
+                        <dt className="text-base font-bold text-gray-900 dark:text-white">
+                          Total
+                        </dt>
+                        <dd className="text-base font-bold text-gray-900 dark:text-white">
+                          {`R$ ${orderSummary.total.toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                          })}`}
+                        </dd>
+                      </dl>
+                    </div>
 
-                {/* Logos de Pagamento */}
-                <div className="mt-6 flex items-center justify-center gap-8">
-                  <Image
-                    height={100}
-                    width={100}
-                    className="h-8 w-auto dark:hidden"
-                    src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/paypal.svg"
-                    alt="Paypal"
-                  />
-                  <Image
-                    height={100}
-                    width={100}
-                    className="hidden h-8 w-auto dark:flex"
-                    src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/paypal-dark.svg"
-                    alt="Paypal"
-                  />
-                  <Image
-                    height={100}
-                    width={100}
-                    className="h-8 w-auto dark:hidden"
-                    src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/visa.svg"
-                    alt="Visa"
-                  />
-                  <Image
-                    height={100}
-                    width={100}
-                    className="hidden h-8 w-auto dark:flex"
-                    src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/visa-dark.svg"
-                    alt="Visa"
-                  />
-                  <Image
-                    height={100}
-                    width={100}
-                    className="h-8 w-auto dark:hidden"
-                    src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/mastercard.svg"
-                    alt="Mastercard"
-                  />
-                  <Image
-                    height={100}
-                    width={100}
-                    className="hidden h-8 w-auto dark:flex"
-                    src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/mastercard-dark.svg"
-                    alt="Mastercard"
-                  />
-                </div>
-              </div>
+                    {/* Logos de Pagamento */}
+                    <div className="mt-6 flex items-center justify-center gap-8">
+                      <Image
+                        height={100}
+                        width={100}
+                        className="h-8 w-auto dark:hidden"
+                        src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/paypal.svg"
+                        alt="Paypal"
+                      />
+                      <Image
+                        height={100}
+                        width={100}
+                        className="hidden h-8 w-auto dark:flex"
+                        src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/paypal-dark.svg"
+                        alt="Paypal"
+                      />
+                      <Image
+                        height={100}
+                        width={100}
+                        className="h-8 w-auto dark:hidden"
+                        src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/visa.svg"
+                        alt="Visa"
+                      />
+                      <Image
+                        height={100}
+                        width={100}
+                        className="hidden h-8 w-auto dark:flex"
+                        src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/visa-dark.svg"
+                        alt="Visa"
+                      />
+                      <Image
+                        height={100}
+                        width={100}
+                        className="h-8 w-auto dark:hidden"
+                        src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/mastercard.svg"
+                        alt="Mastercard"
+                      />
+                      <Image
+                        height={100}
+                        width={100}
+                        className="hidden h-8 w-auto dark:flex"
+                        src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/brand-logos/mastercard-dark.svg"
+                        alt="Mastercard"
+                      />
+                    </div>
+                  </div>
+                )}
             </div>
 
             <p className="mt-6 text-center text-gray-500 dark:text-gray-400 sm:mt-8 lg:text-left">
@@ -376,15 +411,6 @@ export default function PaymentPage() {
           </div>
         </div>
       </section>
-      {/*
-      A tag <script> original para o datepicker foi removida.
-      Em Next.js, se você precisar carregar scripts externos, use o componente <Script> de 'next/script':
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/datepicker.min.js" strategy="afterInteractive" />
-      No entanto, para funcionalidades como datepickers ou tooltips, é geralmente recomendado
-      usar bibliotecas específicas para React (ex: react-datepicker, react-tooltip)
-      ou, se usar Flowbite, instalar o pacote npm 'flowbite-react' que oferece
-      componentes React prontos que encapsulam essa lógica.
-      */}
     </>
   );
 }
