@@ -59,7 +59,7 @@ export default function LoginForm({
       const res = await fetch("http://localhost:8000/users/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // <<< ESSENCIAL
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 

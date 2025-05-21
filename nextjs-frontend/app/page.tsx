@@ -166,7 +166,7 @@ export default function HomePage() {
                 </g>
               </svg>
             }
-            label="Clothes"
+            label="Clothing"
           />
           <CategoryCard
             icon={
@@ -298,7 +298,7 @@ export default function HomePage() {
                 />
               </svg>
             }
-            label="TV/Projectors"
+            label="Tv/Projectors"
           />
           <CategoryCard
             icon={

@@ -39,30 +39,52 @@ export default function OrderSummaryPage() {
   useEffect(() => {
     async function fetchCart() {
       setLoading(true);
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        try {
-          const res = await fetch("http://localhost:8000/cart-items/", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (!res.ok) throw new Error("Erro ao buscar carrinho");
-          const data = await res.json();
-          setCartItems(
-            data.map((item: CartItem) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              product: item.product,
-            }))
-          );
-        } catch {
-          setCartItems([]);
-        } finally {
-          setLoading(false);
-        }
+
+      try {
+        const res = await fetch("http://localhost:8000/cart-items/", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!res.ok) throw new Error("Erro ao buscar carrinho");
+        const data = await res.json();
+        setCartItems(
+          data.map((item: CartItem) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            product: item.product,
+          }))
+        );
+      } catch {
+        setCartItems([]);
+      } finally {
+        setLoading(false);
       }
+
+      // const token =
+      //   typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      // if (token) {
+      //   try {
+      //     const res = await fetch("http://localhost:8000/cart-items/", {
+      //       headers: {
+      //         Authorization: `Bearer ${token}`,
+      //       },
+      //     });
+      //     if (!res.ok) throw new Error("Erro ao buscar carrinho");
+      //     const data = await res.json();
+      //     setCartItems(
+      //       data.map((item: CartItem) => ({
+      //         productId: item.productId,
+      //         quantity: item.quantity,
+      //         product: item.product,
+      //       }))
+      //     );
+      //   } catch {
+      //     setCartItems([]);
+      //   } finally {
+      //     setLoading(false);
+      //   }
+      // }
     }
     fetchCart();
     if (typeof window !== "undefined") {

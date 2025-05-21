@@ -9,7 +9,7 @@ export default function CategoryCard({
 }) {
   return (
     <Link
-      href={`/products?category=${encodeURIComponent(label)}`}
+      href={`/products?category=${encodeURIComponent(label.replace("/", ""))}`}
       className="p-6 border rounded-lg flex flex-col items-center hover:shadow transition cursor-pointer no-underline text-inherit"
     >
       <div className="mb-2 text-4xl">{icon}</div> {/* aumenta o ícone */}
