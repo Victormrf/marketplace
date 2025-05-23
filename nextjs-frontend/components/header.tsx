@@ -277,7 +277,7 @@ export default function Header({
             </Link>
             <div className="my-2 border-t border-gray-200 dark:border-gray-700" />
             <Link
-              href="#"
+              href="/orders"
               className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
             >
               <Package className="w-5 h-5" />

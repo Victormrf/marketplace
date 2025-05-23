@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type OrderSummaryData = {
@@ -14,6 +15,8 @@ type OrderSummaryData = {
 
 export default function PaymentPage() {
   const [orderSummary, setOrderSummary] = useState<OrderSummaryData>({});
+  const [isProcessing, setIsProcessing] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -22,6 +25,18 @@ export default function PaymentPage() {
       );
     }
   }, []);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    setIsProcessing(true);
+
+    // Simula processamento de pagamento
+    setTimeout(() => {
+      localStorage.removeItem("order-summary");
+      router.push("/cart/payment/success");
+    }, 2000);
+  };
 
   return (
     <>
@@ -138,7 +153,7 @@ export default function PaymentPage() {
             <div className="mt-6 sm:mt-8 lg:flex lg:items-start lg:gap-12">
               {/* --- Formulário de Pagamento --- */}
               <form
-                action="#"
+                onSubmit={handleSubmit}
                 className="w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6 lg:max-w-xl lg:p-8"
               >
                 <div className="mb-6 grid grid-cols-2 gap-4">
@@ -269,9 +284,12 @@ export default function PaymentPage() {
 
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                  disabled={isProcessing}
+                  className={`flex w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 ${
+                    isProcessing ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
-                  Pay now
+                  {isProcessing ? "Processing..." : "Pay now"}
                 </button>
               </form>
 
