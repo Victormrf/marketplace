@@ -14,16 +14,19 @@ const paymentService = new PaymentService();
 paymentRoutes.post("/", authMiddleware, async (req, res) => {
   const { orderId, amount } = req.body;
 
+  if (!orderId || typeof amount !== "number" || amount <= 0) {
+    res.status(400).json({ error: "Missing or invalid fields" });
+    return;
+  }
+
   try {
     const payment = await paymentService.processPayment(orderId, amount);
     res.status(201).json(payment);
   } catch (error) {
     if (error instanceof ValidationError) {
       res.status(400).json({ error: error.message });
-      return;
     } else {
-      res.status(500).json({ error });
-      return;
+      res.status(500).json({ error: (error as Error).message });
     }
   }
 });
@@ -75,6 +78,15 @@ paymentRoutes.put("/:paymentId", authMiddleware, async (req, res) => {
     return;
   }
 
+  const allowedStatuses = ["PENDING", "COMPLETED", "FAILED"];
+  if (
+    updateData.status &&
+    !allowedStatuses.includes(updateData.status.toUpperCase())
+  ) {
+    res.status(400).json({ error: "Invalid payment status" });
+    return;
+  }
+
   try {
     const updatedPayment = await paymentService.updatePayment(
       paymentId,
@@ -84,16 +96,21 @@ paymentRoutes.put("/:paymentId", authMiddleware, async (req, res) => {
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       res.status(404).json({ error: error.message });
-      return;
+    } else {
+      res.status(500).json({ error: (error as Error).message });
     }
-    res.status(500).json({ error: "Internal Server Error" });
-    return;
   }
 });
 
 paymentRoutes.put("/:paymentId/status", authMiddleware, async (req, res) => {
   const { paymentId } = req.params;
   const { status } = req.body;
+
+  const allowedStatuses = ["PENDING", "COMPLETED", "FAILED"];
+  if (!allowedStatuses.includes(status?.toUpperCase())) {
+    res.status(400).json({ error: "Invalid payment status" });
+    return;
+  }
 
   try {
     const updatedPayment = await paymentService.updatePaymentStatus(
@@ -104,10 +121,8 @@ paymentRoutes.put("/:paymentId/status", authMiddleware, async (req, res) => {
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       res.status(404).json({ error: error.message });
-      return;
     } else {
-      res.status(500).json({ error });
-      return;
+      res.status(500).json({ error: (error as Error).message });
     }
   }
 });

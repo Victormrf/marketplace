@@ -5,22 +5,24 @@ import {
   ValidationError,
 } from "../utils/customErrors";
 
-interface PaymentDate {
+type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED"; // Enum possível
+
+interface PaymentData {
   orderId: string;
   amount: number;
-  status: string;
+  status: PaymentStatus;
 }
 
 export class PaymentService {
   async processPayment(orderId: string, amount: number) {
-    if (!orderId || !amount) {
-      throw new ValidationError("Missing required fields");
+    if (!orderId || typeof amount !== "number" || amount <= 0) {
+      throw new ValidationError("Missing or invalid required fields");
     }
 
     return await PaymentModel.create({
       orderId,
       amount,
-      status: "pending",
+      status: "PENDING",
     });
   }
 
@@ -44,7 +46,7 @@ export class PaymentService {
     return payments;
   }
 
-  async updatePayment(paymentId: string, paymentDate: Partial<PaymentDate>) {
+  async updatePayment(paymentId: string, data: Partial<PaymentData>) {
     const payment = await PaymentModel.getById(paymentId);
 
     if (!payment) {
@@ -52,13 +54,13 @@ export class PaymentService {
     }
 
     try {
-      return await PaymentModel.update(paymentId, paymentDate);
+      return await PaymentModel.update(paymentId, data);
     } catch (error: any) {
-      throw new Error(`Failed to update payment: ${(error as Error).message}`);
+      throw new Error(`Failed to update payment: ${error.message}`);
     }
   }
 
-  async updatePaymentStatus(paymentId: string, status: string) {
+  async updatePaymentStatus(paymentId: string, status: PaymentStatus) {
     const payment = await PaymentModel.getById(paymentId);
 
     if (!payment) {
@@ -68,9 +70,7 @@ export class PaymentService {
     try {
       return await PaymentModel.updateStatus(paymentId, status);
     } catch (error: any) {
-      throw new Error(
-        `Failed to update payment status: ${(error as Error).message}`
-      );
+      throw new Error(`Failed to update payment status: ${error.message}`);
     }
   }
 
