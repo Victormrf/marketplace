@@ -30,7 +30,7 @@ export default function PaymentSuccessPage() {
           </Link>
 
           <Link
-            href="/tracking"
+            href="/orders/order-005/tracking"
             className="inline-flex items-center px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors"
           >
             <Package className="w-4 h-4 mr-2" />

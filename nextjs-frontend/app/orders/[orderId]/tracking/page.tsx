@@ -118,12 +118,12 @@ export default function TrackOrderPage() {
                             flex items-center justify-center w-10 h-10 rounded-full border-2
                             ${
                               isCompleted
-                                ? "bg-primary border-primary text-primary-foreground"
+                                ? "bg-slate-700 border-slate-700 text-primary-foreground"
                                 : "border-muted-foreground text-muted-foreground"
                             }
                             ${
                               isCurrent
-                                ? "ring-2 ring-primary ring-offset-2"
+                                ? "ring-2 ring-slate-700 ring-offset-2"
                                 : ""
                             }
                           `}
@@ -134,8 +134,11 @@ export default function TrackOrderPage() {
                           <div
                             className={`
                               absolute left-1/2 h-full border-l-2 -translate-x-1/2 top-10
-                              ${isCompleted ? "border-primary" : "border-muted"}
-                            `}
+                              ${
+                                index < currentStepIndex
+                                  ? "border-slate-700"
+                                  : "border-muted"
+                              }`}
                           />
                         )}
                       </div>
@@ -150,15 +153,11 @@ export default function TrackOrderPage() {
                           >
                             {step.label}
                           </p>
-                          <span
-                            className={`text-sm ${
-                              isCompleted
-                                ? "text-foreground"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            {formatDate(step.date)}
-                          </span>
+                          {isCompleted && (
+                            <span className={"text-sm text-foreground"}>
+                              {formatDate(step.date)}
+                            </span>
+                          )}
                         </div>
                         {isCurrent && (
                           <p className="text-sm text-muted-foreground mt-1">
