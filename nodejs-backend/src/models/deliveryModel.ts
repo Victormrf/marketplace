@@ -3,7 +3,15 @@ import prisma from "../config/db";
 export class DeliveryModel {
   static async create(data: {
     orderId: string;
-    status: "PENDING" | "IN_TRANSIT" | "DELIVERED" | "FAILED";
+    status:
+      | "SEPARATED"
+      | "PROCESSING"
+      | "SHIPPED"
+      | "COLLECTED"
+      | "ARRIVED_AT_CENTER"
+      | "DELIVERED"
+      | "FAILED"
+      | "RETURNED";
     trackingCode?: string;
     estimatedDate?: Date;
   }) {
@@ -18,7 +26,15 @@ export class DeliveryModel {
 
   static async updateStatus(
     orderId: string,
-    status: "IN_TRANSIT" | "DELIVERED" | "FAILED"
+    status:
+      | "SEPARATED"
+      | "PROCESSING"
+      | "SHIPPED"
+      | "COLLECTED"
+      | "ARRIVED_AT_CENTER"
+      | "DELIVERED"
+      | "FAILED"
+      | "RETURNED"
   ) {
     return prisma.delivery.update({
       where: { orderId },

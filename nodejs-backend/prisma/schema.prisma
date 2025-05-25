@@ -174,9 +174,11 @@ model refund {
 }
 
 enum delivery_status {
-  NOT_DISPATCHED
-  IN_TRANSIT
-  OUT_FOR_DELIVERY
+  SEPARATED
+  PROCESSING
+  SHIPPED
+  COLLECTED
+  ARRIVED_AT_CENTER
   DELIVERED
   FAILED
   RETURNED
@@ -187,7 +189,7 @@ model delivery {
   orderId     String          @unique
   trackingCode String?
   carrier     String?
-  status      delivery_status @default(NOT_DISPATCHED)
+  status      delivery_status @default(SEPARATED)
   estimatedDelivery DateTime?
   deliveredAt DateTime?
   createdAt   DateTime        @default(now())

@@ -72,7 +72,6 @@ async function main() {
     })
   );
 
-  // Lista manual de categorias
   const categories = [
     "Office",
     "Sports",
@@ -92,7 +91,6 @@ async function main() {
     (_, i) => sellers[i % sellers.length]
   );
 
-  // Produtos
   const products = await Promise.all(
     categories.map((category, index) => {
       return prisma.product.create({
@@ -118,6 +116,8 @@ async function main() {
     "REFUNDED",
   ];
 
+  const orders = [];
+
   for (let i = 0; i < orderStatuses.length; i++) {
     const order = await prisma.order.create({
       data: {
@@ -136,11 +136,42 @@ async function main() {
         payment: {
           create: {
             amount: products[i].price,
-            status: "PAID",
+            status: orderStatuses[i] === "REFUNDED" ? "REFUNDED" : "PAID",
+            method: "CREDIT_CARD",
           },
         },
       },
+      include: {
+        payment: true,
+      },
     });
+
+    orders.push(order);
+
+    // Refund para pedidos reembolsados
+    if (order.status === "REFUNDED") {
+      await prisma.refund.create({
+        data: {
+          paymentId: order.payment.id,
+          reason: "Product defective",
+          amount: order.totalPrice,
+          status: "COMPLETED",
+        },
+      });
+    }
+
+    // Delivery para pedidos despachados ou entregues
+    if (["SHIPPED", "DELIVERED"].includes(order.status)) {
+      await prisma.delivery.create({
+        data: {
+          orderId: order.id,
+          status:
+            order.status === "SHIPPED" ? "ARRIVED_AT_CENTER" : "DELIVERED",
+          trackingCode: `TRACK${1000 + i}`,
+          estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
   }
 
   // Product Reviews

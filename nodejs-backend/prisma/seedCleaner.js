@@ -8,6 +8,8 @@ async function main() {
   await prisma.payment.deleteMany();
   await prisma.order_item.deleteMany();
   await prisma.cart_item.deleteMany();
+  await prisma.delivery.deleteMany();
+  await prisma.refund.deleteMany();
   await prisma.order.deleteMany();
   await prisma.product.deleteMany();
   await prisma.seller.deleteMany();

@@ -4,7 +4,15 @@ import { ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 export class DeliveryService {
   async createDelivery(
     orderId: string,
-    status: "PENDING" | "IN_TRANSIT" | "DELIVERED" | "FAILED",
+    status:
+      | "SEPARATED"
+      | "PROCESSING"
+      | "SHIPPED"
+      | "COLLECTED"
+      | "ARRIVED_AT_CENTER"
+      | "DELIVERED"
+      | "FAILED"
+      | "RETURNED",
     trackingCode?: string,
     estimatedDate?: Date
   ) {
@@ -32,7 +40,15 @@ export class DeliveryService {
 
   async updateDeliveryStatus(
     orderId: string,
-    status: "IN_TRANSIT" | "DELIVERED" | "FAILED"
+    status:
+      | "SEPARATED"
+      | "PROCESSING"
+      | "SHIPPED"
+      | "COLLECTED"
+      | "ARRIVED_AT_CENTER"
+      | "DELIVERED"
+      | "FAILED"
+      | "RETURNED"
   ) {
     const delivery = await DeliveryModel.getByOrderId(orderId);
 
