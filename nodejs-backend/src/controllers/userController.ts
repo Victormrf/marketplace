@@ -42,32 +42,27 @@ userRoutes.get("/me", authMiddleware, async (req, res) => {
   }
 });
 
-userRoutes.put(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  async (req, res) => {
-    const { userId } = req.params;
-    const updateData = req.body;
+userRoutes.put("/", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const updateData = req.body;
 
-    if (!updateData || Object.keys(updateData).length === 0) {
-      res.status(400).json({ error: "No fields to update" });
-    }
-
-    try {
-      const updatedUser = await userService.update(userId, req.body);
-      res.json(updatedUser);
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-      }
-      if (error instanceof ValidationError) {
-        res.status(400).json({ error: error.message });
-      }
-      res.status(500).json({ error: "Internal Server Error" });
-    }
+  if (!updateData || Object.keys(updateData).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
   }
-);
+
+  try {
+    const updatedUser = await userService.update(userId, req.body);
+    res.json(updatedUser);
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: error.message });
+    }
+    if (error instanceof ValidationError) {
+      res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 userRoutes.delete(
   "/:userId",

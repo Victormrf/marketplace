@@ -7,32 +7,41 @@ import {
 } from "../utils/customErrors";
 import { SellerService } from "../services/sellerService";
 import { roleMiddleware } from "../middlewares/roleMiddleware";
+import uploadSellerLogo from "../middlewares/uploadSellerLogo";
 
 export const sellerRoutes = Router();
 const sellerService = new SellerService();
 
-sellerRoutes.post("/", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const { storeName, description } = req.body;
+sellerRoutes.post(
+  "/",
+  authMiddleware,
+  uploadSellerLogo.single("logo"),
+  async (req, res) => {
+    const userId = req.user.id;
+    const { storeName, description } = req.body;
 
-  try {
-    const newProfile = await sellerService.createSellerProfile(userId, {
-      storeName,
-      description,
-    });
-    res
-      .status(201)
-      .json({ message: "Seller profile created with success", newProfile });
-  } catch (error) {
-    if (error instanceof ExistingProfileError) {
-      res.status(409).json({ error: error.message });
-    } else if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: error });
+    const logoUrl = (req.file as any)?.path || null;
+
+    try {
+      const newProfile = await sellerService.createSellerProfile(userId, {
+        storeName,
+        description,
+        logo: logoUrl,
+      });
+      res
+        .status(201)
+        .json({ message: "Seller profile created with success", newProfile });
+    } catch (error) {
+      if (error instanceof ExistingProfileError) {
+        res.status(409).json({ error: error.message });
+      } else if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: error });
+      }
     }
   }
-});
+);
 
 sellerRoutes.get(
   "/all",

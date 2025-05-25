@@ -16,12 +16,14 @@ export class SellerModel {
     userId: string;
     storeName: string;
     description: string;
+    logo?: string;
   }): Promise<SellerModel> {
     return prisma.seller.create({
       data: {
         userId: data.userId,
         storeName: data.storeName,
         description: data.description,
+        logo: data.logo,
       },
     });
   }

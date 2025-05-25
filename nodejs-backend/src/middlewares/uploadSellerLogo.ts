@@ -1,5 +1,5 @@
 import { createMulterStorage } from "../config/multerConfig";
 
-const uploadProductImage = createMulterStorage("vmarket/products");
+const uploadSellerLogo = createMulterStorage("vmarket/logos");
 
-export default uploadProductImage;
+export default uploadSellerLogo;

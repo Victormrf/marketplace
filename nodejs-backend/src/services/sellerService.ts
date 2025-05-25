@@ -9,6 +9,7 @@ import {
 interface SellerData {
   storeName: string;
   description: string;
+  logo?: string;
 }
 
 export class SellerService {
