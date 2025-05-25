@@ -31,16 +31,18 @@ export type Product = {
 
 const CATEGORIES = [
   "All",
-  "Eletrônicos",
-  "Roupas",
-  "Acessórios",
-  "Casa e Decoração",
-  "Esportes",
-  "Livros",
-  "Brinquedos",
-  "Saúde e Beleza",
-  "Alimentos",
-  "Outros",
+  "Office",
+  "Sports",
+  "Books",
+  "Beauty",
+  "Clothing",
+  "Toys",
+  "TvProjectors",
+  "SmartphonesTablets",
+  "Eletronics",
+  "Pets",
+  "Furniture",
+  "Others",
 ];
 
 export default function ProductsPage() {
