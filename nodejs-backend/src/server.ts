@@ -13,6 +13,10 @@ import { dashboardRoutes } from "./controllers/dashboardController";
 import cors from "cors";
 import { cartItemRoutes } from "./controllers/cartItemController";
 import cookieParser from "cookie-parser";
+import { deliveryRoutes } from "./controllers/deliveryController";
+import { refundRoutes } from "./controllers/refundController";
+import cron from "node-cron";
+import { updateDeliveryStatuses } from "../jobs/deliveryStatusUpdater";
 
 const app = express();
 app.use(express.json());
@@ -43,12 +47,20 @@ app.use("/orders/:orderId/items", orderItemRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/review", reviewRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/delivery", deliveryRoutes);
+app.use("/refund", refundRoutes);
 
 // Encerrar conexão do Prisma quando o servidor for interrompido
 process.on("SIGINT", async () => {
   await prisma.$disconnect();
   console.log("Prisma disconnected.");
   process.exit(0);
+});
+
+// Rodar a cada 1 hora
+cron.schedule("0 * * * *", async () => {
+  console.log("⏰ Iniciando atualização automática de entregas...");
+  await updateDeliveryStatuses();
 });
 
 app.listen(PORT, () => {

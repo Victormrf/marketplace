@@ -169,6 +169,7 @@ async function main() {
             order.status === "SHIPPED" ? "ARRIVED_AT_CENTER" : "DELIVERED",
           trackingCode: `TRACK${1000 + i}`,
           estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          updatedAt: new Date(),
         },
       });
     }

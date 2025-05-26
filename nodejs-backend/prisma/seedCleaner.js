@@ -5,11 +5,11 @@ const prisma = new PrismaClient();
 async function main() {
   // Ordem correta para deletar evitando violação de chave estrangeira
   await prisma.review.deleteMany();
+  await prisma.refund.deleteMany();
   await prisma.payment.deleteMany();
+  await prisma.delivery.deleteMany();
   await prisma.order_item.deleteMany();
   await prisma.cart_item.deleteMany();
-  await prisma.delivery.deleteMany();
-  await prisma.refund.deleteMany();
   await prisma.order.deleteMany();
   await prisma.product.deleteMany();
   await prisma.seller.deleteMany();

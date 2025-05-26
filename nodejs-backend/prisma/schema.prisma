@@ -193,6 +193,7 @@ model delivery {
   estimatedDelivery DateTime?
   deliveredAt DateTime?
   createdAt   DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   order       order           @relation(fields: [orderId], references: [id])
 }
