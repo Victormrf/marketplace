@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 
 type Product = {
   id: string;
+  image?: string;
   name: string;
   description: string;
   price: number;
@@ -88,49 +89,53 @@ export default function OrderSummaryPage() {
         <div className="mx-auto max-w-4xl mb-8">
           <ol className="flex w-full items-center text-md font-medium">
             <li className="flex items-center flex-1 min-w-0 text-slate-900 ">
-              <span className="flex items-center gap-0.5 whitespace-nowrap">
-                <svg
-                  className="me-2 h-4 w-4 sm:h-5 sm:w-5"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                  />
-                </svg>
-                Cart
-              </span>
+              <Link href={"/cart"}>
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
+                  <svg
+                    className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                    />
+                  </svg>
+                  Cart
+                </span>
+              </Link>
               <span className="mx-4 flex-1 h-px bg-slate-900"></span>
             </li>
             <li className="flex items-center flex-1 min-w-0 text-slate-900 ">
-              <span className="flex items-center gap-0.5 whitespace-nowrap">
-                <svg
-                  className="me-2 h-4 w-4 sm:h-5 sm:w-5"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                  />
-                </svg>
-                Checkout
-              </span>
+              <Link href={"/cart/checkout"}>
+                <span className="flex items-center gap-0.5 whitespace-nowrap">
+                  <svg
+                    className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                    />
+                  </svg>
+                  Checkout
+                </span>
+              </Link>
               <span className="mx-4  flex-1 h-px bg-slate-900"></span>
             </li>
             <li className="flex items-center flex-1 min-w-0 text-slate-900">
@@ -230,15 +235,10 @@ export default function OrderSummaryPage() {
                                   height={100}
                                   width={100}
                                   className="h-auto w-full max-h-full dark:hidden"
-                                  src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front.svg"
-                                  alt="imac image"
-                                />
-                                <Image
-                                  height={100}
-                                  width={100}
-                                  className="hidden h-auto w-full max-h-full dark:block"
-                                  src="https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front-dark.svg"
-                                  alt="imac image"
+                                  src={
+                                    item.product?.image || "/placeholder.svg"
+                                  }
+                                  alt="product image"
                                 />
                               </a>
                               <a href="#" className="hover:underline">

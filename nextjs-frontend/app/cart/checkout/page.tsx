@@ -1,6 +1,9 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 type OrderSummaryData = {
@@ -23,7 +26,6 @@ type Address = {
 
 export default function CheckoutPage() {
   const [orderSummary, setOrderSummary] = useState<OrderSummaryData>({});
-
   const initialAddress: Address = {
     id: 1, // ID inicial
     country: "US",
@@ -34,6 +36,10 @@ export default function CheckoutPage() {
     number: "",
   };
   const [addresses, setAddresses] = useState<Address[]>([initialAddress]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+    null
+  );
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -72,32 +78,88 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleProceedToPayment = () => {
+    if (!selectedAddressId) {
+      // Show error message if no address is selected
+      toast({
+        title: "Select delivery address",
+        description: "Please select a delivery address to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedAddress = addresses.find(
+      (addr) => addr.id === selectedAddressId
+    );
+
+    if (!selectedAddress) {
+      toast({
+        title: "Invalid address",
+        description: "The selected address is invalid",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if all required fields are filled
+    const requiredFields: (keyof Address)[] = [
+      "country",
+      "city",
+      "zipcode",
+      "district",
+      "street",
+      "number",
+    ];
+
+    const emptyFields = requiredFields.filter(
+      (field) => !selectedAddress[field]
+    );
+
+    if (emptyFields.length > 0) {
+      toast({
+        title: "Missing information",
+        description: `Please fill in the following fields: ${emptyFields.join(
+          ", "
+        )}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Store the selected address in localStorage
+    localStorage.setItem("delivery-address", JSON.stringify(selectedAddress));
+    router.push("/cart/order-summary");
+  };
+
   return (
     <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
       <form action="#" className="mx-auto max-w-screen-xl px-4 2xl:px-0">
         {/* --- Stepper --- (mantido) */}
         <ol className="flex w-full max-w-5xl items-center text-md font-medium">
           <li className="flex items-center flex-1 min-w-0 text-slate-900 ">
-            <span className="flex items-center gap-0.5 whitespace-nowrap">
-              <svg
-                className="me-2 h-4 w-4 sm:h-5 sm:w-5"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                />
-              </svg>
-              Cart
-            </span>
+            <Link href={"/cart"}>
+              <span className="flex items-center gap-0.5 whitespace-nowrap">
+                <svg
+                  className="me-2 h-4 w-4 sm:h-5 sm:w-5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
+                </svg>
+                Cart
+              </span>
+            </Link>
             <span className="mx-4 flex-1 h-px bg-gray-200"></span>
           </li>
           <li className="flex items-center flex-1 min-w-0 text-slate-900 ">
@@ -179,159 +241,177 @@ export default function CheckoutPage() {
               {addresses.map((address, index) => (
                 <div
                   key={address.id}
-                  className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800 relative"
+                  className={`mb-6 rounded-lg border p-4 relative transition-colors ${
+                    selectedAddressId === address.id
+                      ? "border-slate-700 bg-slate-50 dark:border-slate-500 dark:bg-gray-700"
+                      : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                  }`}
                 >
-                  {/* Botão X para remover endereço */}
-                  {addresses.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddresses((prev) =>
-                          prev.filter((a) => a.id !== address.id)
-                        );
-                      }}
-                      className="absolute top-2 right-2 text-gray-400 hover:text-red-600 rounded-full p-1 transition"
-                      title="Remover endereço"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                  {/* --- Cabeçalho do Endereço --- */}
-                  <h3 className="mb-4 text-lg font-medium text-slate-800 dark:text-white">
-                    Address {index + 1}:{" "}
-                    <span className="text-slate-600 dark:text-gray-400">
-                      {address.street || "[Street]"},{" "}
-                      {address.district || "[District]"},{" "}
-                      {address.city || "[City]"}
-                    </span>
-                  </h3>
-
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label
-                        htmlFor={`country-${address.id}`}
-                        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                      >
-                        {" "}
-                        Country*{" "}
-                      </label>
-                      <select
-                        id={`country-${address.id}`}
-                        name="country"
-                        value={address.country}
-                        onChange={(e) => handleAddressChange(index, e)}
-                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-                      >
-                        <option value="US">United States</option>
-                        <option value="BR">Brasil</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor={`city-${address.id}`}
-                        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                      >
-                        {" "}
-                        City*{" "}
-                      </label>
+                  <div className="flex items-start gap-4">
+                    {/* Add radio button */}
+                    <div className="flex h-5 items-center">
                       <input
-                        type="text"
-                        id={`zipcode-${address.id}`}
-                        name="zipcode"
-                        value={address.zipcode}
-                        onChange={(e) => handleAddressChange(index, e)}
-                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-                        required
+                        type="radio"
+                        id={`address-${address.id}`}
+                        name="selected-address"
+                        checked={selectedAddressId === address.id}
+                        onChange={() => setSelectedAddressId(address.id)}
+                        className="h-4 w-4 border-gray-300 text-slate-700 focus:ring-slate-600"
                       />
                     </div>
+                    <div className="flex-1">
+                      {/* Botão X para remover endereço */}
+                      {addresses.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddresses((prev) =>
+                              prev.filter((a) => a.id !== address.id)
+                            );
+                          }}
+                          className="absolute top-2 right-2 text-gray-400 hover:text-red-600 rounded-full p-1 transition"
+                          title="Remover endereço"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                      {/* --- Cabeçalho do Endereço --- */}
+                      <h3 className="mb-4 text-lg font-medium text-slate-800 dark:text-white">
+                        Address {index + 1}:{" "}
+                        <span className="text-slate-600 dark:text-gray-400">
+                          {address.street || "[Street]"},{" "}
+                          {address.district || "[District]"},{" "}
+                          {address.city || "[City]"}
+                        </span>
+                      </h3>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <label
+                            htmlFor={`country-${address.id}`}
+                            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            {" "}
+                            Country*{" "}
+                          </label>
+                          <select
+                            id={`country-${address.id}`}
+                            name="country"
+                            value={address.country}
+                            onChange={(e) => handleAddressChange(index, e)}
+                            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                          >
+                            <option value="US">United States</option>
+                            <option value="BR">Brasil</option>
+                          </select>
+                        </div>
 
-                    <div>
-                      <label
-                        htmlFor={`zipcode-${address.id}`}
-                        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                      >
-                        {" "}
-                        Zipcode*{" "}
-                      </label>
-                      <input
-                        type="text"
-                        id={`zipcode-${address.id}`}
-                        name="zipcode"
-                        value={address.zipcode}
-                        onChange={(e) => handleAddressChange(index, e)}
-                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-                        required
-                      />
-                    </div>
+                        <div>
+                          <label
+                            htmlFor={`city-${address.id}`}
+                            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            {" "}
+                            City*{" "}
+                          </label>
+                          <input
+                            type="text"
+                            id={`city-${address.id}`}
+                            name="city"
+                            value={address.city}
+                            onChange={(e) => handleAddressChange(index, e)}
+                            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                            required
+                          />
+                        </div>
 
-                    <div>
-                      <label
-                        htmlFor={`district-${address.id}`}
-                        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                      >
-                        {" "}
-                        District{" "}
-                      </label>
-                      <input
-                        type="text"
-                        id={`district-${address.id}`}
-                        name="district"
-                        value={address.district}
-                        onChange={(e) => handleAddressChange(index, e)}
-                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-                      />
-                    </div>
+                        <div>
+                          <label
+                            htmlFor={`zipcode-${address.id}`}
+                            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            {" "}
+                            Zipcode*{" "}
+                          </label>
+                          <input
+                            type="text"
+                            id={`zipcode-${address.id}`}
+                            name="zipcode"
+                            value={address.zipcode}
+                            onChange={(e) => handleAddressChange(index, e)}
+                            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                            required
+                          />
+                        </div>
 
-                    <div>
-                      <label
-                        htmlFor={`street-${address.id}`}
-                        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                      >
-                        {" "}
-                        Street{" "}
-                      </label>
-                      <input
-                        type="text"
-                        id={`street-${address.id}`} // ID único
-                        name="street" // Name para o handler
-                        value={address.street} // Valor controlado
-                        onChange={(e) => handleAddressChange(index, e)} // Handler
-                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-                        // required (opcional para street)
-                      />
-                    </div>
+                        <div>
+                          <label
+                            htmlFor={`district-${address.id}`}
+                            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            {" "}
+                            District*{" "}
+                          </label>
+                          <input
+                            type="text"
+                            id={`district-${address.id}`}
+                            name="district"
+                            value={address.district}
+                            onChange={(e) => handleAddressChange(index, e)}
+                            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                          />
+                        </div>
 
-                    <div>
-                      <label
-                        htmlFor={`number-${address.id}`}
-                        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                      >
-                        {" "}
-                        Number{" "}
-                      </label>
-                      <input
-                        type="number"
-                        id={`number-${address.id}`}
-                        name="number"
-                        value={address.number}
-                        onChange={(e) => handleAddressChange(index, e)}
-                        className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500 no-spinner"
-                        placeholder="123"
-                      />
+                        <div>
+                          <label
+                            htmlFor={`street-${address.id}`}
+                            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            {" "}
+                            Street*{" "}
+                          </label>
+                          <input
+                            type="text"
+                            id={`street-${address.id}`} // ID único
+                            name="street" // Name para o handler
+                            value={address.street} // Valor controlado
+                            onChange={(e) => handleAddressChange(index, e)} // Handler
+                            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+                            // required (opcional para street)
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor={`number-${address.id}`}
+                            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            {" "}
+                            Number*{" "}
+                          </label>
+                          <input
+                            type="number"
+                            id={`number-${address.id}`}
+                            name="number"
+                            value={address.number}
+                            onChange={(e) => handleAddressChange(index, e)}
+                            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500 no-spinner"
+                            placeholder="123"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -570,12 +650,13 @@ export default function CheckoutPage() {
                     </dd>
                   </dl>
                 </div>
-                <Link
-                  href="/cart/order-summary"
-                  className="flex w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 mt-6 text-sm font-medium text-white hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                <Button
+                  onClick={handleProceedToPayment}
+                  disabled={!selectedAddressId}
+                  className="w-full items-center justify-center rounded-lg bg-slate-700 px-5 py-2.5 mt-6 text-sm font-medium text-white hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                 >
                   Proceed to Payment
-                </Link>
+                </Button>
               </div>
             )}
         </div>{" "}

@@ -155,19 +155,19 @@ export default function ProductsPage() {
               key={product.id}
               className="w-full bg-background border border-gray-200 rounded-lg shadow-sm flex flex-col"
             >
-              <div className="flex justify-center p-4">
+              <div className="h-[250px] flex items-center justify-center p-4">
                 <Image
-                  className="rounded-lg object-contain"
+                  className="rounded-lg object-contain max-h-full w-auto"
                   width={160}
                   height={200}
                   src={product.image || "/placeholder.svg"}
                   alt="Imagem do produto"
                 />
               </div>
-              <div className="px-5 pb-5 flex-1 flex flex-col justify-between">
-                <div>
+              <div className="px-5 pb-5 flex-1 flex flex-col">
+                <div className="flex-1">
                   <h5
-                    className="text-gray-800 text-xl font-semibold tracking-tight"
+                    className="text-gray-800 text-xl font-semibold tracking-tight cursor-pointer hover:text-slate-600"
                     onClick={() => handleProductClick(product)}
                   >
                     {product.name}
