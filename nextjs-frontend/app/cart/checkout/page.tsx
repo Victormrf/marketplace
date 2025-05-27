@@ -15,7 +15,7 @@ type OrderSummaryData = {
 };
 
 type Address = {
-  id: number; // Para a key do React e identificação única
+  id: number;
   country: string;
   city: string;
   zipcode: string;

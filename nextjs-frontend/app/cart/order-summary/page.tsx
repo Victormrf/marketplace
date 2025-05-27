@@ -32,9 +32,19 @@ type OrderSummaryData = {
   total?: number;
 };
 
+type AddressData = {
+  country?: string;
+  city?: string;
+  zipcode?: string;
+  district?: string;
+  street?: string;
+  number?: string;
+};
+
 export default function OrderSummaryPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [orderSummary, setOrderSummary] = useState<OrderSummaryData>({});
+  const [address, setAddress] = useState<AddressData>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,6 +77,7 @@ export default function OrderSummaryPage() {
       setOrderSummary(
         JSON.parse(localStorage.getItem("order-summary") || "{}")
       );
+      setAddress(JSON.parse(localStorage.getItem("delivery-address") || "{}"));
     }
   }, []);
 
@@ -190,28 +201,23 @@ export default function OrderSummaryPage() {
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl">
               Order summary
             </h2>
-            <div className="mt-6 space-y-4 border-b border-t border-gray-200 py-8 dark:border-gray-700 sm:mt-8">
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Billing & Delivery information
-              </h4>
+            {address && (
+              <div className="mt-6 space-y-4 border-b border-t border-gray-200 py-8 dark:border-gray-700 sm:mt-8">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Billing & Delivery information
+                </h4>
 
-              <dl>
-                <dt className="text-base font-medium text-gray-900 dark:text-white">
-                  Individual
-                </dt>
-                <dd className="mt-1 text-base font-normal text-gray-500 dark:text-gray-400">
-                  Bonnie Green - +1 234 567 890, San Francisco, California,
-                  United States, 3454, Scott Street
-                </dd>
-              </dl>
-
-              <button
-                type="button"
-                className="text-base font-medium text-primary-700 hover:underline dark:text-primary-500"
-              >
-                Edit
-              </button>
-            </div>
+                <dl>
+                  <dt className="text-base font-medium text-gray-900 dark:text-white">
+                    Individual
+                  </dt>
+                  <dd className="mt-1 text-base font-normal text-gray-500 dark:text-gray-400">
+                    {address.zipcode} - {address.street}, {address.number},{" "}
+                    {address.district}, {address.city}, {address.country}
+                  </dd>
+                </dl>
+              </div>
+            )}
 
             {/* --- Lista de Itens --- */}
             <div className="mt-6 sm:mt-8">
