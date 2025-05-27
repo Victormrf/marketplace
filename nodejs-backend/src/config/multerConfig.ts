@@ -8,7 +8,7 @@ export function createMulterStorage(folder: string) {
     params: async (_req, file) => {
       return {
         folder,
-        allowed_formats: ["jpg", "jpeg", "png"],
+        allowed_formats: ["jpg", "jpeg", "png", "webp"],
         public_id: `${Date.now()}-${file.originalname}`,
       };
     },

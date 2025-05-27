@@ -8,14 +8,14 @@ export const deliveryRoutes = Router();
 const deliveryService = new DeliveryService();
 
 deliveryRoutes.post("/", authMiddleware, async (req, res) => {
-  const { orderId, status, trackingCode, estimatedDate } = req.body;
+  const { orderId, status, trackingCode, estimatedDelivery } = req.body;
 
   try {
     const delivery = await deliveryService.createDelivery(
       orderId,
       status,
       trackingCode,
-      estimatedDate ? new Date(estimatedDate) : undefined
+      estimatedDelivery ? new Date(estimatedDelivery) : undefined
     );
     res.status(201).json(delivery);
   } catch (error) {
@@ -60,13 +60,13 @@ deliveryRoutes.put("/:orderId/status", authMiddleware, async (req, res) => {
 
 deliveryRoutes.put("/:orderId/tracking", authMiddleware, async (req, res) => {
   const { orderId } = req.params;
-  const { trackingCode, estimatedDate } = req.body;
+  const { trackingCode, estimatedDelivery } = req.body;
 
   try {
     const updated = await deliveryService.updateTrackingInfo(
       orderId,
       trackingCode,
-      new Date(estimatedDate)
+      new Date(estimatedDelivery)
     );
     res.status(200).json(updated);
   } catch (error) {

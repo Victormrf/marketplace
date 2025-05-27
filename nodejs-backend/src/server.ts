@@ -59,7 +59,7 @@ process.on("SIGINT", async () => {
 
 // Rodar a cada 1 hora
 cron.schedule("0 * * * *", async () => {
-  console.log("⏰ Iniciando atualização automática de entregas...");
+  console.log("Starting automatic status update...");
   await updateDeliveryStatuses();
 });
 

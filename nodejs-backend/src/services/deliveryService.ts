@@ -14,7 +14,7 @@ export class DeliveryService {
       | "FAILED"
       | "RETURNED",
     trackingCode?: string,
-    estimatedDate?: Date
+    estimatedDelivery?: Date
   ) {
     if (!orderId || !status) {
       throw new ValidationError("Missing required fields");
@@ -24,7 +24,7 @@ export class DeliveryService {
       orderId,
       status,
       trackingCode,
-      estimatedDate,
+      estimatedDelivery,
     });
   }
 
@@ -62,7 +62,7 @@ export class DeliveryService {
   async updateTrackingInfo(
     orderId: string,
     trackingCode: string,
-    estimatedDate: Date
+    estimatedDelivery: Date
   ) {
     const delivery = await DeliveryModel.getByOrderId(orderId);
 
@@ -73,7 +73,7 @@ export class DeliveryService {
     return await DeliveryModel.updateTracking(
       orderId,
       trackingCode,
-      estimatedDate
+      estimatedDelivery
     );
   }
 

@@ -13,7 +13,7 @@ export class DeliveryModel {
       | "FAILED"
       | "RETURNED";
     trackingCode?: string;
-    estimatedDate?: Date;
+    estimatedDelivery?: Date;
   }) {
     return prisma.delivery.create({ data });
   }
@@ -45,11 +45,11 @@ export class DeliveryModel {
   static async updateTracking(
     orderId: string,
     trackingCode: string,
-    estimatedDate: Date
+    estimatedDelivery: Date
   ) {
     return prisma.delivery.update({
       where: { orderId },
-      data: { trackingCode, estimatedDate },
+      data: { trackingCode, estimatedDelivery },
     });
   }
 
