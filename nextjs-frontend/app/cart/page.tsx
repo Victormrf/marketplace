@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AlertPopup from "@/components/popups/alertPopup";
+import { CollapsibleText } from "@/components/collapsibleText";
 
 type Product = {
   id: string;
@@ -384,9 +385,10 @@ export default function CartPage() {
                         >
                           {item.product?.name || "Produto"}
                         </a>
-                        <p className="text-sm text-slate-500 dark:text-gray-400">
-                          {item.product?.description || ""}
-                        </p>
+                        <CollapsibleText
+                          text={item.product?.description || ""}
+                          maxLength={100}
+                        />
                         <div className="flex items-center gap-4">
                           <button
                             type="button"

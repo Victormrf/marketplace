@@ -38,9 +38,11 @@ export default function Header({
   const userPrefButtonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const isManualLogout = useRef(false);
 
   async function logout() {
     try {
+      isManualLogout.current = true;
       const res = await fetch("http://localhost:8000/users/logout", {
         method: "POST",
         credentials: "include",
@@ -86,7 +88,7 @@ export default function Header({
           setEmail(null);
           setSellerId(null);
 
-          if (hasAttemptedLoginRef.current) {
+          if (hasAttemptedLoginRef.current && !isManualLogout.current) {
             setShowAlert(true);
             localStorage.removeItem("cart"); // Limpa o carrinho local se existir
             router.push("/");
@@ -111,7 +113,11 @@ export default function Header({
         setEmail(null);
         setSellerId(null);
 
-        if (hasAttemptedLoginRef.current && !pathname?.includes("/store/")) {
+        if (
+          hasAttemptedLoginRef.current &&
+          !isManualLogout.current &&
+          !pathname?.includes("/store/")
+        ) {
           setShowAlert(true);
           localStorage.removeItem("cart");
           router.push("/");
