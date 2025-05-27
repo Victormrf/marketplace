@@ -131,6 +131,14 @@ export class ProductModel {
     });
   }
 
+  static async getProductById(id: string): Promise<ProductModel> {
+    return prisma.product.findUnique({
+      where: {
+        id,
+      },
+    });
+  }
+
   static async update(id: string, data: Partial<ProductModel>): Promise<void> {
     return prisma.product.update({
       where: { id },

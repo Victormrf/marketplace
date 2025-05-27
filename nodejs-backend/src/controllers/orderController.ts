@@ -18,6 +18,8 @@ orderRoutes.post("/", authMiddleware, async (req, res) => {
     const newOrder = await orderService.createOrderWithItems(customerId, items);
     res.status(201).json({ message: "Order created with items", newOrder });
   } catch (error) {
+    console.log(error);
+
     if (error instanceof ValidationError) {
       res.status(400).json({ error: error.message });
       return;

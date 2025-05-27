@@ -58,6 +58,16 @@ export class ProductService {
     return await ProductModel.updateStock(productId, quantity);
   }
 
+  async getProductById(productId: string) {
+    const product = await ProductModel.getProductById(productId);
+
+    if (!product) {
+      throw new ObjectNotFoundError("product");
+    }
+
+    return product;
+  }
+
   async getProductsByIds(productIds: string[]) {
     if (!productIds || !productIds.length) {
       throw new ValidationError("No product id was informed.");
