@@ -268,7 +268,7 @@ export default function Header({
               </div>
             </div>
             <Link
-              href="#"
+              href="/profile"
               className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
             >
               <UserCircle className="w-5 h-5" />
@@ -351,7 +351,7 @@ export default function Header({
               </div>
             </div>
             <Link
-              href="#"
+              href="/profile"
               className="flex items-center gap-2 w-full py-1 px-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium"
             >
               <UserCircle className="w-5 h-5" />
