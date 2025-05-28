@@ -34,6 +34,13 @@ export async function updateDeliveryStatuses(): Promise<void> {
           status: nextStatus,
         },
       });
+
+      await prisma.deliveryStatusLog.create({
+        data: {
+          deliveryId: delivery.id,
+          status: nextStatus,
+        },
+      });
       console.log(`🚚 Entrega ${delivery.id} atualizada para ${nextStatus}`);
     }
   }

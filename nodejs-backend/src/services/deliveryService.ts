@@ -20,11 +20,14 @@ export class DeliveryService {
       throw new ValidationError("Missing required fields");
     }
 
+    const updatedAt = new Date();
+
     return await DeliveryModel.create({
       orderId,
       status,
       trackingCode,
       estimatedDelivery,
+      updatedAt,
     });
   }
 

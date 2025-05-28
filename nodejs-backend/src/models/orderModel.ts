@@ -56,6 +56,13 @@ export class OrderModel {
   ): Promise<OrderModel[]> {
     return prisma.order.findMany({
       where: { customerId },
+      include: {
+        orderItems: {
+          include: {
+            product: true,
+          },
+        },
+      },
     });
   }
 

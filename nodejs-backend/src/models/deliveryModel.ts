@@ -14,6 +14,7 @@ export class DeliveryModel {
       | "RETURNED";
     trackingCode?: string;
     estimatedDelivery?: Date;
+    updatedAt: Date;
   }) {
     return prisma.delivery.create({ data });
   }

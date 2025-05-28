@@ -77,27 +77,6 @@ cartItemRoutes.put(
 );
 
 cartItemRoutes.delete(
-  "/:id",
-  authMiddleware,
-  roleMiddleware("CUSTOMER"),
-  async (req, res) => {
-    const { id } = req.params;
-    try {
-      await cartItemService.removeFromCart(id);
-      res.sendStatus(204);
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-        return;
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
-        return;
-      }
-    }
-  }
-);
-
-cartItemRoutes.delete(
   "/product/:productId",
   authMiddleware,
   roleMiddleware("CUSTOMER"),
@@ -119,13 +98,34 @@ cartItemRoutes.delete(
 );
 
 cartItemRoutes.delete(
-  "/clear/:userId",
+  "/clear",
   authMiddleware,
   roleMiddleware("CUSTOMER"),
   async (req, res) => {
-    const { userId } = req.params;
+    const userId = req.user.id;
     try {
       await cartItemService.clearUserCart(userId);
+      res.sendStatus(204);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+        return;
+      }
+    }
+  }
+);
+
+cartItemRoutes.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("CUSTOMER"),
+  async (req, res) => {
+    const { id } = req.params;
+    try {
+      await cartItemService.removeFromCart(id);
       res.sendStatus(204);
     } catch (error) {
       if (error instanceof ObjectNotFoundError) {

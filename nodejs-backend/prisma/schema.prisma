@@ -196,4 +196,14 @@ model delivery {
   updatedAt DateTime        @updatedAt
 
   order       order           @relation(fields: [orderId], references: [id])
+  statusLogs          DeliveryStatusLog[]
+}
+
+model DeliveryStatusLog {
+  id          String         @id @default(uuid())
+  deliveryId  String
+  status      delivery_status
+  changedAt   DateTime       @default(now())
+
+  delivery    delivery       @relation(fields: [deliveryId], references: [id])
 }
