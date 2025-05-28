@@ -15,6 +15,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useEffect, useState } from "react";
+
+enum DeliveryStatus {
+  SEPARATED = "SEPARATED",
+  PROCESSING = "PROCESSING",
+  SHIPPED = "SHIPPED",
+  COLLECTED = "COLLECTED",
+  ARRIVED_AT_CENTER = "ARRIVED_AT_CENTER",
+  DELIVERED = "DELIVERED",
+}
+
+type Delivery = {
+  id: string;
+  orderId: string;
+  trackingCode?: string;
+  carrier?: string;
+  status: DeliveryStatus;
+  estimatedDelivery?: string;
+  deliveredAt?: string;
+  updatedAt: string;
+};
 
 const TRACKING_STEPS = [
   {
@@ -22,36 +43,42 @@ const TRACKING_STEPS = [
     label: "In stock separation",
     icon: Forklift,
     date: "2024-05-20T10:30:00Z",
+    variant: "secondary" as const,
   },
   {
     status: "PROCESSING",
     label: "Preparing order",
     icon: PackageOpen,
     date: "2024-05-20T14:45:00Z",
+    variant: "secondary" as const,
   },
   {
     status: "SHIPPED",
     label: "Order sent",
     icon: Map,
     date: "2024-05-21T09:15:00Z",
+    variant: "secondary" as const,
   },
   {
     status: "COLLECTED",
     label: "Collected by transport company",
     icon: Truck,
     date: "2024-05-21T11:30:00Z",
+    variant: "secondary" as const,
   },
   {
     status: "ARRIVED_AT_CENTER",
     label: "Arrived at distribution center",
     icon: MapPinCheck,
     date: "2024-05-22T08:00:00Z",
+    variant: "secondary" as const,
   },
   {
     status: "DELIVERED",
     label: "Order delivered",
     icon: CheckCircle,
     date: "2024-05-22T14:20:00Z",
+    variant: "secondary" as const,
   },
 ];
 
@@ -67,9 +94,31 @@ function formatDate(date: string) {
 export default function TrackOrderPage() {
   const params = useParams();
   const orderId = params.orderId as string;
+  const [delivery, setDelivery] = useState<Delivery | null>(null);
+
+  useEffect(() => {
+    async function fetchDelivery() {
+      try {
+        const deliveryRes = await fetch(
+          `http://localhost:8000/delivery/order/${orderId}`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+        if (!deliveryRes.ok) throw new Error("Delivery not found.");
+        const deliveryData = await deliveryRes.json();
+
+        setDelivery(deliveryData);
+      } catch (error) {
+        console.error("Error fetching order tracking:", error);
+      }
+    }
+    fetchDelivery();
+  }, [orderId]);
 
   // In a real scenario, you would fetch the order data from the API
-  const currentStatus = "SHIPPED"; // Simulation
+  const currentStatus = delivery?.status || "SHIPPED"; // Simulation
   const currentStepIndex = TRACKING_STEPS.findIndex(
     (step) => step.status === currentStatus
   );
@@ -94,7 +143,10 @@ export default function TrackOrderPage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle>Progress</CardTitle>
-              <Badge variant="outline" className="font-mono text-xs">
+              <Badge
+                variant={TRACKING_STEPS[currentStepIndex].variant}
+                className="font-mono text-xs"
+              >
                 {currentStatus}
               </Badge>
             </div>

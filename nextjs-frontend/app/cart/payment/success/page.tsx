@@ -82,8 +82,6 @@ export default function PaymentSuccessPage() {
           trackingCode: "123456789",
         };
 
-        console.log(deliveryData);
-
         const deliveryRes = await fetch("http://localhost:8000/delivery/", {
           method: "POST",
           headers: {
@@ -93,6 +91,16 @@ export default function PaymentSuccessPage() {
           credentials: "include",
         });
         if (!deliveryRes.ok) throw new Error("Error creating delivery");
+
+        // 5. Delete cart-items
+        const clearCartRes = await fetch(
+          "http://localhost:8000/cart-items/clear",
+          {
+            method: "DELETE",
+            credentials: "include",
+          }
+        );
+        if (!clearCartRes.ok) throw new Error("Error clearing user cart");
       } catch (error) {
         console.error("Error creating order:", error);
         hasCreatedOrder.current = false;
