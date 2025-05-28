@@ -78,9 +78,10 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+
     if (!selectedAddressId) {
-      // Show error message if no address is selected
       toast({
         title: "Select delivery address",
         description: "Please select a delivery address to continue",

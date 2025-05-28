@@ -35,12 +35,6 @@ export default function PaymentSuccessPage() {
           return;
         }
 
-        const existingOrderId = localStorage.getItem("current-order-id");
-        if (existingOrderId) {
-          setOrderId(existingOrderId);
-          return;
-        }
-
         hasCreatedOrder.current = true;
 
         // 1. Return customer data:
@@ -76,21 +70,25 @@ export default function PaymentSuccessPage() {
           body: JSON.stringify(orderData),
           credentials: "include",
         });
+
         if (!orderRes.ok) throw new Error("Error creating order");
         const orderResponseObj = await orderRes.json();
         setOrderId(orderResponseObj.newOrder.id);
-        localStorage.setItem("current-order-id", orderResponseObj.newOrder.id);
 
         // 4. create delivery
         const deliveryData = {
           orderId: orderResponseObj.newOrder.id,
           status: "SEPARATED",
           trackingCode: "123456789",
-          updatedAt: new Date(),
         };
+
+        console.log(deliveryData);
 
         const deliveryRes = await fetch("http://localhost:8000/delivery/", {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify(deliveryData),
           credentials: "include",
         });
