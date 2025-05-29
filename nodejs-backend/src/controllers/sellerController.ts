@@ -72,16 +72,9 @@ sellerRoutes.get("/", authMiddleware, async (req, res) => {
   }
 });
 
-sellerRoutes.put("/:userId", authMiddleware, async (req, res) => {
-  const requestorId = req.user.id;
-  const requestorRole = req.user.role;
-  const { userId } = req.params;
+sellerRoutes.put("/", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
   const updateData = req.body;
-
-  if (requestorId !== userId && requestorRole !== "admin") {
-    res.status(403).json({ error: "Access denied." });
-    return;
-  }
 
   if (!updateData || Object.keys(updateData).length === 0) {
     res.status(400).json({ error: "No fields to update" });

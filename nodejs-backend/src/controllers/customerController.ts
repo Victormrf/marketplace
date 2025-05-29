@@ -63,16 +63,9 @@ customerRoutes.get("/", authMiddleware, async (req, res) => {
   }
 });
 
-customerRoutes.put("/:userId", authMiddleware, async (req, res) => {
-  const requestorId = req.user.id;
-  const requestorRole = req.user.role;
-  const { userId } = req.params;
+customerRoutes.put("/", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
   const updateData = req.body;
-
-  if (requestorId !== userId && requestorRole !== "ADMIN") {
-    res.status(403).json({ error: `Access restricted` });
-    return;
-  }
 
   if (!updateData || Object.keys(updateData).length === 0) {
     res.status(400).json({ error: "No fields to update." });
