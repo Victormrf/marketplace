@@ -36,6 +36,8 @@ export default function ProductsPage() {
   } | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
   // Função para adicionar ao carrinho
   async function handleAddToCart(
@@ -96,6 +98,18 @@ export default function ProductsPage() {
     }
   }
 
+  const handleSearch = () => {
+    if (!products) return;
+
+    const filtered = products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    setFilteredProducts(filtered);
+  };
+
   useEffect(() => {
     if (category) {
       const fetchProducts = async () => {
@@ -104,7 +118,11 @@ export default function ProductsPage() {
             `http://localhost:8000/products/category/${category}`
           );
           const data = await res.json();
-          setProducts(Array.isArray(data.products) ? data.products : []);
+          const productsList = Array.isArray(data.products)
+            ? data.products
+            : [];
+          setProducts(productsList);
+          setFilteredProducts(productsList);
         } catch (error) {
           console.error("Erro ao buscar produtos:", error);
         } finally {
@@ -136,21 +154,31 @@ export default function ProductsPage() {
           <input
             type="text"
             placeholder="Search for products..."
-            className="px-4 py-2 w-full border border-gray-300 rounded-l"
+            className="px-4 py-2 w-full border border-gray-300 rounded-l focus:outline-none focus:ring-2 focus:ring-slate-500"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSearch();
+              }
+            }}
           />
-          <button className="flex items-center justify-center gap-2 px-4 bg-slate-900 text-white rounded-r hover:bg-slate-800">
-            <Search />
+          <button
+            onClick={handleSearch}
+            className="flex items-center justify-center gap-2 px-4 bg-slate-900 text-white rounded-r hover:bg-slate-800 transition-colors"
+          >
+            <Search className="h-4 w-4" />
           </button>
         </div>
       </div>
 
       {loading ? (
         <p>Carregando produtos...</p>
-      ) : products.length === 0 ? (
+      ) : filteredProducts.length === 0 ? (
         <p>Nenhum produto encontrado.</p>
       ) : (
         <div className="px-4 sm:px-8 md:px-16 lg:px-24 xl:px-32 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 pt-12">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <div
               key={product.id}
               className="w-full bg-background border border-gray-200 rounded-lg shadow-sm flex flex-col"
