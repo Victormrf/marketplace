@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserProfile } from "@/components/profileForm";
 import { ProfileFormModal } from "@/components/profileModal";
@@ -93,7 +92,7 @@ export default function ProfilePage() {
     <div className="container py-8">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">My Profile</h1>
+          <h1 className="text-3xl font-bold text-slate-800">My Profile</h1>
           <Button onClick={() => setIsEditModalOpen(true)}>
             <Edit className="mr-2 h-4 w-4" />
             Edit profile
@@ -107,7 +106,7 @@ export default function ProfilePage() {
                 <AvatarImage
                   src={isSeller ? userProfile.seller?.logo : undefined}
                 />
-                <AvatarFallback className="text-lg">
+                <AvatarFallback className="text-lg text-slate-800">
                   {userProfile.user.name
                     .split(" ")
                     .map((n) => n[0])
@@ -124,9 +123,6 @@ export default function ProfilePage() {
                   {userProfile.user.email}
                 </CardDescription>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline">
-                    {isSeller ? "Seller" : "Client"}
-                  </Badge>
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     Member since {formatDate(userProfile.user.createdAt)}

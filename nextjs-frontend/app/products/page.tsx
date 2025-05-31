@@ -1,11 +1,22 @@
 "use client";
 
-import { Heart, Search } from "lucide-react";
+import { Search, ChevronLeft, ArrowUpDown, Heart } from "lucide-react";
+import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import ProductOverview from "@/components/productOverview";
 import SuccessPopup from "@/components/popups/successPopup";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+type SortOption = "name" | "price-asc" | "price-desc" | "rating";
 
 interface Seller {
   storeName: string;
@@ -26,6 +37,7 @@ interface Product {
 
 export default function ProductsPage() {
   const searchParams = useSearchParams();
+  const searchInput = searchParams.get("search");
   const category = searchParams.get("category");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -38,6 +50,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [sortBy, setSortBy] = useState<SortOption>("name");
 
   // Função para adicionar ao carrinho
   async function handleAddToCart(
@@ -111,28 +124,53 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
-    if (category) {
-      const fetchProducts = async () => {
-        try {
-          const res = await fetch(
-            `http://localhost:8000/products/category/${category}`
-          );
-          const data = await res.json();
-          const productsList = Array.isArray(data.products)
-            ? data.products
-            : [];
-          setProducts(productsList);
-          setFilteredProducts(productsList);
-        } catch (error) {
-          console.error("Erro ao buscar produtos:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
+    const fetchProducts = async () => {
+      try {
+        let url = "http://localhost:8000/products";
 
-      fetchProducts();
+        // Se tiver categoria, busca por categoria
+        if (category) {
+          url = `http://localhost:8000/products/category/${category}`;
+        }
+        // Se tiver termo de busca, usa o endpoint de busca
+        else if (searchInput) {
+          url = `http://localhost:8000/products/search?q=${encodeURIComponent(
+            searchInput
+          )}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+        const productsList = Array.isArray(data.products) ? data.products : [];
+        setProducts(productsList);
+        setFilteredProducts(productsList);
+      } catch (error) {
+        console.error("Erro ao buscar produtos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [category, searchInput]);
+
+  const sortProducts = (products: Product[], sortBy: SortOption) => {
+    const sorted = [...products];
+    switch (sortBy) {
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "price-asc":
+        return sorted.sort((a, b) => a.price - b.price);
+      case "price-desc":
+        return sorted.sort((a, b) => b.price - a.price);
+      case "rating":
+        return sorted.sort(
+          (a, b) => (b.averageRating || 0) - (a.averageRating || 0)
+        );
+      default:
+        return sorted;
     }
-  }, [category]);
+  };
 
   function handleProductClick(product: Product) {
     setSelectedProduct(product);
@@ -146,29 +184,71 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <div className="bg-gray-100">
-        <h1 className="text-2xl font-bold mb-2 pt-4 px-4">
-          {category?.toUpperCase()} PRODUCTS
-        </h1>
-        <div className="flex justify-center max-w-md mx-auto pb-8">
-          <input
-            type="text"
-            placeholder="Search for products..."
-            className="px-4 py-2 w-full border border-gray-300 rounded-l focus:outline-none focus:ring-2 focus:ring-slate-500"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSearch();
-              }
-            }}
-          />
-          <button
-            onClick={handleSearch}
-            className="flex items-center justify-center gap-2 px-4 bg-slate-900 text-white rounded-r hover:bg-slate-800 transition-colors"
-          >
-            <Search className="h-4 w-4" />
-          </button>
+      {/* Breadcrumb Navigation */}
+      <div className="bg-gray-100 px-4 py-2 flex items-center text-sm text-gray-600">
+        <Link
+          href="/"
+          className="flex items-center hover:text-gray-900 hover:underline"
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Home
+        </Link>
+        <span className="mx-2">/</span>
+        <span className="text-gray-900 hover:underline hover:cursor-pointer">
+          {category
+            ? `${category} Products`
+            : `Search results for "${searchInput}"`}
+        </span>
+      </div>
+
+      {/* Header Section */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="px-4 py-4">
+          <h1 className="text-2xl font-bold mb-2">
+            {category
+              ? `${category} Products`
+              : `Search results for "${searchInput}"`}
+          </h1>
+
+          <div className="mt-4 flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search products..."
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+              />
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <ArrowUpDown className="h-4 w-4" />
+                  Sort
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setSortBy("name")}>
+                  Name (A-Z)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("price-asc")}>
+                  Price (Low to High)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("price-desc")}>
+                  Price (High to Low)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("rating")}>
+                  Best Rated
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -178,10 +258,11 @@ export default function ProductsPage() {
         <p>Nenhum produto encontrado.</p>
       ) : (
         <div className="px-4 sm:px-8 md:px-16 lg:px-24 xl:px-32 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 pt-12">
-          {filteredProducts.map((product) => (
+          {sortProducts(filteredProducts, sortBy).map((product) => (
             <div
               key={product.id}
-              className="w-full bg-background border border-gray-200 rounded-lg shadow-sm flex flex-col"
+              className="w-full bg-background border border-gray-200 rounded-lg shadow-sm flex flex-col cursor-pointer"
+              onClick={() => handleProductClick(product)}
             >
               <div className="h-[250px] flex items-center justify-center p-4">
                 <Image
@@ -194,10 +275,7 @@ export default function ProductsPage() {
               </div>
               <div className="px-5 pb-5 flex-1 flex flex-col">
                 <div className="flex-1">
-                  <h5
-                    className="text-gray-800 text-xl font-semibold tracking-tight cursor-pointer hover:text-slate-600"
-                    onClick={() => handleProductClick(product)}
-                  >
+                  <h5 className="text-gray-800 text-xl font-semibold tracking-tight hover:text-slate-600">
                     {product.name}
                   </h5>
                   <div className="flex items-center mt-2.5 mb-3">
@@ -237,14 +315,31 @@ export default function ProductsPage() {
                   </span>
                   <div className="flex gap-2">
                     <button
-                      className="text-white bg-slate-500 hover:bg-slate-700 font-medium rounded-lg text-sm px-4 py-2"
+                      className="flex items-center justify-center text-white bg-slate-700 hover:bg-slate-900 font-medium rounded-lg text-sm px-4 py-2"
                       onClick={(e) =>
                         handleAddToCart(product.id, e.currentTarget)
                       }
                     >
+                      <svg
+                        className="w-5 h-5 -ms-2 me-2"
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M4 4h1.5L8 16m0 0h8m-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm.75-3H7.5M11 7H6.312M17 4v6m-3-3h6"
+                        />
+                      </svg>
                       Add to cart
                     </button>
-                    <button className="text-red-300 bg-white border border-red-300 hover:border-red-600 hover:text-red-600  font-medium rounded-lg text-sm px-4 py-2">
+                    <button className="text-slate-500 bg-white border border-slate-500 hover:border-slate-900 hover:text-slate-900 font-medium rounded-lg text-sm px-4 py-2">
                       <Heart />
                     </button>
                   </div>
@@ -255,7 +350,14 @@ export default function ProductsPage() {
         </div>
       )}
       {modalOpen && selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeModal();
+            }
+          }}
+        >
           <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full relative p-6">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-red-600 text-2xl"

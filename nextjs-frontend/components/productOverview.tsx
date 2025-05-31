@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import React from "react";
+import { CollapsibleText } from "./collapsibleText";
 
 interface Seller {
   storeName: string;
@@ -22,10 +23,9 @@ interface Product {
 
 export default function ProductOverview(productData: Product) {
   const product = {
-    imageUrlLight: "/images/blank-shirt-model.png",
-    imageUrlDark: "/images/blank-shirt-model.png",
+    imageUrl: productData.image,
     title: productData.name,
-    price: `$ ${productData.price}`,
+    price: `$ ${productData.price.toFixed(2)}`,
     ratingValue: productData.averageRating,
     reviewCount: 345,
     description: productData.description,
@@ -41,15 +41,7 @@ export default function ProductOverview(productData: Product) {
               height={220}
               width={220}
               className="w-[240px] h-[240px] object-contain"
-              src={product.imageUrlLight}
-              alt={product.title}
-              priority
-            />
-            <Image
-              height={220}
-              width={220}
-              className="w-[180px] h-[180px] object-contain hidden dark:block"
-              src={product.imageUrlDark}
+              src={product.imageUrl || "/placeholder.svg"}
               alt={product.title}
               priority
             />
@@ -67,23 +59,24 @@ export default function ProductOverview(productData: Product) {
               {/* --- Avaliações --- */}
               <div className="flex items-center gap-2 mt-2 sm:mt-0">
                 <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, index) => (
+                  {[...Array(5)].map((_, i) => (
                     <svg
-                      key={index}
-                      className="w-4 h-4 text-yellow-300"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
+                      key={i}
+                      className={`w-4 h-4 ${
+                        i < Math.round(product.ratingValue || 0)
+                          ? "text-yellow-400"
+                          : "text-gray-500"
+                      }`}
                       fill="currentColor"
-                      viewBox="0 0 24 24"
+                      viewBox="0 0 22 20"
+                      xmlns="http://www.w3.org/2000/svg"
                     >
-                      <path d="M13.849 4.22c-.684-1.626-3.014-1.626-3.698 0L8.397 8.387l-4.552.361c-1.775.14-2.495 2.331-1.142 3.477l3.468 2.937-1.06 4.392c-.413 1.713 1.472 3.067 2.992 2.149L12 19.35l3.897 2.354c1.52.918 3.405-.436 2.992-2.15l-1.06-4.39 3.468-2.938c1.353-1.146.633-3.336-1.142-3.477l-4.552-.36-1.754-4.17Z" />
+                      <path d="M10 15l-5.878 3.09L5.5 12.5 1 8.91l6.061-.882L10 2.5l2.939 5.528L19 8.91l-4.5 3.59 1.378 5.59z" />
                     </svg>
                   ))}
                 </div>
                 <p className="text-sm font-medium leading-none text-gray-500 dark:text-gray-400">
-                  ({product.ratingValue?.toFixed(1)})
+                  ({product.ratingValue?.toFixed(1) || "N/A"})
                 </p>
               </div>
             </div>
@@ -94,7 +87,7 @@ export default function ProductOverview(productData: Product) {
               <a
                 href="#"
                 title="Add to favorites"
-                className="flex items-center justify-center py-2.5 px-5 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
+                className="flex items-center justify-center py-2.5 px-5 text-sm font-medium text-slate-700 focus:outline-none bg-white rounded-lg border border-gray-200  hover:border-red-600 hover:text-red-600 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
                 role="button"
               >
                 <svg
@@ -120,7 +113,7 @@ export default function ProductOverview(productData: Product) {
               <a
                 href="#"
                 title="Add to cart"
-                className="flex items-center justify-center py-2.5 px-5 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
+                className="flex items-center justify-center py-2.5 px-5 text-sm font-medium text-white focus:outline-none bg-slate-700 rounded-lg border border-slate-700 hover:bg-slate-900 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
                 role="button"
               >
                 <svg
@@ -147,9 +140,7 @@ export default function ProductOverview(productData: Product) {
             <hr className="my-5 md:my-6 border-gray-200 dark:border-gray-800" />
 
             {/* --- Descrição --- */}
-            <p className="mb-4 text-gray-500 dark:text-gray-400">
-              {product.description}
-            </p>
+            <CollapsibleText text={product.description || ""} maxLength={100} />
           </div>
         </div>
       </div>

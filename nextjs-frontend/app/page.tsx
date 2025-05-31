@@ -1,7 +1,21 @@
+"use client";
+
 import { Search } from "lucide-react";
 import CategoryCard from "@/components/categoryCard";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function HomePage() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   return (
     <div className="flex flex-col bg-gray-50">
       {/* Hero */}
@@ -12,16 +26,24 @@ export default function HomePage() {
         <p className="text-lg text-slate-600 mb-8">
           Your one-stop marketplace for all products
         </p>
-        <div className="flex justify-center max-w-md mx-auto">
+        <form
+          onSubmit={handleSearch}
+          className="flex justify-center max-w-md mx-auto"
+        >
           <input
             type="text"
             placeholder="Search for products..."
             className="px-4 py-2 w-full border border-gray-300 rounded-l"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button className="flex items-center justify-center gap-2 px-4 bg-slate-800 text-white rounded-r hover:bg-slate-600">
+          <button
+            type="submit"
+            className="flex items-center justify-center gap-2 px-4 bg-slate-800 text-white rounded-r hover:bg-slate-600"
+          >
             <Search />
           </button>
-        </div>
+        </form>
       </section>
       {/* Categories */}
       <section className="py-6 bg-white text-center">
