@@ -50,6 +50,28 @@ productRoutes.post(
   }
 );
 
+productRoutes.get("/search", async (req, res) => {
+  const { q: searchQuery } = req.query;
+
+  try {
+    if (typeof searchQuery !== "string") {
+      res.status(400).json({ error: "Invalid search query" });
+      return;
+    }
+
+    const products = await productService.searchProducts(searchQuery);
+    res.status(200).json({ products });
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(400).json({ error: error.message });
+    } else if (error instanceof ObjectsNotFoundError) {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+});
+
 productRoutes.get("/:productIds", async (req, res) => {
   const { productIds } = req.params;
   const idsArray = productIds.split(",");

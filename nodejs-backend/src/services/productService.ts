@@ -58,6 +58,20 @@ export class ProductService {
     return await ProductModel.updateStock(productId, quantity);
   }
 
+  async searchProducts(searchQuery: string) {
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      throw new ValidationError("Search query cannot be empty");
+    }
+
+    const products = await ProductModel.searchProducts(searchQuery.trim());
+
+    if (!products.length) {
+      throw new ObjectsNotFoundError("No products found matching your search");
+    }
+
+    return products;
+  }
+
   async getProductById(productId: string) {
     const product = await ProductModel.getProductById(productId);
 

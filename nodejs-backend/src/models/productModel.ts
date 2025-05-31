@@ -51,6 +51,27 @@ export class ProductModel {
     });
   }
 
+  static async searchProducts(query: string): Promise<ProductModel[]> {
+    return prisma.product.findMany({
+      where: {
+        name: {
+          contains: query,
+          mode: "insensitive", // Case insensitive search
+        },
+      },
+      include: {
+        seller: {
+          select: {
+            storeName: true,
+          },
+        },
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+  }
+
   static async getById(id: string): Promise<ProductModel> {
     return prisma.product.findUnique({
       where: { id },
