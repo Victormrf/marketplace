@@ -22,12 +22,12 @@ authRoutes.post("/login", async (req, res) => {
     res.send({
       message: "User logged in successfully.",
     });
-  } catch (e) {
+  } catch (e: any) {
     if (e instanceof InvalidCredentialsError) {
       res.status(401).json({ message: "Invalid credentials" });
       return;
     }
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ error: e.message, stack: e.stack });
     return;
   }
 });
