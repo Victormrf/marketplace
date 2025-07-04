@@ -1,5 +1,5 @@
 // src/utils/deliveryStatusUpdater.ts
-import prisma from "../src/config/db";
+import prisma from "../config/db";
 
 enum delivery_status {
   SEPARATED = "SEPARATED",

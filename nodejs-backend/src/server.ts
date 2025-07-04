@@ -16,7 +16,7 @@ import cookieParser from "cookie-parser";
 import { deliveryRoutes } from "./controllers/deliveryController";
 import { refundRoutes } from "./controllers/refundController";
 import cron from "node-cron";
-import { updateDeliveryStatuses } from "../jobs/deliveryStatusUpdater";
+import { updateDeliveryStatuses } from "./jobs/deliveryStatusUpdater";
 
 const app = express();
 app.use(express.json());
