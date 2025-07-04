@@ -6,6 +6,7 @@
     "dev": "nodemon src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "postinstall": "prisma generate",
     "seed": "node prisma/seed.js",
     "clean-seed": "node prisma/seedCleaner.js",
     "migrate": "npx prisma migrate deploy"
@@ -27,7 +28,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
-    "@prisma/client": "^6.5.0",
+    "@prisma/client": "^6.11.1",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
@@ -38,6 +39,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.2",
     "multer-storage-cloudinary": "^4.0.0",
-    "node-cron": "^4.0.7"
+    "node-cron": "^4.0.7",
+    "prisma": "^6.11.1"
   }
 }
