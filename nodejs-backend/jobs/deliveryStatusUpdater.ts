@@ -1,9 +1,9 @@
 // src/utils/deliveryStatusUpdater.ts
 import prisma from "../src/config/db";
-import { delivery_status, delivery } from "@prisma/client";
+import { delivery_status } from "@prisma/client";
 
 export async function updateDeliveryStatuses(): Promise<void> {
-  const deliveries: delivery[] = await prisma.delivery.findMany();
+  const deliveries = await prisma.delivery.findMany();
 
   const statusFlow: Record<delivery_status, delivery_status | null> = {
     SEPARATED: "PROCESSING",
@@ -17,7 +17,7 @@ export async function updateDeliveryStatuses(): Promise<void> {
   };
 
   for (const delivery of deliveries) {
-    const nextStatus = statusFlow[delivery.status];
+    const nextStatus = statusFlow[delivery.status as delivery_status];
     if (!nextStatus) continue;
 
     const hoursSinceUpdate =
