@@ -1,16 +1,26 @@
 // src/utils/deliveryStatusUpdater.ts
 import prisma from "../src/config/db";
-import { delivery_status } from "@prisma/client";
+
+enum delivery_status {
+  SEPARATED = "SEPARATED",
+  PROCESSING = "PROCESSING",
+  SHIPPED = "SHIPPED",
+  COLLECTED = "COLLECTED",
+  ARRIVED_AT_CENTER = "ARRIVED_AT_CENTER",
+  DELIVERED = "DELIVERED",
+  FAILED = "FAILED",
+  RETURNED = "RETURNED",
+}
 
 export async function updateDeliveryStatuses(): Promise<void> {
   const deliveries = await prisma.delivery.findMany();
 
   const statusFlow: Record<delivery_status, delivery_status | null> = {
-    SEPARATED: "PROCESSING",
-    PROCESSING: "SHIPPED",
-    SHIPPED: "COLLECTED",
-    COLLECTED: "ARRIVED_AT_CENTER",
-    ARRIVED_AT_CENTER: "DELIVERED",
+    SEPARATED: delivery_status.PROCESSING,
+    PROCESSING: delivery_status.SHIPPED,
+    SHIPPED: delivery_status.COLLECTED,
+    COLLECTED: delivery_status.ARRIVED_AT_CENTER,
+    ARRIVED_AT_CENTER: delivery_status.DELIVERED,
     DELIVERED: null,
     FAILED: null,
     RETURNED: null,
