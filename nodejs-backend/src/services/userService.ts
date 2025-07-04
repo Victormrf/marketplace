@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { UserModel, UserRole } from "../models/userModel";
 import {
   ConflictError,
@@ -36,7 +36,7 @@ export class UserService {
       return await UserModel.create(data);
     } catch (error: any) {
       if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error instanceof PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
         throw new ConflictError("Email already on use");

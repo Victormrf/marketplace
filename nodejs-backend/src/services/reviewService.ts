@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { ReviewModel } from "../models/reviewModel";
 import {
   ConflictError,
@@ -26,7 +26,7 @@ export class ReviewService {
       });
     } catch (error: any) {
       if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error instanceof PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
         throw new ConflictError(
@@ -54,7 +54,7 @@ export class ReviewService {
       });
     } catch (error: any) {
       if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error instanceof PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
         throw new ConflictError(
