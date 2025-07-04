@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node src/server.ts",
     "seed": "node prisma/seed.js",
-    "clean-seed": "node prisma/seedCleaner.js"
+    "clean-seed": "node prisma/seedCleaner.js",
+    "migrate": "npx prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
