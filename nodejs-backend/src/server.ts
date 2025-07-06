@@ -27,9 +27,9 @@ app.get("/", (req, res) => {
   res.send("Server running on port 8000");
 });
 
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", env: process.env.NODE_ENV, db: process.env.DATABASE_URL ? "set" : "not set" });
-});
+// app.get("/health", (req, res) => {
+//   res.json({ status: "ok", env: process.env.NODE_ENV, db: process.env.DATABASE_URL ? "set" : "not set" });
+// });
 
 app.use(
   cors({
