@@ -33,7 +33,7 @@ app.get("/", (req, res) => {
 
 app.use(
   cors({
-    origin: "http://localhost:3000", // frontend Next.js
+    origin: ["http://localhost:3000", "https://v-market-one.vercel.app"], // frontend Next.js
     credentials: true,
   })
 );
