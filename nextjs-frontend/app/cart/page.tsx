@@ -48,7 +48,7 @@ export default function CartPage() {
       setLoading(true);
 
       try {
-        const res = await fetch("http://localhost:8000/cart-items/", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart-items/`, {
           method: "GET",
           credentials: "include",
         });
@@ -76,7 +76,7 @@ export default function CartPage() {
 
           const ids = localCart.map((item) => item.productId).join(",");
           const productRes = await fetch(
-            `http://localhost:8000/products/${ids}`
+            `${process.env.NEXT_PUBLIC_API_URL}/products/${ids}`
           );
 
           if (!productRes.ok)
@@ -169,7 +169,7 @@ export default function CartPage() {
       );
 
       // Atualiza backend (usuário autenticado via cookie)
-      fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart-items/product/${item.productId}`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -207,7 +207,7 @@ export default function CartPage() {
       );
 
       // Atualiza backend (usuário autenticado via cookie)
-      fetch(`http://localhost:8000/cart-items/product/${item.productId}`, {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart-items/product/${item.productId}`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -247,7 +247,7 @@ export default function CartPage() {
 
     // Remove do backend (usuário autenticado via cookie)
     fetch(
-      `http://localhost:8000/cart-items/product/${removeConfirm.productId}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/cart-items/product/${removeConfirm.productId}`,
       {
         method: "DELETE",
         credentials: "include",

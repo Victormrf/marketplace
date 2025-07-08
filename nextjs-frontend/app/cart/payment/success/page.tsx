@@ -38,18 +38,24 @@ export default function PaymentSuccessPage() {
         hasCreatedOrder.current = true;
 
         // 1. Return customer data:
-        const customerRes = await fetch("http://localhost:8000/customers/", {
-          method: "GET",
-          credentials: "include",
-        });
+        const customerRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/customers/`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
         if (!customerRes.ok) throw new Error("Error returning customer");
         const customerData = await customerRes.json();
 
         // 2. Return cart-items data:
-        const cartItemsRes = await fetch("http://localhost:8000/cart-items/", {
-          method: "GET",
-          credentials: "include",
-        });
+        const cartItemsRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart-items/`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
         if (!cartItemsRes.ok) throw new Error("Error returning cart items");
         const cartItemsData = await cartItemsRes.json();
 
@@ -62,14 +68,17 @@ export default function PaymentSuccessPage() {
           })),
         };
 
-        const orderRes = await fetch("http://localhost:8000/orders/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(orderData),
-          credentials: "include",
-        });
+        const orderRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/orders/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(orderData),
+            credentials: "include",
+          }
+        );
 
         if (!orderRes.ok) throw new Error("Error creating order");
         const orderResponseObj = await orderRes.json();
@@ -82,19 +91,22 @@ export default function PaymentSuccessPage() {
           trackingCode: "123456789",
         };
 
-        const deliveryRes = await fetch("http://localhost:8000/delivery/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(deliveryData),
-          credentials: "include",
-        });
+        const deliveryRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/delivery/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(deliveryData),
+            credentials: "include",
+          }
+        );
         if (!deliveryRes.ok) throw new Error("Error creating delivery");
 
         // 5. Delete cart-items
         const clearCartRes = await fetch(
-          "http://localhost:8000/cart-items/clear",
+          `${process.env.NEXT_PUBLIC_API_URL}/cart-items/clear`,
           {
             method: "DELETE",
             credentials: "include",

@@ -110,12 +110,15 @@ export default function EditProfilePage({
 
       // Atualizar usuário se houver mudanças
       if (Object.keys(userUpdate).length > 0) {
-        const userRes = await fetch("http://localhost:8000/users/", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(userUpdate),
-        });
+        const userRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/users/`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(userUpdate),
+          }
+        );
         if (!userRes.ok) throw new Error("Failed to update user data");
       }
 
@@ -128,12 +131,15 @@ export default function EditProfilePage({
           customerUpdate.phone = formData.phone;
 
         if (Object.keys(customerUpdate).length > 0) {
-          const customerRes = await fetch("http://localhost:8000/customers/", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(customerUpdate),
-          });
+          const customerRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/customers/`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify(customerUpdate),
+            }
+          );
           if (!customerRes.ok)
             throw new Error("Failed to update customer data");
         }
@@ -158,12 +164,15 @@ export default function EditProfilePage({
         }
 
         if (Object.keys(sellerUpdate).length > 0) {
-          const sellerRes = await fetch("http://localhost:8000/sellers/", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(sellerUpdate),
-          });
+          const sellerRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify(sellerUpdate),
+            }
+          );
           if (!sellerRes.ok) throw new Error("Failed to update seller data");
         }
       }

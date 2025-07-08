@@ -43,10 +43,13 @@ export default function Header({
   async function logout() {
     try {
       isManualLogout.current = true;
-      const res = await fetch("http://localhost:8000/users/logout", {
-        method: "POST",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/logout`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
 
       if (!res.ok) {
         throw new Error("Logout failed");
@@ -76,7 +79,7 @@ export default function Header({
   useEffect(() => {
     async function fetchUserRole() {
       try {
-        const res = await fetch("http://localhost:8000/users/me", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
           method: "GET",
           credentials: "include",
         });
@@ -151,7 +154,7 @@ export default function Header({
 
   async function fetchSellerData() {
     try {
-      const res = await fetch("http://localhost:8000/sellers/", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sellers/`, {
         method: "GET",
         credentials: "include",
       });

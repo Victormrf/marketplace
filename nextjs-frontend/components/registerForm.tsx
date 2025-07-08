@@ -81,31 +81,37 @@ export default function RegisterForm({
 
     try {
       // 1. Register user
-      const registerRes = await fetch("http://localhost:8000/users/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: userType.toUpperCase(),
-        }),
-      });
+      const registerRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            role: userType.toUpperCase(),
+          }),
+        }
+      );
 
       if (!registerRes.ok) {
         throw new Error("Falha ao registrar usuário");
       }
 
       // 2. Login with new account to get JWT
-      const loginRes = await fetch("http://localhost:8000/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
+      const loginRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+          }),
+        }
+      );
 
       if (!loginRes.ok) {
         throw new Error("Falha ao realizar login");
@@ -113,15 +119,18 @@ export default function RegisterForm({
 
       // 3. Create profile based on user type
       if (userType === "customer") {
-        const customerRes = await fetch("http://localhost:8000/customers/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            address: formData.address,
-            phone: formData.phone,
-          }),
-        });
+        const customerRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/customers/`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              address: formData.address,
+              phone: formData.phone,
+            }),
+          }
+        );
 
         if (!customerRes.ok) {
           throw new Error("Falha ao criar perfil do cliente");
@@ -137,12 +146,15 @@ export default function RegisterForm({
           formDataObj.append("logo", logoFile);
         }
 
-        const sellerRes = await fetch("http://localhost:8000/sellers/", {
-          method: "POST",
-          credentials: "include",
-          // Remove Content-Type header to let browser set it with boundary
-          body: formDataObj,
-        });
+        const sellerRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
+          {
+            method: "POST",
+            credentials: "include",
+            // Remove Content-Type header to let browser set it with boundary
+            body: formDataObj,
+          }
+        );
 
         if (!sellerRes.ok) {
           const errorData = await sellerRes.json().catch(() => ({}));
@@ -163,9 +175,12 @@ export default function RegisterForm({
 
       // Redirect based on user type
       if (userType === "seller") {
-        const sellerData = await fetch("http://localhost:8000/sellers/", {
-          credentials: "include",
-        }).then((res) => res.json());
+        const sellerData = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
+          {
+            credentials: "include",
+          }
+        ).then((res) => res.json());
         router.push(`/store/${sellerData.profile.id}`);
       } else {
         router.push("/");

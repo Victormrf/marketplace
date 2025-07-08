@@ -96,8 +96,8 @@ export default function SellerDashboard() {
   ) => {
     const endpoint =
       dateFormat === "6months"
-        ? `http://localhost:8000/dashboard/sellers/lastSixMonthsSalesStats/${storeId}`
-        : `http://localhost:8000/dashboard/sellers/lastThirtyDaysSalesStats/${storeId}`;
+        ? `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/lastSixMonthsSalesStats/${storeId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/lastThirtyDaysSalesStats/${storeId}`;
 
     const response = await fetch(endpoint, {
       method: "GET",
@@ -120,7 +120,7 @@ export default function SellerDashboard() {
   useEffect(() => {
     async function fetchStoreData() {
       try {
-        const res = await fetch("http://localhost:8000/sellers/", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sellers/`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -141,7 +141,7 @@ export default function SellerDashboard() {
           try {
             // Total sales
             const salesRes = await fetch(
-              `http://localhost:8000/dashboard/sellers/salesStats/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/salesStats/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -155,7 +155,7 @@ export default function SellerDashboard() {
 
             // Total products
             const productsRes = await fetch(
-              `http://localhost:8000/products/seller/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/products/seller/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -169,7 +169,7 @@ export default function SellerDashboard() {
 
             // Total orders
             const ordersRes = await fetch(
-              `http://localhost:8000/dashboard/sellers/orders/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/orders/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -183,7 +183,7 @@ export default function SellerDashboard() {
 
             // Average store rating
             const reviewRes = await fetch(
-              `http://localhost:8000/review/seller/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/review/seller/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -200,7 +200,7 @@ export default function SellerDashboard() {
 
             // Top selling products
             const bestSellingProductsRes = await fetch(
-              `http://localhost:8000/dashboard/sellers/bestSellingProducts/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/bestSellingProducts/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -214,7 +214,7 @@ export default function SellerDashboard() {
 
             // Revenue per category
             const revenuePerCategoryRes = await fetch(
-              `http://localhost:8000/dashboard/sellers/salesByCategory/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/salesByCategory/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -228,7 +228,7 @@ export default function SellerDashboard() {
 
             // Orders per status
             const ordersPerStatusRes = await fetch(
-              `http://localhost:8000/dashboard/sellers/ordersByStatus/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/ordersByStatus/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -242,7 +242,7 @@ export default function SellerDashboard() {
 
             // New customers per month
             const newCustomersPerMonthRes = await fetch(
-              `http://localhost:8000/dashboard/sellers/newCustomersByMonth/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/newCustomersByMonth/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",
@@ -257,7 +257,7 @@ export default function SellerDashboard() {
 
             // Rating distribution
             const ratingDistributionRes = await fetch(
-              `http://localhost:8000/dashboard/sellers/ratingDistribution/${storeData.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/ratingDistribution/${storeData.id}`,
               {
                 method: "GET",
                 credentials: "include",

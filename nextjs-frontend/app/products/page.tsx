@@ -59,24 +59,30 @@ export default function ProductsPage() {
   ) {
     try {
       // Verifica se existe um usuário logado usando a rota /me
-      const userRes = await fetch("http://localhost:8000/users/me", {
-        method: "GET",
-        credentials: "include",
-      });
+      const userRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/me`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (userRes.ok) {
         // Usuário está logado, adiciona no backend
-        const addToCartRes = await fetch("http://localhost:8000/cart-items", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            productId,
-            quantity: 1,
-          }),
-        });
+        const addToCartRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart-items`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              productId,
+              quantity: 1,
+            }),
+          }
+        );
 
         if (!addToCartRes.ok) {
           throw new Error("Erro ao adicionar ao carrinho");
@@ -126,17 +132,17 @@ export default function ProductsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        let url = "http://localhost:8000/products";
+        let url = `${process.env.NEXT_PUBLIC_API_URL}/products`;
 
         // Se tiver categoria, busca por categoria
         if (category) {
-          url = `http://localhost:8000/products/category/${category}`;
+          url = `${process.env.NEXT_PUBLIC_API_URL}/products/category/${category}`;
         }
         // Se tiver termo de busca, usa o endpoint de busca
         else if (searchInput) {
-          url = `http://localhost:8000/products/search?q=${encodeURIComponent(
-            searchInput
-          )}`;
+          url = `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/products/search?q=${encodeURIComponent(searchInput)}`;
         }
 
         const res = await fetch(url);

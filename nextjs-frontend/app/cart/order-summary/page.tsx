@@ -52,10 +52,13 @@ export default function OrderSummaryPage() {
       setLoading(true);
 
       try {
-        const res = await fetch("http://localhost:8000/cart-items/", {
-          method: "GET",
-          credentials: "include",
-        });
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart-items/`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
         if (!res.ok) throw new Error("Erro ao buscar carrinho");
         const data = await res.json();

@@ -23,7 +23,7 @@ export default function ProfilePage() {
   useEffect(() => {
     async function fetchUserProfile() {
       try {
-        const res = await fetch("http://localhost:8000/users/me", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
           method: "GET",
           credentials: "include",
         });
@@ -31,10 +31,13 @@ export default function ProfilePage() {
         const userData = await res.json();
 
         if (userData.role === "CUSTOMER") {
-          const customerRes = await fetch("http://localhost:8000/customers/", {
-            method: "GET",
-            credentials: "include",
-          });
+          const customerRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/customers/`,
+            {
+              method: "GET",
+              credentials: "include",
+            }
+          );
           if (!customerRes.ok)
             throw new Error("Error fetching customer profile");
           const customerData = await customerRes.json();
@@ -49,10 +52,13 @@ export default function ProfilePage() {
             customer: customerData.profile,
           });
         } else {
-          const sellerRes = await fetch("http://localhost:8000/sellers/", {
-            method: "GET",
-            credentials: "include",
-          });
+          const sellerRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
+            {
+              method: "GET",
+              credentials: "include",
+            }
+          );
           if (!sellerRes.ok) throw new Error("Error fetching customer profile");
           const sellerData = await sellerRes.json();
 

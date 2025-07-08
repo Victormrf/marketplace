@@ -106,16 +106,19 @@ export default function OrdersPage() {
     async function fetchOrders() {
       try {
         // 1. Return customer
-        const customerRes = await fetch("http://localhost:8000/customers/", {
-          method: "GET",
-          credentials: "include",
-        });
+        const customerRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/customers/`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
         if (!customerRes.ok) throw new Error("Error returning customer");
         const customerData = await customerRes.json();
 
         // 2. Return orders from customer
         const ordersRes = await fetch(
-          `http://localhost:8000/orders/customer/${customerData.profile.id}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/orders/customer/${customerData.profile.id}`,
           {
             method: "GET",
             credentials: "include",

@@ -59,10 +59,13 @@ export default function ProductsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const storeRes = await fetch("http://localhost:8000/sellers/", {
-          method: "GET",
-          credentials: "include",
-        });
+        const storeRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
         if (!storeRes.ok) {
           throw new Error("Error fetching store data");
@@ -73,7 +76,7 @@ export default function ProductsPage() {
 
         if (storeId) {
           const res = await fetch(
-            `http://localhost:8000/products/seller/${storeId}`,
+            `${process.env.NEXT_PUBLIC_API_URL}/products/seller/${storeId}`,
             {
               method: "GET",
               credentials: "include",

@@ -104,10 +104,13 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     }
 
     try {
-      const sellerDataRes = await fetch("http://localhost:8000/sellers/", {
-        method: "GET",
-        credentials: "include",
-      });
+      const sellerDataRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       const seller = await sellerDataRes.json();
       const sellerId = seller.profile.id;
@@ -126,11 +129,14 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
         data.append("image", imageFile);
       }
 
-      const productRes = await fetch("http://localhost:8000/products/", {
-        method: "POST",
-        body: data,
-        credentials: "include",
-      });
+      const productRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/products/`,
+        {
+          method: "POST",
+          body: data,
+          credentials: "include",
+        }
+      );
 
       if (!productRes.ok) {
         throw new Error("Falha ao criar produto");

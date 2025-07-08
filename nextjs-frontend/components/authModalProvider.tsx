@@ -17,7 +17,7 @@ export default function AuthModalProvider({
   // useEffect(() => {
   //   async function checkAuth() {
   //     try {
-  //       const res = await fetch("http://localhost:8000/users/me", {
+  //       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
   //         credentials: "include",
   //       });
 

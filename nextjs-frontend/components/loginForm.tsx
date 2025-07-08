@@ -36,7 +36,7 @@ export default function LoginForm({
   async function syncLocalCartWithBackend() {
     const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
     for (const item of localCart) {
-      await fetch("http://localhost:8000/cart-items/", {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart-items/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,12 +56,15 @@ export default function LoginForm({
 
     try {
       // 1. Autenticação
-      const res = await fetch("http://localhost:8000/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
       if (!res.ok) {
         setError("Usuário ou senha inválidos");
@@ -70,10 +73,13 @@ export default function LoginForm({
       }
 
       // 2. Recuperação de dados do usuário
-      const userRes = await fetch("http://localhost:8000/users/me", {
-        method: "GET",
-        credentials: "include",
-      });
+      const userRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/me`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (!userRes.ok) {
         throw new Error("Erro ao obter dados do usuário");
@@ -88,10 +94,13 @@ export default function LoginForm({
 
       // 4. Redirecionamento para seller
       if (user.role === "SELLER") {
-        const sellerRes = await fetch("http://localhost:8000/sellers/", {
-          method: "GET",
-          credentials: "include",
-        });
+        const sellerRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
         if (!sellerRes.ok) {
           throw new Error("Erro ao obter dados do seller");

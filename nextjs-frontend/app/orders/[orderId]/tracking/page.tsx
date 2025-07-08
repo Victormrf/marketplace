@@ -100,7 +100,7 @@ export default function TrackOrderPage() {
     async function fetchDelivery() {
       try {
         const deliveryRes = await fetch(
-          `http://localhost:8000/delivery/order/${orderId}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/delivery/order/${orderId}`,
           {
             method: "GET",
             credentials: "include",
