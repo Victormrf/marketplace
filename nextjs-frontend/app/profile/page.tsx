@@ -11,9 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserProfile } from "@/components/profileForm";
 import { ProfileFormModal } from "@/components/profileModal";
 import { useRouter } from "next/navigation";
+import { UserProfile } from "@/types/user";
 
 export default function ProfilePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
