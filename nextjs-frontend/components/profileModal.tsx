@@ -1,8 +1,9 @@
 "use client";
 
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
-import EditProfilePage, { UserProfile } from "@/components/profileForm";
+import EditProfilePage from "@/components/profileForm";
 import { DialogTitle } from "@radix-ui/react-dialog";
+import { UserProfile } from "@/types/user";
 
 interface ProfileFormModalProps {
   isOpen: boolean;

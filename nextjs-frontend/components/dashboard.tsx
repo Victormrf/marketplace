@@ -21,35 +21,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import DashboardHeader from "./dashboardHeader";
-
-export interface SellerDashboardProps {
-  storeId: string;
-}
-
-export interface UserData {
-  email: string;
-}
-
-export interface StoreData {
-  id: string;
-  storeName: string;
-  logo?: string;
-  description?: string;
-  user: UserData;
-}
-
-export interface ProductData {
-  id: string;
-  sellerId: string;
-  name: string;
-  description?: string;
-  price: number;
-  stock: number;
-  category: string;
-  image?: string;
-  createdAt: Date;
-  totalSold?: number;
-}
+import { Store } from "@/types/store";
+import { Product } from "@/types/product";
 
 export interface OrderData {
   id: string;
@@ -62,13 +35,13 @@ const COLORS = ["#1f283c", "#7a7e8a", "#48556c", "#a1a1a1"];
 
 export default function SellerDashboard() {
   const [view, setView] = useState<"6months" | "30days">("6months");
-  const [store, setStore] = useState<StoreData | null>(null);
+  const [store, setStore] = useState<Store | null>(null);
   const [selectedTab, setSelectedTab] = useState<
     "overview" | "sales" | "customers"
   >("overview");
   const [loading, setLoading] = useState(true);
   const [totalSales, setTotalSales] = useState(0);
-  const [storeProducts, setStoreProducts] = useState<ProductData[]>([]);
+  const [storeProducts, setStoreProducts] = useState<Product[]>([]);
   const [storeOrders, setStoreOrders] = useState<OrderData[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [revenuePerDate, setRevenuePerDate] = useState<
@@ -77,9 +50,7 @@ export default function SellerDashboard() {
   const [revenuePerCategory, setRevenuePerCategory] = useState<
     { category: string; totalSales: number }[]
   >([]);
-  const [bestSellingProducts, setBestSellingProducts] = useState<ProductData[]>(
-    []
-  );
+  const [bestSellingProducts, setBestSellingProducts] = useState<Product[]>([]);
   const [ordersPerStatus, setOrdersPerStatus] = useState<
     { status: string; count: number }[]
   >([]);

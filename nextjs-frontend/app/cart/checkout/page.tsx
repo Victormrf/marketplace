@@ -2,30 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { Address } from "@/types/address";
+import { OrderSummary } from "@/types/orderSummary";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
-type OrderSummaryData = {
-  originalPrice?: number;
-  savings?: number;
-  storePickup?: number;
-  tax?: number;
-  total?: number;
-};
-
-type Address = {
-  id: number;
-  country: string;
-  city: string;
-  zipcode: string;
-  district: string;
-  street: string;
-  number: string;
-};
-
 export default function CheckoutPage() {
-  const [orderSummary, setOrderSummary] = useState<OrderSummaryData>({});
+  const [orderSummary, setOrderSummary] = useState<OrderSummary>({});
   const initialAddress: Address = {
     id: 1, // ID inicial
     country: "US",
@@ -36,9 +20,9 @@ export default function CheckoutPage() {
     number: "",
   };
   const [addresses, setAddresses] = useState<Address[]>([initialAddress]);
-  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
-    null
-  );
+  const [selectedAddressId, setSelectedAddressId] = useState<
+    number | undefined | null
+  >(null);
   const router = useRouter();
 
   useEffect(() => {

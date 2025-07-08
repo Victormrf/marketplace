@@ -11,43 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-
-// Enums e tipos baseados no modelo fornecido
-export enum UserRole {
-  CUSTOMER = "CUSTOMER",
-  SELLER = "SELLER",
-}
-
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: UserRole;
-  createdAt: Date;
-};
-
-export type Customer = {
-  id: string;
-  userId: string;
-  address: string;
-  phone: string;
-};
-
-export type Seller = {
-  id: string;
-  userId: string;
-  storeName: string;
-  logo?: string;
-  description?: string;
-  rating: number;
-};
-
-export type UserProfile = {
-  user: User;
-  customer?: Customer;
-  seller?: Seller;
-};
+import { UserProfile, UserRole } from "@/types/user";
 
 export default function EditProfilePage({
   userProfile,

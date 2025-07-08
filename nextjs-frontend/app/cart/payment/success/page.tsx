@@ -3,26 +3,7 @@
 import Link from "next/link";
 import { Check, Home, Package } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-type Product = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: string;
-  image?: string;
-  createdAt: string;
-};
-
-type CartItem = {
-  id?: string;
-  userdId?: string;
-  productId: string;
-  quantity: number;
-  createdAt?: string;
-  product?: Product;
-};
+import { CartItem } from "@/types/cartItem";
 
 export default function PaymentSuccessPage() {
   const [orderId, setOrderId] = useState<string | null>(null);

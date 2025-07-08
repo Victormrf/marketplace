@@ -1,20 +1,13 @@
 "use client";
 
+import { OrderSummary } from "@/types/orderSummary";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-type OrderSummaryData = {
-  originalPrice?: number;
-  savings?: number;
-  storePickup?: number;
-  tax?: number;
-  total?: number;
-};
-
 export default function PaymentPage() {
-  const [orderSummary, setOrderSummary] = useState<OrderSummaryData>({});
+  const [orderSummary, setOrderSummary] = useState<OrderSummary>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
 

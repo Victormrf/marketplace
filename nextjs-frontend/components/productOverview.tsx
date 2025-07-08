@@ -3,23 +3,7 @@
 import Image from "next/image";
 import React from "react";
 import { CollapsibleText } from "./collapsibleText";
-
-interface Seller {
-  storeName: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image?: string;
-  seller: Seller;
-  stock: number;
-  description?: string;
-  category?: string;
-  averageRating?: number;
-  createdAt?: string;
-}
+import { Product } from "@/types/product";
 
 export default function ProductOverview(productData: Product) {
   const product = {

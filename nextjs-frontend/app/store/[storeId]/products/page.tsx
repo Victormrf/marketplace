@@ -16,18 +16,7 @@ import { ProductCard } from "@/components/productCard";
 import { ProductModal } from "@/components/editProductModal";
 import { toast } from "@/hooks/use-toast";
 import { NewProductModal } from "@/components/newProductModal";
-
-export type Product = {
-  id: string;
-  sellerId: string;
-  name: string;
-  description?: string;
-  price: number;
-  stock: number;
-  category: string;
-  image?: string;
-  createdAt: Date;
-};
+import { Product } from "@/types/product";
 
 const CATEGORIES = [
   "All",

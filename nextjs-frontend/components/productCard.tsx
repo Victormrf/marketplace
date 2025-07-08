@@ -4,18 +4,7 @@ import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-type Product = {
-  id: string;
-  sellerId: string;
-  name: string;
-  description?: string;
-  price: number;
-  stock: number;
-  category: string;
-  image?: string;
-  createdAt: Date;
-};
+import { Product } from "@/types/product";
 
 interface ProductCardProps {
   product: Product;

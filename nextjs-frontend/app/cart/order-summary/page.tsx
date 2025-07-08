@@ -1,50 +1,16 @@
 "use client";
 
+import { Address } from "@/types/address";
+import { CartItem } from "@/types/cartItem";
+import { OrderSummary } from "@/types/orderSummary";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
-type Product = {
-  id: string;
-  image?: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: string;
-  createdAt: string;
-};
-
-type CartItem = {
-  id?: string;
-  userdId?: string;
-  productId: string;
-  quantity: number;
-  createdAt?: string;
-  product?: Product;
-};
-
-type OrderSummaryData = {
-  originalPrice?: number;
-  savings?: number;
-  storePickup?: number;
-  tax?: number;
-  total?: number;
-};
-
-type AddressData = {
-  country?: string;
-  city?: string;
-  zipcode?: string;
-  district?: string;
-  street?: string;
-  number?: string;
-};
-
 export default function OrderSummaryPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [orderSummary, setOrderSummary] = useState<OrderSummaryData>({});
-  const [address, setAddress] = useState<AddressData>({});
+  const [orderSummary, setOrderSummary] = useState<OrderSummary>({});
+  const [address, setAddress] = useState<Address>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

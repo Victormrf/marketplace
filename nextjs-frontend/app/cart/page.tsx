@@ -6,26 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AlertPopup from "@/components/popups/alertPopup";
 import { CollapsibleText } from "@/components/collapsibleText";
-
-type Product = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: string;
-  image?: string;
-  createdAt: string;
-};
-
-type CartItem = {
-  id?: string;
-  userdId?: string;
-  productId: string;
-  quantity: number;
-  createdAt?: string;
-  product?: Product;
-};
+import { Product } from "@/types/product";
+import { CartItem } from "@/types/cartItem";
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -48,10 +30,13 @@ export default function CartPage() {
       setLoading(true);
 
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart-items/`, {
-          method: "GET",
-          credentials: "include",
-        });
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart-items/`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
         if (res.ok) {
           setIsLoggedIn(true);
@@ -169,12 +154,15 @@ export default function CartPage() {
       );
 
       // Atualiza backend (usuário autenticado via cookie)
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart-items/product/${item.productId}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: item.quantity + 1 }),
-      }).catch((error) => {
+      fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/cart-items/product/${item.productId}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quantity: item.quantity + 1 }),
+        }
+      ).catch((error) => {
         alert("Erro ao atualizar produto no carrinho.");
         console.error(error);
       });
@@ -207,12 +195,15 @@ export default function CartPage() {
       );
 
       // Atualiza backend (usuário autenticado via cookie)
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart-items/product/${item.productId}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: item.quantity - 1 }),
-      }).catch((error) => {
+      fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/cart-items/product/${item.productId}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quantity: item.quantity - 1 }),
+        }
+      ).catch((error) => {
         alert("Erro ao atualizar produto no carrinho.");
         console.error(error);
       });

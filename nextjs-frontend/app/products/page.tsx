@@ -15,25 +15,9 @@ import ProductOverview from "@/components/productOverview";
 import SuccessPopup from "@/components/popups/successPopup";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Product } from "@/types/product";
 
 type SortOption = "name" | "price-asc" | "price-desc" | "rating";
-
-interface Seller {
-  storeName: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image?: string;
-  seller: Seller;
-  stock: number;
-  description?: string;
-  category?: string;
-  averageRating?: number;
-  createdAt?: string;
-}
 
 export default function ProductsPage() {
   const searchParams = useSearchParams();
@@ -309,7 +293,7 @@ export default function ProductsPage() {
                 </div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-gray-600">
-                    {product.seller.storeName}
+                    {product?.seller?.storeName}
                   </span>
                   <span className="text-xs text-gray-500">
                     Stock: {product.stock}

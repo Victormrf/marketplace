@@ -25,18 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Save, X } from "lucide-react";
-
-type Product = {
-  id: string;
-  sellerId: string;
-  name: string;
-  description?: string;
-  price: number;
-  stock: number;
-  category: string;
-  image?: string;
-  createdAt: Date;
-};
+import { Product } from "@/types/product";
 
 // Categorias de exemplo
 const CATEGORIES = [
@@ -70,14 +59,17 @@ export function ProductModal({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Formatar a data de criação
-  const formattedDate = new Date(product.createdAt).toLocaleDateString(
-    "pt-BR",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }
-  );
+  const formattedDate = product.createdAt
+    ? new Date(product.createdAt).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : new Date().toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
 
   // Alternar entre modo de visualização e edição
   const toggleEditMode = () => {

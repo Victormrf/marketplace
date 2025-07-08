@@ -16,26 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
-
-enum DeliveryStatus {
-  SEPARATED = "SEPARATED",
-  PROCESSING = "PROCESSING",
-  SHIPPED = "SHIPPED",
-  COLLECTED = "COLLECTED",
-  ARRIVED_AT_CENTER = "ARRIVED_AT_CENTER",
-  DELIVERED = "DELIVERED",
-}
-
-type Delivery = {
-  id: string;
-  orderId: string;
-  trackingCode?: string;
-  carrier?: string;
-  status: DeliveryStatus;
-  estimatedDelivery?: string;
-  deliveredAt?: string;
-  updatedAt: string;
-};
+import { Delivery } from "@/types/delivery";
 
 const TRACKING_STEPS = [
   {
