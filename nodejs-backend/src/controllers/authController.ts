@@ -14,7 +14,7 @@ authRoutes.post("/login", async (req, res) => {
     // Define o cookie HttpOnly com o token
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "none",
       maxAge: 1000 * 60 * 60 * 24, // 1 dia
     });
@@ -35,8 +35,8 @@ authRoutes.post("/login", async (req, res) => {
 authRoutes.post("/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: true,
+    sameSite: "none",
   });
 
   res.status(200).json({ message: "User logged out successfully." });

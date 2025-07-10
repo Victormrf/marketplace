@@ -17,6 +17,8 @@ export async function authMiddleware(
   const tokenFromHeader = authHeader?.replace("Bearer ", "");
   const tokenFromCookie = req.cookies?.token;
 
+  console.log("Cookies recebidos:", req.cookies);
+
   const token = tokenFromHeader || tokenFromCookie;
 
   if (!token) {
