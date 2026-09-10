@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 
-// Categorias de exemplo - substitua pelas categorias reais do seu marketplace
+
 const CATEGORIES = [
   "Office",
   "Sports",

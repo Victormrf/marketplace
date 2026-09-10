@@ -40,9 +40,8 @@ export default function LoginForm({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Não precisa mais do Authorization
         },
-        credentials: "include", // <<< ESSENCIAL
+        credentials: "include",
         body: JSON.stringify(item),
       });
     }
