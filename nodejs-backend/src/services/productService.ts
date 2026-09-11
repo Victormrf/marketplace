@@ -1,136 +1,214 @@
-import { Category, ProductModel } from "../models/productModel";
+import { ProductCategory } from "@prisma/client";
 import {
-  ObjectNotFoundError,
-  ObjectsNotFoundError,
-  ValidationError,
-} from "../utils/customErrors";
+  ProductCreateData,
+  ProductReadRecord,
+  ProductRepositoryPort,
+  ProductUpdateData,
+  productRepository,
+} from "../repositories/productRepository";
+import {
+  DEFAULT_LIMIT,
+  DEFAULT_PAGE,
+  PaginationInput,
+  ProductCollectionDto,
+  ProductReadDto,
+  ProductReadFilters,
+} from "../types/productRead";
+import { ConflictError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 
-interface ProductData {
-  sellerId: string;
-  name: string;
-  description?: string;
-  price: number;
-  stock: number;
-  category: Category;
-  image?: string;
+export type ProductActor = { id: string; role?: string };
+export type ProductCreateInput = Record<string, unknown>;
+export type ProductUpdateInput = Record<string, unknown>;
+
+export class ProductForbiddenError extends Error {
+  constructor() {
+    super("You do not have permission to modify this product");
+    this.name = "ProductForbiddenError";
+  }
+}
+
+const PRODUCT_WRITE_FIELDS = new Set([
+  "name",
+  "reference",
+  "description",
+  "priceInCents",
+  "currency",
+  "category",
+  "image",
+]);
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+}
+
+function normalizeRequiredString(value: unknown, field: string): string {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new ValidationError(`${field} is required`);
+  }
+  return value.trim();
+}
+
+function normalizeOptionalString(value: unknown, field: string): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") throw new ValidationError(`${field} must be a string`);
+  const normalized = value.trim();
+  return normalized === "" ? null : normalized;
+}
+
+function parseNonNegativeInteger(value: unknown, field: string): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value.trim())
+        ? Number(value.trim())
+        : NaN;
+
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new ValidationError(`${field} must be a non-negative integer`);
+  }
+  return parsed;
+}
+
+function validateCurrency(value: unknown): "BRL" {
+  if (value !== undefined && value !== "BRL") {
+    throw new ValidationError("Only BRL currency is supported");
+  }
+  return "BRL";
+}
+
+function validateCategory(value: unknown): ProductCategory {
+  if (!Object.values(ProductCategory).includes(value as ProductCategory)) {
+    throw new ValidationError("Invalid category");
+  }
+  return value as ProductCategory;
+}
+
+function rejectUnknownFields(input: Record<string, unknown>) {
+  const unknown = Object.keys(input).find((field) => !PRODUCT_WRITE_FIELDS.has(field));
+  if (unknown) throw new ValidationError(`Unsupported product field: ${unknown}`);
 }
 
 export class ProductService {
-  async createOrRestockProduct(productData: ProductData) {
-    if (
-      !productData.sellerId ||
-      !productData.name ||
-      productData.price === undefined ||
-      productData.stock === undefined ||
-      !productData.category
-    ) {
-      throw new ValidationError("Missing required fields");
-    }
+  constructor(private readonly repository: ProductRepositoryPort = productRepository) {}
 
-    const existingProduct = await ProductModel.getProductBySellerAndName(
-      productData.name,
-      productData.sellerId
-    );
-
-    if (existingProduct && existingProduct.id) {
-      return await this.restock(existingProduct.id, productData.stock);
-    }
-
-    return await ProductModel.create(productData);
+  private toReadDto(product: ProductReadRecord, ratings: Map<string, number>): ProductReadDto {
+    const onHandQuantity = product.inventory?.onHandQuantity ?? 0;
+    const reservedQuantity = product.inventory?.reservedQuantity ?? 0;
+    return {
+      id: product.id,
+      sellerId: product.sellerId,
+      sellerName: product.seller.storeName,
+      name: product.name,
+      reference: product.reference,
+      description: product.description,
+      priceInCents: product.priceInCents,
+      currency: "BRL",
+      category: product.category,
+      image: product.image,
+      inventory: { onHandQuantity, reservedQuantity, availableQuantity: onHandQuantity - reservedQuantity },
+      averageRating: ratings.get(product.id) ?? null,
+    };
   }
 
-  async restock(productId: string, quantity: number) {
-    const product = await ProductModel.getById(productId);
-
-    if (!product) {
-      throw new ObjectNotFoundError("Product");
-    }
-
-    if (product.stock === undefined) {
-      throw new ValidationError("Product stock is not initialized");
-    }
-
-    const newStock = product.stock + quantity;
-
-    if (newStock < 0) {
-      throw new ValidationError("Stock cannot be negative");
-    }
-    return await ProductModel.updateStock(productId, quantity);
+  private async readCollection(filters: ProductReadFilters, pagination: PaginationInput): Promise<ProductCollectionDto> {
+    const total = await this.repository.count(filters);
+    const products = await this.repository.findMany(filters, (pagination.page - 1) * pagination.limit, pagination.limit);
+    const ratings = await this.repository.averageRatings(products.map((product) => product.id));
+    return {
+      data: products.map((product) => this.toReadDto(product, ratings)),
+      pagination: { page: pagination.page, limit: pagination.limit, total, totalPages: Math.ceil(total / pagination.limit) },
+    };
   }
 
-  async searchProducts(searchQuery: string) {
-    if (!searchQuery || searchQuery.trim().length === 0) {
-      throw new ValidationError("Search query cannot be empty");
-    }
-
-    const products = await ProductModel.searchProducts(searchQuery.trim());
-
-    if (!products.length) {
-      throw new ObjectsNotFoundError("No products found matching your search");
-    }
-
-    return products;
+  async listProducts(filters: ProductReadFilters = {}, pagination: PaginationInput = { page: DEFAULT_PAGE, limit: DEFAULT_LIMIT }) {
+    return this.readCollection(filters, pagination);
   }
 
-  async getProductById(productId: string) {
-    const product = await ProductModel.getProductById(productId);
+  async getProductReadById(productId: string): Promise<ProductReadDto> {
+    const product = await this.repository.findById(productId);
+    if (!product) throw new ObjectNotFoundError("product");
+    return this.toReadDto(product, await this.repository.averageRatings([product.id]));
+  }
 
-    if (!product) {
-      throw new ObjectNotFoundError("product");
-    }
+  async getProductsReadByIds(productIds: string[], pagination: PaginationInput) {
+    if (!productIds.length) throw new ValidationError("No product id was informed.");
+    return this.readCollection({ ids: productIds }, pagination);
+  }
 
+  async searchProductsRead(searchQuery: string, pagination: PaginationInput) {
+    const search = searchQuery.trim();
+    if (!search) throw new ValidationError("Search query cannot be empty");
+    return this.readCollection({ search }, pagination);
+  }
+
+  async getProductsReadByCategory(category: ProductReadFilters["category"], pagination: PaginationInput) {
+    if (!category) throw new ValidationError("Invalid category");
+    return this.readCollection({ category }, pagination);
+  }
+
+  async getProductsReadBySeller(sellerId: string, pagination: PaginationInput) {
+    return this.readCollection({ sellerId }, pagination);
+  }
+
+  private async assertCanManage(productId: string, actor: ProductActor) {
+    const product = await this.repository.findForAuthorization(productId);
+    if (!product || !product.isActive) throw new ObjectNotFoundError("Product");
+    if (actor.role === "ADMIN") return product;
+    if (actor.role !== "SELLER") throw new ProductForbiddenError();
+    const seller = await this.repository.findActiveSellerByUserId(actor.id);
+    if (!seller || seller.id !== product.sellerId) throw new ProductForbiddenError();
     return product;
   }
 
-  async getProductsByIds(productIds: string[]) {
-    if (!productIds || !productIds.length) {
-      throw new ValidationError("No product id was informed.");
-    }
-
-    const products = await ProductModel.getProductsByIds(productIds);
-
-    if (!products || !products.length) {
-      throw new ObjectsNotFoundError("products");
-    }
-
-    return products;
-  }
-
-  async getProductsBySellerId(sellerId: string) {
-    return await ProductModel.getProductsBySeller(sellerId);
-  }
-
-  async getProductsByCategory(category: string) {
-    const products = await ProductModel.getProductsByCategory(category);
-
-    if (!products.length) {
-      throw new ObjectsNotFoundError("Products");
-    }
-
-    return products;
-  }
-
-  async updateProduct(productId: string, productData: Partial<ProductData>) {
-    const product = await ProductModel.getById(productId);
-
-    if (!product) {
-      throw new ObjectNotFoundError("Product");
-    }
-
+  async createProduct(actor: ProductActor, input: ProductCreateInput): Promise<ProductReadDto> {
+    rejectUnknownFields(input);
+    const seller = actor.role === "SELLER" ? await this.repository.findActiveSellerByUserId(actor.id) : null;
+    if (actor.role !== "SELLER" || !seller) throw new ProductForbiddenError();
+    const data: ProductCreateData = {
+      sellerId: seller.id,
+      name: normalizeRequiredString(input.name, "name"),
+      reference: normalizeOptionalString(input.reference, "reference"),
+      description: normalizeOptionalString(input.description, "description"),
+      priceInCents: parseNonNegativeInteger(input.priceInCents, "priceInCents"),
+      currency: validateCurrency(input.currency),
+      category: validateCategory(input.category),
+      image: normalizeOptionalString(input.image, "image"),
+    };
     try {
-      return await ProductModel.update(productId, productData);
-    } catch (error: any) {
-      throw new Error(`Failed to update product: ${(error as Error).message}`);
+      const created = await this.repository.createWithInventory(data);
+      return this.getProductReadById(created.id);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new ConflictError("Product reference already exists for this seller");
+      throw error;
     }
   }
 
-  async deleteProduct(productId: string) {
-    const product = await ProductModel.getById(productId);
-
-    if (!product) {
-      throw new ObjectNotFoundError("Product");
+  async updateProduct(productId: string, actor: ProductActor, input: ProductUpdateInput): Promise<ProductReadDto> {
+    rejectUnknownFields(input);
+    if (Object.keys(input).length === 0) throw new ValidationError("No fields to update");
+    await this.assertCanManage(productId, actor);
+    const data: ProductUpdateData = {};
+    if ("name" in input) data.name = normalizeRequiredString(input.name, "name");
+    if ("reference" in input) data.reference = normalizeOptionalString(input.reference, "reference");
+    if ("description" in input) data.description = normalizeOptionalString(input.description, "description");
+    if ("priceInCents" in input) data.priceInCents = parseNonNegativeInteger(input.priceInCents, "priceInCents");
+    if ("currency" in input) data.currency = validateCurrency(input.currency);
+    if ("category" in input) data.category = validateCategory(input.category);
+    if ("image" in input) data.image = normalizeOptionalString(input.image, "image");
+    try {
+      await this.repository.updateProduct(productId, data);
+      return this.getProductReadById(productId);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new ConflictError("Product reference already exists for this seller");
+      throw error;
     }
+  }
 
-    return await ProductModel.delete(productId);
+  async deactivateProduct(productId: string, actor: ProductActor): Promise<void> {
+    const product = await this.repository.findForAuthorization(productId);
+    if (!product) throw new ObjectNotFoundError("Product");
+    if (!product.isActive) return;
+    await this.assertCanManage(productId, actor);
+    await this.repository.deactivateProduct(productId, new Date());
   }
 }

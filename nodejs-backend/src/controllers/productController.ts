@@ -1,128 +1,145 @@
-import { Router } from "express";
-import { ProductService } from "../services/productService";
+import { ProductCategory } from "@prisma/client";
+import { Request, Response, Router } from "express";
 import { authMiddleware } from "../middlewares/authMiddleware";
+import uploadProductImage from "../middlewares/uploadProductImage";
 import {
+  ProductForbiddenError,
+  ProductService,
+} from "../services/productService";
+import {
+  DEFAULT_LIMIT,
+  DEFAULT_PAGE,
+  PaginationInput,
+  parsePaginationValue,
+} from "../types/productRead";
+import {
+  ConflictError,
   ObjectNotFoundError,
-  ObjectsNotFoundError,
   ValidationError,
 } from "../utils/customErrors";
-import { roleMiddleware } from "../middlewares/roleMiddleware";
-import uploadProductImage from "../middlewares/uploadProductImage";
 
 export const productRoutes = Router();
 const productService = new ProductService();
+
+function readPagination(query: Record<string, unknown>): PaginationInput {
+  try {
+    return {
+      page: parsePaginationValue(query.page, DEFAULT_PAGE, "page"),
+      limit: parsePaginationValue(query.limit, DEFAULT_LIMIT, "limit"),
+    };
+  } catch (error) {
+    throw new ValidationError((error as Error).message);
+  }
+}
+
+function readCategory(value: string): ProductCategory {
+  if (!Object.values(ProductCategory).includes(value as ProductCategory)) {
+    throw new ValidationError("Invalid category");
+  }
+  return value as ProductCategory;
+}
+
+function sendProductError(error: unknown, res: Response) {
+  if (error instanceof ValidationError) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+  if (error instanceof ProductForbiddenError) {
+    res.status(403).json({ error: error.message });
+    return;
+  }
+  if (error instanceof ObjectNotFoundError) {
+    res.status(404).json({ error: error.message });
+    return;
+  }
+  if (error instanceof ConflictError) {
+    res.status(409).json({ error: error.message });
+    return;
+  }
+  res.status(500).json({ message: "Internal Server Error" });
+}
+
+function inputWithUploadedImage(req: Request): Record<string, unknown> {
+  return {
+    ...req.body,
+    ...(req.file ? { image: (req.file as { path: string }).path } : {}),
+  };
+}
 
 productRoutes.post(
   "/",
   authMiddleware,
   uploadProductImage.single("image"),
   async (req, res) => {
-    const { sellerId, name, description, price, stock, category } = req.body;
-
-    // A imagem processada pelo Cloudinary já retorna a URL pública em req.file.path
-    const imageUrl = (req.file as any)?.path || null;
-
     try {
-      const newProductListing = await productService.createOrRestockProduct({
-        sellerId,
-        name,
-        description,
-        price: parseFloat(price),
-        stock: parseInt(stock),
-        category,
-        image: imageUrl,
-      });
-
-      res.status(201).json(newProductListing);
+      const product = await productService.createProduct(
+        { id: req.user.id, role: req.user.role },
+        inputWithUploadedImage(req)
+      );
+      res.status(201).json(product);
     } catch (error) {
-      if (error instanceof Error) {
-        console.error("Erro ao criar produto:", error.message);
-        console.error("Stack:", error.stack);
-      } else if (error instanceof ValidationError) {
-        res.status(400).json({ error: error.message });
-      } else {
-        res.status(500).json({
-          message: "Erro interno ao criar produto",
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+      sendProductError(error, res);
     }
   }
 );
 
-productRoutes.get("/search", async (req, res) => {
-  const { q: searchQuery } = req.query;
-
+productRoutes.get("/", async (req, res) => {
   try {
-    if (typeof searchQuery !== "string") {
-      res.status(400).json({ error: "Invalid search query" });
-      return;
-    }
-
-    const products = await productService.searchProducts(searchQuery);
-    res.status(200).json({ products });
+    res.status(200).json(await productService.listProducts({}, readPagination(req.query)));
   } catch (error) {
-    if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
-    } else if (error instanceof ObjectsNotFoundError) {
-      res.status(404).json({ error: error.message });
-    } else {
-      res.status(500).json({ message: "Internal Server Error" });
-    }
+    sendProductError(error, res);
   }
 });
 
-productRoutes.get("/:productIds", async (req, res) => {
-  const { productIds } = req.params;
-  const idsArray = productIds.split(",");
+productRoutes.get("/search", async (req, res) => {
   try {
-    const products = await productService.getProductsByIds(idsArray);
-    res.status(200).json({ products });
+    if (typeof req.query.q !== "string") throw new ValidationError("Invalid search query");
+    res.status(200).json(
+      await productService.searchProductsRead(req.query.q, readPagination(req.query))
+    );
   } catch (error) {
-    if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
-      return;
-    } else if (error instanceof ObjectsNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    } else {
-      res.status(500).json({ message: "Internal Server Error" });
-      return;
-    }
+    sendProductError(error, res);
   }
 });
 
 productRoutes.get("/seller/:sellerId", async (req, res) => {
-  const { sellerId } = req.params;
-
   try {
-    const products = await productService.getProductsBySellerId(sellerId);
-    res.status(200).json({ products });
+    res.status(200).json(
+      await productService.getProductsReadBySeller(
+        req.params.sellerId,
+        readPagination(req.query)
+      )
+    );
   } catch (error) {
-    if (error instanceof ObjectsNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    } else {
-      res.status(500).json({ message: "Internal Server Error" });
-      return;
-    }
+    sendProductError(error, res);
   }
 });
 
 productRoutes.get("/category/:category", async (req, res) => {
-  const { category } = req.params;
-
   try {
-    const products = await productService.getProductsByCategory(category);
-    res.status(200).json({ products });
+    res.status(200).json(
+      await productService.getProductsReadByCategory(
+        readCategory(req.params.category),
+        readPagination(req.query)
+      )
+    );
   } catch (error) {
-    if (error instanceof ObjectsNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    } else {
-      res.status(500).json({ message: "Internal Server Error" });
+    sendProductError(error, res);
+  }
+});
+
+productRoutes.get("/:productIds", async (req, res) => {
+  try {
+    const ids = req.params.productIds.split(",");
+    if (ids.length === 1) {
+      res.status(200).json(await productService.getProductReadById(ids[0]));
       return;
     }
+    res.status(200).json(
+      await productService.getProductsReadByIds(ids, readPagination(req.query))
+    );
+  } catch (error) {
+    sendProductError(error, res);
   }
 });
 
@@ -131,37 +148,15 @@ productRoutes.put(
   authMiddleware,
   uploadProductImage.single("image"),
   async (req, res) => {
-    const requestorRole = req.user.role;
-    const { productId } = req.params;
-    const updateData = req.body;
-
-    if (requestorRole !== "ADMIN" && requestorRole !== "SELLER") {
-      res.status(403).json({ error: "Access denied." });
-      return;
-    }
-
-    if (!updateData || Object.keys(updateData).length === 0) {
-      res.status(400).json({ error: "No fields to update" });
-      return;
-    }
-
-    // Se imagem foi enviada, adiciona URL ao updateData
-    if (req.file) {
-      updateData.image = (req.file as any).path;
-    }
-
     try {
-      const updatedProduct = await productService.updateProduct(
-        productId,
-        updateData
+      const product = await productService.updateProduct(
+        req.params.productId,
+        { id: req.user.id, role: req.user.role },
+        inputWithUploadedImage(req)
       );
-      res.status(200).json(updatedProduct);
+      res.status(200).json(product);
     } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-        return;
-      }
-      res.status(500).json({ error: "Internal Server Error" });
+      sendProductError(error, res);
     }
   }
 );
@@ -169,20 +164,15 @@ productRoutes.put(
 productRoutes.delete(
   "/:productId",
   authMiddleware,
-  roleMiddleware("admin"),
   async (req, res) => {
-    const { productId } = req.params;
-
     try {
-      await productService.deleteProduct(productId);
-      res.status(204).json({ message: "Product was successfully deleted" });
+      await productService.deactivateProduct(req.params.productId, {
+        id: req.user.id,
+        role: req.user.role,
+      });
+      res.status(204).send();
     } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-        return;
-      }
-      res.status(500).json({ error: error });
-      return;
+      sendProductError(error, res);
     }
   }
 );

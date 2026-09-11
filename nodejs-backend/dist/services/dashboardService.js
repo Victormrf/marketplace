@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardService = void 0;
 const orderItemModel_1 = require("../models/orderItemModel");
 const orderModel_1 = require("../models/orderModel");
-const productModel_1 = require("../models/productModel");
+const productRepository_1 = require("../repositories/productRepository");
 const reviewModel_1 = require("../models/reviewModel");
 const date_fns_1 = require("date-fns");
 class DashboardService {
@@ -123,7 +123,7 @@ class DashboardService {
             const productIds = groupedData
                 .map((item) => item.productId)
                 .filter((id) => typeof id === "string");
-            const products = yield productModel_1.ProductModel.getProductsByIds(productIds);
+            const products = yield productRepository_1.productRepository.getProductsByIds(productIds);
             const result = products.map((product) => {
                 var _a;
                 const quantityData = groupedData.find((item) => item.productId === product.id);

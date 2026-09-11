@@ -9,7 +9,10 @@
     "postinstall": "prisma generate",
     "seed": "node prisma/seed.js",
     "clean-seed": "node prisma/seedCleaner.js",
-    "migrate": "npx prisma migrate deploy"
+    "migrate": "npx prisma migrate deploy",
+    "test:db": "node --test tests/schema-v2.integration.test.js",
+    "test:catalog": "npm run build && node --test tests/catalog-read.integration.test.js",
+    "test:catalog-write": "npm run build && node --test tests/catalog-write.integration.test.js"
   },
   "keywords": [],
   "author": "",

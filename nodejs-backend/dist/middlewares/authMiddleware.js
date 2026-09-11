@@ -21,6 +21,7 @@ function authMiddleware(req, res, next) {
         const authHeader = req.header("Authorization");
         const tokenFromHeader = authHeader === null || authHeader === void 0 ? void 0 : authHeader.replace("Bearer ", "");
         const tokenFromCookie = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.token;
+        console.log("Cookies recebidos:", req.cookies);
         const token = tokenFromHeader || tokenFromCookie;
         if (!token) {
             res.status(401).json({ message: "Access denied. Token not informed." });

@@ -1,6 +1,6 @@
 import { OrderItemModel } from "../models/orderItemModel";
 import { OrderModel } from "../models/orderModel";
-import { ProductModel } from "../models/productModel";
+import { productRepository } from "../repositories/productRepository";
 import { ReviewModel } from "../models/reviewModel";
 import { format } from "date-fns";
 
@@ -136,7 +136,7 @@ export class DashboardService {
       .map((item) => item.productId)
       .filter((id): id is string => typeof id === "string");
 
-    const products = await ProductModel.getProductsByIds(productIds);
+    const products = await productRepository.getProductsByIds(productIds);
 
     const result = products.map((product) => {
       const quantityData = groupedData.find(

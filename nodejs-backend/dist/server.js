@@ -37,8 +37,11 @@ const PORT = process.env.PORT || 8000;
 app.get("/", (req, res) => {
     res.send("Server running on port 8000");
 });
+// app.get("/health", (req, res) => {
+//   res.json({ status: "ok", env: process.env.NODE_ENV, db: process.env.DATABASE_URL ? "set" : "not set" });
+// });
 app.use((0, cors_1.default)({
-    origin: "http://localhost:3000", // frontend Next.js
+    origin: ["http://localhost:3000", "https://v-market-one.vercel.app"], // frontend Next.js
     credentials: true,
 }));
 app.use((0, cookie_parser_1.default)());
