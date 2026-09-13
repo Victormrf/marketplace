@@ -52,16 +52,48 @@ export interface ProductRepositoryPort {
 }
 
 function buildWhere(filters: ProductReadFilters): Prisma.ProductWhereInput {
-  return {
+  const and: Prisma.ProductWhereInput[] = [{
     isActive: true,
     seller: { isActive: true },
-    ...(filters.search
-      ? { name: { contains: filters.search, mode: "insensitive" } }
-      : {}),
-    ...(filters.category ? { category: filters.category } : {}),
-    ...(filters.sellerId ? { sellerId: filters.sellerId } : {}),
-    ...(filters.ids ? { id: { in: filters.ids } } : {}),
-  };
+  }];
+
+  if (filters.search) {
+    and.push({ name: { contains: filters.search, mode: "insensitive" } });
+  }
+  if (filters.category) {
+    and.push({ category: filters.category });
+  }
+  if (filters.sellerId) {
+    and.push({ sellerId: filters.sellerId });
+  }
+  if (filters.ids) {
+    and.push({ id: { in: filters.ids } });
+  }
+
+  if (filters.inStock === true) {
+    and.push({
+      inventory: {
+        is: {
+          onHandQuantity: { gt: prisma.inventory.fields.reservedQuantity },
+        },
+      },
+    });
+  } else if (filters.inStock === false) {
+    and.push({
+      OR: [
+        { inventory: { is: null } },
+        {
+          inventory: {
+            is: {
+              onHandQuantity: { lte: prisma.inventory.fields.reservedQuantity },
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  return { AND: and };
 }
 
 export class ProductRepository implements ProductRepositoryPort {
@@ -85,7 +117,7 @@ export class ProductRepository implements ProductRepositoryPort {
 
   async findById(id: string): Promise<ProductReadRecord | null> {
     return prisma.product.findFirst({
-      where: { ...buildWhere({}), id },
+      where: { AND: [buildWhere({}), { id }] },
       select: PRODUCT_READ_SELECT,
     });
   }

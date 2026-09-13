@@ -95,6 +95,7 @@ class ProductService {
             category: product.category,
             image: product.image,
             inventory: { onHandQuantity, reservedQuantity, availableQuantity: onHandQuantity - reservedQuantity },
+            isAvailable: onHandQuantity - reservedQuantity > 0,
             averageRating: (_e = ratings.get(product.id)) !== null && _e !== void 0 ? _e : null,
         };
     }
@@ -149,11 +150,8 @@ class ProductService {
             return this.readCollection({ sellerId }, pagination);
         });
     }
-    assertCanManage(productId, actor) {
+    assertCanManage(product, actor) {
         return __awaiter(this, void 0, void 0, function* () {
-            const product = yield this.repository.findForAuthorization(productId);
-            if (!product || !product.isActive)
-                throw new customErrors_1.ObjectNotFoundError("Product");
             if (actor.role === "ADMIN")
                 return product;
             if (actor.role !== "SELLER")
@@ -196,7 +194,12 @@ class ProductService {
             rejectUnknownFields(input);
             if (Object.keys(input).length === 0)
                 throw new customErrors_1.ValidationError("No fields to update");
-            yield this.assertCanManage(productId, actor);
+            const product = yield this.repository.findForAuthorization(productId);
+            if (!product)
+                throw new customErrors_1.ObjectNotFoundError("Product");
+            yield this.assertCanManage(product, actor);
+            if (!product.isActive)
+                throw new customErrors_1.ObjectNotFoundError("Product");
             const data = {};
             if ("name" in input)
                 data.name = normalizeRequiredString(input.name, "name");
@@ -228,9 +231,9 @@ class ProductService {
             const product = yield this.repository.findForAuthorization(productId);
             if (!product)
                 throw new customErrors_1.ObjectNotFoundError("Product");
+            yield this.assertCanManage(product, actor);
             if (!product.isActive)
                 return;
-            yield this.assertCanManage(productId, actor);
             yield this.repository.deactivateProduct(productId, new Date());
         });
     }

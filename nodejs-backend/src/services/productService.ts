@@ -17,6 +17,11 @@ import {
 import { ConflictError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 
 export type ProductActor = { id: string; role?: string };
+export type ProductAuthorizationRecord = {
+  id: string;
+  sellerId: string;
+  isActive: boolean;
+};
 export type ProductCreateInput = Record<string, unknown>;
 export type ProductUpdateInput = Record<string, unknown>;
 
@@ -106,6 +111,7 @@ export class ProductService {
       category: product.category,
       image: product.image,
       inventory: { onHandQuantity, reservedQuantity, availableQuantity: onHandQuantity - reservedQuantity },
+      isAvailable: onHandQuantity - reservedQuantity > 0,
       averageRating: ratings.get(product.id) ?? null,
     };
   }
@@ -150,9 +156,7 @@ export class ProductService {
     return this.readCollection({ sellerId }, pagination);
   }
 
-  private async assertCanManage(productId: string, actor: ProductActor) {
-    const product = await this.repository.findForAuthorization(productId);
-    if (!product || !product.isActive) throw new ObjectNotFoundError("Product");
+  private async assertCanManage(product: ProductAuthorizationRecord, actor: ProductActor) {
     if (actor.role === "ADMIN") return product;
     if (actor.role !== "SELLER") throw new ProductForbiddenError();
     const seller = await this.repository.findActiveSellerByUserId(actor.id);
@@ -186,7 +190,10 @@ export class ProductService {
   async updateProduct(productId: string, actor: ProductActor, input: ProductUpdateInput): Promise<ProductReadDto> {
     rejectUnknownFields(input);
     if (Object.keys(input).length === 0) throw new ValidationError("No fields to update");
-    await this.assertCanManage(productId, actor);
+    const product = await this.repository.findForAuthorization(productId);
+    if (!product) throw new ObjectNotFoundError("Product");
+    await this.assertCanManage(product, actor);
+    if (!product.isActive) throw new ObjectNotFoundError("Product");
     const data: ProductUpdateData = {};
     if ("name" in input) data.name = normalizeRequiredString(input.name, "name");
     if ("reference" in input) data.reference = normalizeOptionalString(input.reference, "reference");
@@ -207,8 +214,8 @@ export class ProductService {
   async deactivateProduct(productId: string, actor: ProductActor): Promise<void> {
     const product = await this.repository.findForAuthorization(productId);
     if (!product) throw new ObjectNotFoundError("Product");
+    await this.assertCanManage(product, actor);
     if (!product.isActive) return;
-    await this.assertCanManage(productId, actor);
     await this.repository.deactivateProduct(productId, new Date());
   }
 }

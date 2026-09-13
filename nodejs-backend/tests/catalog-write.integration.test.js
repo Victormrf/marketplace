@@ -173,6 +173,34 @@ test("prevents a seller from deactivating another seller's product", async () =>
   await assert.rejects(() => service.deactivateProduct(product.id, sellerB), ProductForbiddenError);
 });
 
+test("prevents another seller from deactivating an already inactive product", async () => {
+  const product = await service.createProduct(sellerA, createInput(`${TEST_REFERENCE_PREFIX}INACTIVE-OWNERSHIP`));
+  await service.deactivateProduct(product.id, sellerA);
+  await assert.rejects(() => service.deactivateProduct(product.id, sellerB), ProductForbiddenError);
+});
+
+test("allows an admin to deactivate a product", async () => {
+  const product = await service.createProduct(sellerA, createInput(`${TEST_REFERENCE_PREFIX}ADMIN-DEACTIVATE`));
+  await service.deactivateProduct(product.id, admin);
+  const storedProduct = await prisma.product.findUnique({ where: { id: product.id }, select: { isActive: true } });
+  assert.equal(storedProduct.isActive, false);
+});
+
+test("rejects deactivation by an unauthorized role", async () => {
+  const product = await service.createProduct(sellerA, createInput(`${TEST_REFERENCE_PREFIX}ROLE-DEACTIVATE`));
+  await assert.rejects(
+    () => service.deactivateProduct(product.id, { id: sellerA.id, role: "CUSTOMER" }),
+    ProductForbiddenError
+  );
+});
+
+test("returns 404 when deactivating a nonexistent product", async () => {
+  await assert.rejects(
+    () => service.deactivateProduct("00000000-0000-0000-0000-000000009999", sellerA),
+    ObjectNotFoundError
+  );
+});
+
 test("deactivates logically and keeps product and inventory rows", async () => {
   const product = await service.createProduct(sellerA, createInput(`${TEST_REFERENCE_PREFIX}DEACTIVATE`));
   await service.deactivateProduct(product.id, sellerA);
@@ -191,4 +219,29 @@ test("rolls back Product when Inventory creation fails", async () => {
     () => repository.createWithInventory({ ...createInput(reference), sellerId: "00000000-0000-0000-0000-000000000301" }, { onHandQuantity: 0, reservedQuantity: 1 })
   );
   assert.equal(await prisma.product.count({ where: { reference } }), 0);
+});
+
+test("reuses the authorization record without a duplicate product lookup", async () => {
+  let authorizationLookups = 0;
+  let deactivationCalls = 0;
+  const product = {
+    id: "00000000-0000-0000-0000-000000009998",
+    sellerId: "seller-record",
+    isActive: true,
+  };
+  const isolatedService = new ProductService({
+    findForAuthorization: async () => {
+      authorizationLookups += 1;
+      return product;
+    },
+    findActiveSellerByUserId: async () => ({ id: "seller-record" }),
+    deactivateProduct: async () => {
+      deactivationCalls += 1;
+      return product;
+    },
+  });
+
+  await isolatedService.deactivateProduct(product.id, { id: "seller-user", role: "SELLER" });
+  assert.equal(authorizationLookups, 1);
+  assert.equal(deactivationCalls, 1);
 });

@@ -16,6 +16,7 @@ export type ProductReadDto = {
     reservedQuantity: number;
     availableQuantity: number;
   };
+  isAvailable: boolean;
   averageRating: number | null;
 };
 
@@ -23,6 +24,7 @@ export type ProductReadFilters = {
   search?: string;
   category?: ProductCategory;
   sellerId?: string;
+  inStock?: boolean;
   ids?: string[];
 };
 

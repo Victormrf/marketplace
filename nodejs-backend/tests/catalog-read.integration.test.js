@@ -3,7 +3,11 @@ const { after, before, test } = require("node:test");
 const { PrismaClient, ProductCategory } = require("@prisma/client");
 
 const { ProductService } = require("../dist/services/productService.js");
+const { ProductRepository } = require("../dist/repositories/productRepository.js");
+const prismaRepositoryClient = require("../dist/config/db.js").default;
 const { ObjectNotFoundError } = require("../dist/utils/customErrors.js");
+const { ValidationError } = require("../dist/utils/customErrors.js");
+const { readCatalogFilters } = require("../dist/controllers/productController.js");
 const {
   parsePaginationValue,
 } = require("../dist/types/productRead.js");
@@ -33,6 +37,9 @@ const IDS = {
   inactiveSellerProduct: "20000000-0000-0000-0000-000000000007",
   activeInventory: "20000000-0000-0000-0000-000000000008",
   review: "20000000-0000-0000-0000-000000000009",
+  unavailableProduct: "20000000-0000-0000-0000-000000000010",
+  noInventoryProduct: "20000000-0000-0000-0000-000000000011",
+  unavailableInventory: "20000000-0000-0000-0000-000000000012",
 };
 
 async function createFixtures() {
@@ -83,6 +90,7 @@ async function createFixtures() {
           priceInCents: 1234,
           currency: "BRL",
           category: ProductCategory.ELECTRONICS,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
         },
         {
           id: IDS.inactiveProduct,
@@ -93,6 +101,7 @@ async function createFixtures() {
           currency: "BRL",
           category: ProductCategory.ELECTRONICS,
           isActive: false,
+          createdAt: new Date("2026-01-02T00:00:00.000Z"),
         },
         {
           id: IDS.inactiveSellerProduct,
@@ -102,6 +111,27 @@ async function createFixtures() {
           priceInCents: 3333,
           currency: "BRL",
           category: ProductCategory.ELECTRONICS,
+          createdAt: new Date("2026-01-03T00:00:00.000Z"),
+        },
+        {
+          id: IDS.unavailableProduct,
+          sellerId: IDS.seller,
+          name: "Catalog Read Unavailable Product",
+          reference: "CATALOG-READ-UNAVAILABLE",
+          priceInCents: 4444,
+          currency: "BRL",
+          category: ProductCategory.ELECTRONICS,
+          createdAt: new Date("2026-03-01T00:00:00.000Z"),
+        },
+        {
+          id: IDS.noInventoryProduct,
+          sellerId: IDS.seller,
+          name: "Catalog Read No Inventory Product",
+          reference: "CATALOG-READ-NO-INVENTORY",
+          priceInCents: 5555,
+          currency: "BRL",
+          category: ProductCategory.ELECTRONICS,
+          createdAt: new Date("2026-02-01T00:00:00.000Z"),
         },
       ],
     });
@@ -111,6 +141,14 @@ async function createFixtures() {
         productId: IDS.activeProduct,
         onHandQuantity: 10,
         reservedQuantity: 3,
+      },
+    });
+    await tx.inventory.create({
+      data: {
+        id: IDS.unavailableInventory,
+        productId: IDS.unavailableProduct,
+        onHandQuantity: 2,
+        reservedQuantity: 2,
       },
     });
     await tx.review.create({
@@ -126,9 +164,21 @@ async function createFixtures() {
 
 async function removeFixtures() {
   await prisma.review.deleteMany({ where: { id: IDS.review } });
-  await prisma.inventory.deleteMany({ where: { id: IDS.activeInventory } });
+  await prisma.inventory.deleteMany({
+    where: { id: { in: [IDS.activeInventory, IDS.unavailableInventory] } },
+  });
   await prisma.product.deleteMany({
-    where: { id: { in: [IDS.activeProduct, IDS.inactiveProduct, IDS.inactiveSellerProduct] } },
+    where: {
+      id: {
+        in: [
+          IDS.activeProduct,
+          IDS.inactiveProduct,
+          IDS.inactiveSellerProduct,
+          IDS.unavailableProduct,
+          IDS.noInventoryProduct,
+        ],
+      },
+    },
   });
   await prisma.seller.deleteMany({ where: { id: { in: [IDS.seller, IDS.inactiveSeller] } } });
   await prisma.user.deleteMany({
@@ -175,6 +225,131 @@ test("calculates available quantity from inventory", async () => {
     availableQuantity: 7,
   });
   assert.equal(product.averageRating, 4);
+  assert.equal(product.isAvailable, true);
+});
+
+test("returns only products with positive availability", async () => {
+  const result = await service.listProducts({ inStock: true }, { page: 1, limit: 100 });
+  assert.ok(result.data.length > 0);
+  assert.ok(result.data.every((product) => product.inventory.availableQuantity > 0));
+});
+
+test("returns only unavailable products, including missing inventory", async () => {
+  const result = await service.listProducts(
+    { category: ProductCategory.ELECTRONICS, inStock: false },
+    { page: 1, limit: 100 }
+  );
+  assert.deepEqual(
+    result.data.map((product) => product.id),
+    [IDS.unavailableProduct, IDS.noInventoryProduct]
+  );
+  assert.ok(result.data.every((product) => product.isAvailable === false));
+});
+
+test("treats a product without Inventory as unavailable", async () => {
+  const product = await service.getProductReadById(IDS.noInventoryProduct);
+  assert.deepEqual(product.inventory, {
+    onHandQuantity: 0,
+    reservedQuantity: 0,
+    availableQuantity: 0,
+  });
+  assert.equal(product.isAvailable, false);
+});
+
+test("combines category and availability filters in the database", async () => {
+  const result = await service.listProducts(
+    { category: ProductCategory.ELECTRONICS, inStock: true },
+    { page: 1, limit: 20 }
+  );
+  assert.deepEqual(result.data.map((product) => product.id), [IDS.activeProduct]);
+});
+
+test("combines seller and availability filters", async () => {
+  const result = await service.listProducts(
+    { sellerId: IDS.seller, inStock: true },
+    { page: 1, limit: 100 }
+  );
+  assert.ok(result.data.some((product) => product.id === IDS.activeProduct));
+  assert.ok(!result.data.some((product) => product.id === IDS.unavailableProduct));
+});
+
+test("combines search, category and availability filters", async () => {
+  const result = await service.listProducts(
+    { search: "ACTIVE PRODUCT", category: ProductCategory.ELECTRONICS, inStock: true },
+    { page: 1, limit: 20 }
+  );
+  assert.deepEqual(result.data.map((product) => product.id), [IDS.activeProduct]);
+});
+
+test("calculates total and totalPages after filtering", async () => {
+  const result = await service.listProducts(
+    { category: ProductCategory.ELECTRONICS, inStock: false },
+    { page: 1, limit: 1 }
+  );
+  assert.equal(result.pagination.total, 2);
+  assert.equal(result.pagination.totalPages, 2);
+});
+
+test("returns a full filtered page even when unavailable items sort first", async () => {
+  const result = await service.listProducts(
+    { category: ProductCategory.ELECTRONICS, inStock: true },
+    { page: 1, limit: 1 }
+  );
+  assert.equal(result.data.length, 1);
+  assert.equal(result.data[0].id, IDS.activeProduct);
+});
+
+test("pushes availability and pagination into repository queries without loading product IDs", async () => {
+  const repository = new ProductRepository();
+  const originalCount = prismaRepositoryClient.product.count;
+  const originalFindMany = prismaRepositoryClient.product.findMany;
+  const originalQueryRaw = prismaRepositoryClient.$queryRaw;
+  let countArgs;
+  let findManyArgs;
+
+  prismaRepositoryClient.$queryRaw = async () => {
+    throw new Error("A global inventory ID query must not be executed");
+  };
+  prismaRepositoryClient.product.count = async (args) => {
+    countArgs = args;
+    return 1;
+  };
+  prismaRepositoryClient.product.findMany = async (args) => {
+    findManyArgs = args;
+    return [];
+  };
+
+  try {
+    await repository.count({
+      search: "keyboard",
+      category: ProductCategory.ELECTRONICS,
+      sellerId: IDS.seller,
+      inStock: true,
+    });
+    await repository.findMany(
+      {
+        search: "keyboard",
+        category: ProductCategory.ELECTRONICS,
+        sellerId: IDS.seller,
+        inStock: true,
+      },
+      4,
+      2
+    );
+  } finally {
+    prismaRepositoryClient.product.count = originalCount;
+    prismaRepositoryClient.product.findMany = originalFindMany;
+    prismaRepositoryClient.$queryRaw = originalQueryRaw;
+  }
+
+  assert.ok(countArgs.where.AND.some((condition) => condition.inventory));
+  assert.ok(findManyArgs.where.AND.some((condition) => condition.inventory));
+  assert.equal(findManyArgs.skip, 4);
+  assert.equal(findManyArgs.take, 2);
+});
+
+test("rejects invalid inStock values as bad request input", () => {
+  assert.throws(() => readCatalogFilters({ inStock: "yes" }), ValidationError);
 });
 
 test("returns monetary values in cents and BRL", async () => {

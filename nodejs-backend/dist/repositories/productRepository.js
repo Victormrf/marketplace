@@ -29,9 +29,46 @@ const PRODUCT_READ_SELECT = {
     inventory: { select: { onHandQuantity: true, reservedQuantity: true } },
 };
 function buildWhere(filters) {
-    return Object.assign(Object.assign(Object.assign(Object.assign({ isActive: true, seller: { isActive: true } }, (filters.search
-        ? { name: { contains: filters.search, mode: "insensitive" } }
-        : {})), (filters.category ? { category: filters.category } : {})), (filters.sellerId ? { sellerId: filters.sellerId } : {})), (filters.ids ? { id: { in: filters.ids } } : {}));
+    const and = [{
+            isActive: true,
+            seller: { isActive: true },
+        }];
+    if (filters.search) {
+        and.push({ name: { contains: filters.search, mode: "insensitive" } });
+    }
+    if (filters.category) {
+        and.push({ category: filters.category });
+    }
+    if (filters.sellerId) {
+        and.push({ sellerId: filters.sellerId });
+    }
+    if (filters.ids) {
+        and.push({ id: { in: filters.ids } });
+    }
+    if (filters.inStock === true) {
+        and.push({
+            inventory: {
+                is: {
+                    onHandQuantity: { gt: db_1.default.inventory.fields.reservedQuantity },
+                },
+            },
+        });
+    }
+    else if (filters.inStock === false) {
+        and.push({
+            OR: [
+                { inventory: { is: null } },
+                {
+                    inventory: {
+                        is: {
+                            onHandQuantity: { lte: db_1.default.inventory.fields.reservedQuantity },
+                        },
+                    },
+                },
+            ],
+        });
+    }
+    return { AND: and };
 }
 class ProductRepository {
     count(filters) {
@@ -53,7 +90,7 @@ class ProductRepository {
     findById(id) {
         return __awaiter(this, void 0, void 0, function* () {
             return db_1.default.product.findFirst({
-                where: Object.assign(Object.assign({}, buildWhere({})), { id }),
+                where: { AND: [buildWhere({}), { id }] },
                 select: PRODUCT_READ_SELECT,
             });
         });
