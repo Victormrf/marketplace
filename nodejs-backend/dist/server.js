@@ -30,6 +30,7 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const deliveryController_1 = require("./controllers/deliveryController");
 const refundController_1 = require("./controllers/refundController");
 const inventoryController_1 = require("./controllers/inventoryController");
+const customerAddressController_1 = require("./controllers/customerAddressController");
 const node_cron_1 = __importDefault(require("node-cron"));
 const deliveryStatusUpdater_1 = require("./jobs/deliveryStatusUpdater");
 const app = (0, express_1.default)();
@@ -48,6 +49,7 @@ app.use((0, cors_1.default)({
 app.use((0, cookie_parser_1.default)());
 app.use("/users", authController_1.authRoutes);
 app.use("/users", userController_1.userRoutes);
+app.use("/customers/addresses", customerAddressController_1.customerAddressRoutes);
 app.use("/customers", customerController_1.customerRoutes);
 app.use("/sellers", sellerController_1.sellerRoutes);
 app.use("/cart-items", cartItemController_1.cartItemRoutes);

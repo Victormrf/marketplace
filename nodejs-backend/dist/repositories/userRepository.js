@@ -23,6 +23,7 @@ exports.USER_SAFE_SELECT = {
     createdAt: true,
 };
 const USER_AUTH_SELECT = Object.assign(Object.assign({}, exports.USER_SAFE_SELECT), { password: true });
+const USER_DEACTIVATION_SELECT = Object.assign(Object.assign({}, exports.USER_SAFE_SELECT), { deactivatedAt: true, seller: { select: { id: true, isActive: true } } });
 class UserRepository {
     findById(id) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -49,19 +50,28 @@ class UserRepository {
             return db_1.default.user.update({ where: { id }, data, select: exports.USER_SAFE_SELECT });
         });
     }
-    deactivateWithSeller(id) {
+    findForDeactivation(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return db_1.default.user.findUnique({ where: { id }, select: USER_DEACTIVATION_SELECT });
+        });
+    }
+    deactivateWithSeller(record, deactivationTime) {
         return __awaiter(this, void 0, void 0, function* () {
             return db_1.default.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
-                const user = yield tx.user.update({
-                    where: { id },
-                    data: { isActive: false, deactivatedAt: new Date() },
-                    select: exports.USER_SAFE_SELECT,
-                });
-                yield tx.seller.updateMany({
-                    where: { userId: id, isActive: true },
-                    data: { isActive: false, deactivatedAt: new Date() },
-                });
-                return user;
+                var _a;
+                if (record.isActive) {
+                    yield tx.user.updateMany({
+                        where: { id: record.id, isActive: true },
+                        data: { isActive: false, deactivatedAt: deactivationTime },
+                    });
+                }
+                if ((_a = record.seller) === null || _a === void 0 ? void 0 : _a.isActive) {
+                    yield tx.seller.updateMany({
+                        where: { id: record.seller.id, isActive: true },
+                        data: { isActive: false, deactivatedAt: deactivationTime },
+                    });
+                }
+                return tx.user.findUniqueOrThrow({ where: { id: record.id }, select: exports.USER_SAFE_SELECT });
             }));
         });
     }

@@ -107,11 +107,16 @@ class UserService {
     }
     deactivate(userId, actor) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             if (actor.role !== client_1.UserRole.ADMIN)
                 throw new customErrors_1.ForbiddenError();
-            if (!(yield userRepository_1.userRepository.findById(userId)))
+            const record = yield userRepository_1.userRepository.findForDeactivation(userId);
+            if (!record)
                 throw new customErrors_1.ObjectNotFoundError("User");
-            return userRepository_1.userRepository.deactivateWithSeller(userId);
+            if (!record.isActive && !((_a = record.seller) === null || _a === void 0 ? void 0 : _a.isActive)) {
+                return record;
+            }
+            return userRepository_1.userRepository.deactivateWithSeller(record, new Date());
         });
     }
 }

@@ -182,6 +182,49 @@ test("logical user deactivation preserves user and deactivates seller in one pol
   assert.equal(user.isActive, false);
   assert.equal(seller.isActive, false);
   assert.ok(seller.deactivatedAt);
+  assert.ok(user.deactivatedAt);
+  assert.equal(user.deactivatedAt.getTime(), seller.deactivatedAt.getTime());
+  const userTimestamp = user.deactivatedAt.getTime();
+  await users.deactivate(created.id, adminActor);
+  const repeatedUser = await prisma.user.findUnique({ where: { id: created.id } });
+  const repeatedSeller = await prisma.seller.findUnique({ where: { id: profile.id } });
+  assert.equal(repeatedUser.deactivatedAt.getTime(), userTimestamp);
+  assert.equal(repeatedSeller.deactivatedAt.getTime(), userTimestamp);
+});
+
+test("seller deactivation is idempotent and preserves its original timestamp", async () => {
+  const created = await createUser("seller-idempotent", UserRole.SELLER);
+  const profile = await sellers.createSellerProfile(created.id, { storeName: "Seller Idempotent" });
+  await sellers.deactivateSeller(created.id, adminActor);
+  const first = await prisma.seller.findUnique({ where: { id: profile.id } });
+  const timestamp = first.deactivatedAt.getTime();
+  await sellers.deactivateSeller(created.id, adminActor);
+  const second = await prisma.seller.findUnique({ where: { id: profile.id } });
+  assert.equal(second.isActive, false);
+  assert.equal(second.deactivatedAt.getTime(), timestamp);
+});
+
+test("authorization is checked before an idempotent deactivation return", async () => {
+  const user = await createUser("auth-before-user-idempotent", UserRole.CUSTOMER);
+  await users.deactivate(user.id, adminActor);
+  await assert.rejects(() => users.deactivate(user.id, { id: user.id, role: UserRole.CUSTOMER }), ForbiddenError);
+  const sellerUser = await createUser("auth-before-seller-idempotent", UserRole.SELLER);
+  await sellers.createSellerProfile(sellerUser.id, { storeName: "Auth Before Seller" });
+  await sellers.deactivateSeller(sellerUser.id, adminActor);
+  await assert.rejects(() => sellers.deactivateSeller(sellerUser.id, { id: "other", role: UserRole.SELLER }), ForbiddenError);
+});
+
+test("an inactive User with an active Seller deactivates only the Seller", async () => {
+  const created = await createUser("inconsistent-state", UserRole.SELLER);
+  const profile = await sellers.createSellerProfile(created.id, { storeName: "Inconsistent State" });
+  const originalTimestamp = new Date("2026-09-14T12:34:56.000Z");
+  await prisma.user.update({ where: { id: created.id }, data: { isActive: false, deactivatedAt: originalTimestamp } });
+  await users.deactivate(created.id, adminActor);
+  const user = await prisma.user.findUnique({ where: { id: created.id } });
+  const seller = await prisma.seller.findUnique({ where: { id: profile.id } });
+  assert.equal(user.deactivatedAt.getTime(), originalTimestamp.getTime());
+  assert.equal(seller.isActive, false);
+  assert.ok(seller.deactivatedAt);
 });
 
 test("CUSTOMER creates only CustomerProfile and duplicate profiles are rejected", async () => {

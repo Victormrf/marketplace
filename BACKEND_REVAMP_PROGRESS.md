@@ -1,6 +1,6 @@
 # Backend Revamp — Controle de Progresso
 
-Última atualização: 13/09/2026 — Etapa 4 liberada
+Última atualização: 14/09/2026 — Etapa 6 liberada
 
 ## Objetivo
 
@@ -69,21 +69,26 @@ Observação futura: se desativação de produto/seller e movimentação de esto
 
 ### Etapa 4 — Autenticação e perfis
 
-- [~] Etapa atual
-- [ ] `normalizedEmail`
-- [ ] separação entre User, CustomerProfile e Seller
-- [ ] contas ativas
-- [ ] ownership sem confiar em IDs enviados pelo cliente
+- [x] `normalizedEmail`
+- [x] separação entre User, CustomerProfile e Seller
+- [x] contas ativas
+- [x] ownership sem confiar em IDs enviados pelo cliente
+- [x] repositories substituíram Models legados
+- [x] JWT com identidade mínima e role atual carregada do banco
+- [x] DTOs seguros sem senha ou `normalizedEmail`
+- [x] desativação lógica e idempotente
 
 ### Etapa 5 — Endereços do cliente
 
-- [ ] CRUD de `CustomerAddress`
-- [ ] endereço default único
-- [ ] desativação lógica
-- [ ] ownership
+- [x] CRUD de `CustomerAddress`
+- [x] endereço default único
+- [x] desativação lógica
+- [x] ownership
+- [x] atualização condicionada atomicamente a endereço ativo
 
 ### Etapa 6 — Carrinho
 
+- [~] Etapa atual
 - [ ] um Cart ACTIVE por customer
 - [ ] `CartItem.cartId`
 - [ ] merge de itens repetidos
@@ -151,7 +156,7 @@ Observação futura: se desativação de produto/seller e movimentação de esto
 
 ## Próxima ação
 
-Executar a Etapa 4 — autenticação e perfis — por meio de um handoff específico.
+Executar a Etapa 6 — carrinho — por meio de um handoff específico.
 
 ## Protocolo de atualização
 

@@ -86,8 +86,12 @@ export class UserService {
 
   async deactivate(userId: string, actor: { id: string; role?: string }): Promise<UserDto> {
     if (actor.role !== UserRole.ADMIN) throw new ForbiddenError();
-    if (!(await userRepository.findById(userId))) throw new ObjectNotFoundError("User");
-    return userRepository.deactivateWithSeller(userId);
+    const record = await userRepository.findForDeactivation(userId);
+    if (!record) throw new ObjectNotFoundError("User");
+    if (!record.isActive && !record.seller?.isActive) {
+      return record;
+    }
+    return userRepository.deactivateWithSeller(record, new Date());
   }
 }
 

@@ -24,6 +24,7 @@ const SELLER_SELECT = {
     isActive: true,
 };
 const SELLER_WITH_USER_SELECT = Object.assign(Object.assign({}, SELLER_SELECT), { user: { select: userRepository_1.USER_SAFE_SELECT } });
+const SELLER_DEACTIVATION_SELECT = Object.assign(Object.assign({}, SELLER_SELECT), { deactivatedAt: true });
 class SellerRepository {
     findByUserId(userId) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -48,13 +49,18 @@ class SellerRepository {
             return db_1.default.seller.update({ where: { userId }, data, select: SELLER_SELECT });
         });
     }
-    deactivate(userId) {
+    findForDeactivation(userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.seller.update({
-                where: { userId },
-                data: { isActive: false, deactivatedAt: new Date() },
-                select: SELLER_SELECT,
+            return db_1.default.seller.findUnique({ where: { userId }, select: SELLER_DEACTIVATION_SELECT });
+        });
+    }
+    deactivate(record, deactivationTime) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield db_1.default.seller.updateMany({
+                where: { id: record.id, isActive: true },
+                data: { isActive: false, deactivatedAt: deactivationTime },
             });
+            return db_1.default.seller.findUniqueOrThrow({ where: { id: record.id }, select: SELLER_SELECT });
         });
     }
 }

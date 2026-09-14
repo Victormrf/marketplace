@@ -14,7 +14,8 @@
     "test:catalog": "npm run build && node --test tests/catalog-read.integration.test.js",
     "test:catalog-write": "npm run build && node --test tests/catalog-write.integration.test.js",
     "test:inventory": "npm run build && node --test tests/inventory.integration.test.js",
-    "test:auth": "npm run build && node --test tests/auth.integration.test.js"
+    "test:auth": "npm run build && node --test tests/auth.integration.test.js",
+    "test:addresses": "npm run build && node --test tests/customer-address.integration.test.js"
   },
   "keywords": [],
   "author": "",

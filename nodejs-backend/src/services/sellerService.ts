@@ -59,8 +59,12 @@ export class SellerService {
 
   async deactivateSeller(userId: string, actor: { id: string; role?: string }): Promise<SellerRecord> {
     if (actor.role !== UserRole.ADMIN && actor.id !== userId) throw new ForbiddenError();
-    if (!(await sellerRepository.findByUserId(userId))) throw new ObjectNotFoundError("Seller");
-    return sellerRepository.deactivate(userId);
+    const record = await sellerRepository.findForDeactivation(userId);
+    if (!record) throw new ObjectNotFoundError("Seller");
+    if (!record.isActive) {
+      return record;
+    }
+    return sellerRepository.deactivate(record, new Date());
   }
 
   async deleteSellerProfile(): Promise<void> {

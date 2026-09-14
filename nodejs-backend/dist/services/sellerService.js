@@ -87,9 +87,13 @@ class SellerService {
         return __awaiter(this, void 0, void 0, function* () {
             if (actor.role !== client_1.UserRole.ADMIN && actor.id !== userId)
                 throw new customErrors_1.ForbiddenError();
-            if (!(yield sellerRepository_1.sellerRepository.findByUserId(userId)))
+            const record = yield sellerRepository_1.sellerRepository.findForDeactivation(userId);
+            if (!record)
                 throw new customErrors_1.ObjectNotFoundError("Seller");
-            return sellerRepository_1.sellerRepository.deactivate(userId);
+            if (!record.isActive) {
+                return record;
+            }
+            return sellerRepository_1.sellerRepository.deactivate(record, new Date());
         });
     }
     deleteSellerProfile() {

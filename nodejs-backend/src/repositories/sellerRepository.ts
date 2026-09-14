@@ -16,9 +16,17 @@ const SELLER_WITH_USER_SELECT = {
   user: { select: USER_SAFE_SELECT },
 } satisfies Prisma.SellerSelect;
 
+const SELLER_DEACTIVATION_SELECT = {
+  ...SELLER_SELECT,
+  deactivatedAt: true,
+} satisfies Prisma.SellerSelect;
+
 export type SellerRecord = Prisma.SellerGetPayload<{ select: typeof SELLER_SELECT }>;
 export type SellerWithUserRecord = Prisma.SellerGetPayload<{
   select: typeof SELLER_WITH_USER_SELECT;
+}>;
+export type SellerDeactivationRecord = Prisma.SellerGetPayload<{
+  select: typeof SELLER_DEACTIVATION_SELECT;
 }>;
 
 export class SellerRepository {
@@ -49,12 +57,16 @@ export class SellerRepository {
     return prisma.seller.update({ where: { userId }, data, select: SELLER_SELECT });
   }
 
-  async deactivate(userId: string): Promise<SellerRecord> {
-    return prisma.seller.update({
-      where: { userId },
-      data: { isActive: false, deactivatedAt: new Date() },
-      select: SELLER_SELECT,
+  async findForDeactivation(userId: string): Promise<SellerDeactivationRecord | null> {
+    return prisma.seller.findUnique({ where: { userId }, select: SELLER_DEACTIVATION_SELECT });
+  }
+
+  async deactivate(record: SellerDeactivationRecord, deactivationTime: Date): Promise<SellerRecord> {
+    await prisma.seller.updateMany({
+      where: { id: record.id, isActive: true },
+      data: { isActive: false, deactivatedAt: deactivationTime },
     });
+    return prisma.seller.findUniqueOrThrow({ where: { id: record.id }, select: SELLER_SELECT });
   }
 }
 

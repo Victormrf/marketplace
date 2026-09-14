@@ -15,8 +15,17 @@ const USER_AUTH_SELECT = {
   password: true,
 } satisfies Prisma.UserSelect;
 
+const USER_DEACTIVATION_SELECT = {
+  ...USER_SAFE_SELECT,
+  deactivatedAt: true,
+  seller: { select: { id: true, isActive: true } },
+} satisfies Prisma.UserSelect;
+
 export type UserSafeRecord = Prisma.UserGetPayload<{ select: typeof USER_SAFE_SELECT }>;
 export type UserAuthRecord = Prisma.UserGetPayload<{ select: typeof USER_AUTH_SELECT }>;
+export type UserDeactivationRecord = Prisma.UserGetPayload<{
+  select: typeof USER_DEACTIVATION_SELECT;
+}>;
 
 export type UserCreateData = {
   name: string;
@@ -54,18 +63,25 @@ export class UserRepository {
     return prisma.user.update({ where: { id }, data, select: USER_SAFE_SELECT });
   }
 
-  async deactivateWithSeller(id: string): Promise<UserSafeRecord> {
+  async findForDeactivation(id: string): Promise<UserDeactivationRecord | null> {
+    return prisma.user.findUnique({ where: { id }, select: USER_DEACTIVATION_SELECT });
+  }
+
+  async deactivateWithSeller(record: UserDeactivationRecord, deactivationTime: Date): Promise<UserSafeRecord> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const user = await tx.user.update({
-        where: { id },
-        data: { isActive: false, deactivatedAt: new Date() },
-        select: USER_SAFE_SELECT,
-      });
-      await tx.seller.updateMany({
-        where: { userId: id, isActive: true },
-        data: { isActive: false, deactivatedAt: new Date() },
-      });
-      return user;
+      if (record.isActive) {
+        await tx.user.updateMany({
+          where: { id: record.id, isActive: true },
+          data: { isActive: false, deactivatedAt: deactivationTime },
+        });
+      }
+      if (record.seller?.isActive) {
+        await tx.seller.updateMany({
+          where: { id: record.seller.id, isActive: true },
+          data: { isActive: false, deactivatedAt: deactivationTime },
+        });
+      }
+      return tx.user.findUniqueOrThrow({ where: { id: record.id }, select: USER_SAFE_SELECT });
     });
   }
 }

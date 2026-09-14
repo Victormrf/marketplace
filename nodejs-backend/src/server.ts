@@ -16,6 +16,7 @@ import cookieParser from "cookie-parser";
 import { deliveryRoutes } from "./controllers/deliveryController";
 import { refundRoutes } from "./controllers/refundController";
 import { inventoryRoutes } from "./controllers/inventoryController";
+import { customerAddressRoutes } from "./controllers/customerAddressController";
 import cron from "node-cron";
 import { updateDeliveryStatuses } from "./jobs/deliveryStatusUpdater";
 
@@ -43,6 +44,7 @@ app.use(cookieParser());
 
 app.use("/users", authRoutes);
 app.use("/users", userRoutes);
+app.use("/customers/addresses", customerAddressRoutes);
 app.use("/customers", customerRoutes);
 app.use("/sellers", sellerRoutes);
 app.use("/cart-items", cartItemRoutes);
