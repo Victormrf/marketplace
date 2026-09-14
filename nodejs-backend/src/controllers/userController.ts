@@ -1,84 +1,48 @@
-import { Router } from "express";
-import { UserService } from "../services/userService";
-import {
-  ConflictError,
-  ObjectNotFoundError,
-  ValidationError,
-} from "../utils/customErrors";
+import { Request, Response, Router } from "express";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { roleMiddleware } from "../middlewares/roleMiddleware";
+import { userService } from "../services/userService";
+import { ConflictError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 
 export const userRoutes = Router();
-const userService = new UserService();
+
+function sendError(error: unknown, res: Response) {
+  if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+  if (error instanceof ForbiddenError) return res.status(403).json({ error: error.message });
+  if (error instanceof ObjectNotFoundError) return res.status(404).json({ error: error.message });
+  if (error instanceof ConflictError) return res.status(409).json({ error: error.message });
+  return res.status(500).json({ message: "Internal Server Error" });
+}
 
 userRoutes.post("/register", async (req, res) => {
-  const { name, email, password, role } = req.body;
   try {
-    const newUser = await userService.create({ name, email, password, role });
-    res.status(201).json(newUser);
+    res.status(201).json(await userService.create(req.body || {}));
   } catch (error) {
-    if (error instanceof ConflictError) {
-      res.status(409).json({ error: error.message });
-    } else if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: error });
-    }
+    sendError(error, res);
   }
 });
 
 userRoutes.get("/me", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-
   try {
-    const user = await userService.getById(userId);
-    res.json(user);
+    res.status(200).json(await userService.getById(req.user.id));
   } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Internal Server Error" });
-    }
+    sendError(error, res);
   }
 });
 
 userRoutes.put("/", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const updateData = req.body;
-
-  if (!updateData || Object.keys(updateData).length === 0) {
-    res.status(400).json({ error: "No fields to update" });
-  }
-
   try {
-    const updatedUser = await userService.update(userId, req.body);
-    res.json(updatedUser);
+    res.status(200).json(await userService.update(req.user.id, req.body || {}));
   } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-    }
-    if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
-    }
-    res.status(500).json({ error: "Internal Server Error" });
+    sendError(error, res);
   }
 });
 
-userRoutes.delete(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  async (req, res) => {
-    const { userId } = req.params;
-
-    try {
-      await userService.delete(userId);
-      res.status(204).json({ message: "User was successfully deleted" });
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-      }
-      res.status(500).json({ error: error });
-    }
+userRoutes.delete("/:userId", authMiddleware, roleMiddleware("ADMIN"), async (req, res) => {
+  try {
+    await userService.deactivate(req.params.userId, req.user);
+    res.status(204).send();
+  } catch (error) {
+    sendError(error, res);
   }
-);
+});

@@ -1,117 +1,63 @@
-import { Router } from "express";
+import { Response, Router } from "express";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import {
-  ObjectNotFoundError,
-  ExistingProfileError,
-  ValidationError,
-} from "../utils/customErrors";
-import { SellerService } from "../services/sellerService";
 import { roleMiddleware } from "../middlewares/roleMiddleware";
 import uploadSellerLogo from "../middlewares/uploadSellerLogo";
+import { sellerService } from "../services/sellerService";
+import { ConflictError, ExistingProfileError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 
 export const sellerRoutes = Router();
-const sellerService = new SellerService();
 
-sellerRoutes.post(
-  "/",
-  authMiddleware,
-  uploadSellerLogo.single("logo"),
-  async (req, res) => {
-    const userId = req.user.id;
-    const { storeName, description } = req.body;
+function sendError(error: unknown, res: Response) {
+  if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+  if (error instanceof ForbiddenError) return res.status(403).json({ error: error.message });
+  if (error instanceof ObjectNotFoundError) return res.status(404).json({ error: error.message });
+  if (error instanceof ExistingProfileError || error instanceof ConflictError) return res.status(409).json({ error: error.message });
+  return res.status(500).json({ message: "Internal Server Error" });
+}
 
-    const logoUrl = (req.file as any)?.path || null;
-
-    try {
-      const newProfile = await sellerService.createSellerProfile(userId, {
-        storeName,
-        description,
-        logo: logoUrl,
-      });
-      res
-        .status(201)
-        .json({ message: "Seller profile created with success", newProfile });
-    } catch (error) {
-      if (error instanceof ExistingProfileError) {
-        res.status(409).json({ error: error.message });
-      } else if (error instanceof ValidationError) {
-        res.status(400).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: error });
-      }
-    }
+sellerRoutes.post("/", authMiddleware, uploadSellerLogo.single("logo"), async (req, res) => {
+  try {
+    res.status(201).json(await sellerService.createSellerProfile(req.user.id, {
+      ...(req.body || {}),
+      ...(req.file ? { logo: (req.file as { path: string }).path } : {}),
+    }));
+  } catch (error) {
+    sendError(error, res);
   }
-);
+});
 
-sellerRoutes.get(
-  "/all",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  async (req, res) => {
-    try {
-      const profiles = await sellerService.getAllSellers();
-      res.status(200).json({ profiles });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
+sellerRoutes.get("/all", authMiddleware, roleMiddleware("ADMIN"), async (req, res) => {
+  try {
+    res.status(200).json({ profiles: await sellerService.getAllSellers() });
+  } catch (error) {
+    sendError(error, res);
   }
-);
+});
 
 sellerRoutes.get("/", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
   try {
-    const profile = await sellerService.getSellerProfile(userId);
-    res.status(200).json({ profile });
-  } catch (error: any) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    }
-    res.status(500).json({ error: error.message || "Internal Server Error" });
-    return;
-  }
-});
-
-sellerRoutes.put("/", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const updateData = req.body;
-
-  if (!updateData || Object.keys(updateData).length === 0) {
-    res.status(400).json({ error: "No fields to update" });
-    return;
-  }
-
-  try {
-    const updatedSeller = await sellerService.updateSellerProfile(
-      userId,
-      req.body
-    );
-    res.json(updatedSeller);
+    res.status(200).json({ profile: await sellerService.getSellerProfile(req.user.id) });
   } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    }
-    res.status(500).json({ error: "Internal Server Error" });
-    return;
+    sendError(error, res);
   }
 });
 
-sellerRoutes.delete(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  async (req, res) => {
-    const { userId } = req.params;
-
-    try {
-      await sellerService.deleteSellerProfile(userId);
-      res.status(204).json({ message: "Seller was successfully deleted" });
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-      }
-      res.status(500).json({ error: error });
-    }
+sellerRoutes.put("/", authMiddleware, uploadSellerLogo.single("logo"), async (req, res) => {
+  try {
+    res.status(200).json(await sellerService.updateSellerProfile(req.user.id, {
+      ...(req.body || {}),
+      ...(req.file ? { logo: (req.file as { path: string }).path } : {}),
+    }));
+  } catch (error) {
+    sendError(error, res);
   }
-);
+});
+
+sellerRoutes.delete("/:userId", authMiddleware, async (req, res) => {
+  try {
+    await sellerService.deactivateSeller(req.params.userId, req.user);
+    res.status(204).send();
+  } catch (error) {
+    sendError(error, res);
+  }
+});

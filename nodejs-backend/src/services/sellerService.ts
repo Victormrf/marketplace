@@ -1,72 +1,71 @@
-import { CustomerModel } from "../models/customerModel";
-import { SellerModel } from "../models/sellerModel";
-import {
-  ObjectNotFoundError,
-  ExistingProfileError,
-  ValidationError,
-} from "../utils/customErrors";
+import { UserRole } from "@prisma/client";
+import { customerRepository } from "../repositories/customerRepository";
+import { sellerRepository, SellerRecord, SellerWithUserRecord } from "../repositories/sellerRepository";
+import { userRepository } from "../repositories/userRepository";
+import { ExistingProfileError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 
-interface SellerData {
-  storeName: string;
-  description: string;
-  logo?: string;
+export type SellerProfileInput = Record<string, unknown>;
+
+function sellerData(input: SellerProfileInput, allowEmpty = false) {
+  const allowed = new Set(["storeName", "description", "logo"]);
+  const unknown = Object.keys(input).find((field) => !allowed.has(field));
+  if (unknown) throw new ValidationError(`Unsupported seller field: ${unknown}`);
+  const data: { storeName?: string; description?: string | null; logo?: string | null } = {};
+  if ("storeName" in input) {
+    if (typeof input.storeName !== "string" || input.storeName.trim() === "") throw new ValidationError("storeName is required");
+    data.storeName = input.storeName.trim();
+  } else if (!allowEmpty) throw new ValidationError("storeName is required");
+  if ("description" in input) {
+    if (input.description !== null && typeof input.description !== "string") throw new ValidationError("description must be a string");
+    data.description = input.description === null ? null : (input.description as string).trim() || null;
+  }
+  if ("logo" in input) {
+    if (input.logo !== null && typeof input.logo !== "string") throw new ValidationError("logo must be a string");
+    data.logo = input.logo === null ? null : (input.logo as string).trim() || null;
+  }
+  return data;
 }
 
 export class SellerService {
-  async createSellerProfile(userId: string, sellerData: SellerData) {
-    if (!sellerData.storeName || !sellerData.description) {
-      throw new ValidationError("Missing required fields");
+  async createSellerProfile(userId: string, input: SellerProfileInput): Promise<SellerRecord> {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new ObjectNotFoundError("User");
+    if (user.role !== UserRole.SELLER) throw new ForbiddenError("Only SELLER users can create a seller profile");
+    if (await sellerRepository.findByUserId(userId) || await customerRepository.findByUserId(userId)) throw new ExistingProfileError();
+    try {
+      const data = sellerData(input);
+      if (!data.storeName) throw new ValidationError("storeName is required");
+      return await sellerRepository.create({ userId, storeName: data.storeName, logo: data.logo, description: data.description });
+    } catch (error: any) {
+      if (error?.code === "P2002") throw new ExistingProfileError();
+      throw error;
     }
-
-    const existingCustomer = await CustomerModel.getByUserId(userId);
-    const existingSeller = await SellerModel.getByUserId(userId);
-
-    if (existingCustomer || existingSeller) {
-      throw new ExistingProfileError();
-    }
-
-    return await SellerModel.create({ userId, ...sellerData });
   }
 
-  async getAllSellers() {
-    return await SellerModel.getAllSellers();
+  async getAllSellers(): Promise<SellerWithUserRecord[]> {
+    return sellerRepository.findAll();
   }
 
-  async getSellerProfile(userId: string) {
-    const seller = await SellerModel.getByUserId(userId);
-
-    if (!seller) {
-      throw new ObjectNotFoundError("Seller");
-    }
-
+  async getSellerProfile(userId: string): Promise<SellerRecord> {
+    const seller = await sellerRepository.findByUserId(userId);
+    if (!seller) throw new ObjectNotFoundError("Seller");
     return seller;
   }
 
-  async updateSellerProfile(userId: string, data: Partial<SellerData>) {
-    const seller = await SellerModel.getByUserId(userId);
-
-    if (!seller) {
-      throw new ObjectNotFoundError("Seller");
-    }
-
-    try {
-      return await SellerModel.updateSeller(userId, data);
-    } catch (error: any) {
-      throw new Error(`Failed to update seller: ${(error as Error).message}`);
-    }
+  async updateSellerProfile(userId: string, input: SellerProfileInput): Promise<SellerRecord> {
+    if (!(await sellerRepository.findByUserId(userId))) throw new ObjectNotFoundError("Seller");
+    return sellerRepository.update(userId, sellerData(input, true));
   }
 
-  async deleteSellerProfile(userId: string): Promise<void> {
-    const seller = await SellerModel.getByUserId(userId);
+  async deactivateSeller(userId: string, actor: { id: string; role?: string }): Promise<SellerRecord> {
+    if (actor.role !== UserRole.ADMIN && actor.id !== userId) throw new ForbiddenError();
+    if (!(await sellerRepository.findByUserId(userId))) throw new ObjectNotFoundError("Seller");
+    return sellerRepository.deactivate(userId);
+  }
 
-    if (!seller) {
-      throw new ObjectNotFoundError("Seller");
-    }
-
-    try {
-      return await SellerModel.deleteSeller(userId);
-    } catch (error: any) {
-      throw new Error(`Failed to delete seller: ${(error as Error).message}`);
-    }
+  async deleteSellerProfile(): Promise<void> {
+    throw new ValidationError("Seller profiles are not physically deleted");
   }
 }
+
+export const sellerService = new SellerService();

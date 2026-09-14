@@ -1,108 +1,56 @@
-import { Router } from "express";
-import { CustomerService } from "../services/customerService";
+import { Request, Response, Router } from "express";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import {
-  ObjectNotFoundError,
-  ExistingProfileError,
-  ValidationError,
-} from "../utils/customErrors";
 import { roleMiddleware } from "../middlewares/roleMiddleware";
+import { customerService } from "../services/customerService";
+import { ConflictError, ExistingProfileError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 
 export const customerRoutes = Router();
-const customerService = new CustomerService();
+
+function sendError(error: unknown, res: Response) {
+  if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+  if (error instanceof ForbiddenError) return res.status(403).json({ error: error.message });
+  if (error instanceof ObjectNotFoundError) return res.status(404).json({ error: error.message });
+  if (error instanceof ExistingProfileError || error instanceof ConflictError) return res.status(409).json({ error: error.message });
+  return res.status(500).json({ message: "Internal Server Error" });
+}
 
 customerRoutes.post("/", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const { address, phone } = req.body;
-
   try {
-    const newProfile = await customerService.createCustomerProfile(userId, {
-      address,
-      phone,
-    });
-    res
-      .status(201)
-      .json({ message: "Customer profile created with success", newProfile });
+    res.status(201).json(await customerService.createCustomerProfile(req.user.id, req.body || {}));
   } catch (error) {
-    if (error instanceof ExistingProfileError) {
-      res.status(409).json({ error: error.message });
-    } else if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: error });
-    }
+    sendError(error, res);
   }
 });
 
-customerRoutes.get(
-  "/all",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  async (req, res) => {
-    try {
-      const profiles = await customerService.getAllCustomers();
-      res.status(200).json({ profiles });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
+customerRoutes.get("/all", authMiddleware, roleMiddleware("ADMIN"), async (req, res) => {
+  try {
+    res.status(200).json({ profiles: await customerService.getAllCustomers() });
+  } catch (error) {
+    sendError(error, res);
   }
-);
+});
 
 customerRoutes.get("/", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
   try {
-    const profile = await customerService.getCustomerProfile(userId);
-    res.status(200).json({ profile });
-  } catch (error: any) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    }
-    res.status(500).json({ error: error.message || "Internal Server Error" });
-    return;
+    res.status(200).json({ profile: await customerService.getCustomerProfile(req.user.id) });
+  } catch (error) {
+    sendError(error, res);
   }
 });
 
 customerRoutes.put("/", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const updateData = req.body;
-
-  if (!updateData || Object.keys(updateData).length === 0) {
-    res.status(400).json({ error: "No fields to update." });
-    return;
-  }
-
   try {
-    const updatedCustomer = await customerService.updateCustomerProfile(
-      userId,
-      req.body
-    );
-    res.json(updatedCustomer);
+    res.status(200).json(await customerService.updateCustomerProfile(req.user.id, req.body || {}));
   } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    }
-    res.status(500).json({ error: "Internal Server Error" });
-    return;
+    sendError(error, res);
   }
 });
 
-customerRoutes.delete(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  async (req, res) => {
-    const { userId } = req.params;
-
-    try {
-      await customerService.deleteCustomerProfile(userId);
-      res.status(204).json({ message: "Customer was successfully deleted" });
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-      }
-      res.status(500).json({ error: error });
-    }
+customerRoutes.delete("/:userId", authMiddleware, roleMiddleware("ADMIN"), async (req, res) => {
+  try {
+    await customerService.deleteCustomerProfile();
+    res.status(204).send();
+  } catch (error) {
+    sendError(error, res);
   }
-);
+});

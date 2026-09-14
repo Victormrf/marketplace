@@ -9,65 +9,94 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SellerService = void 0;
-const customerModel_1 = require("../models/customerModel");
-const sellerModel_1 = require("../models/sellerModel");
+exports.sellerService = exports.SellerService = void 0;
+const client_1 = require("@prisma/client");
+const customerRepository_1 = require("../repositories/customerRepository");
+const sellerRepository_1 = require("../repositories/sellerRepository");
+const userRepository_1 = require("../repositories/userRepository");
 const customErrors_1 = require("../utils/customErrors");
+function sellerData(input, allowEmpty = false) {
+    const allowed = new Set(["storeName", "description", "logo"]);
+    const unknown = Object.keys(input).find((field) => !allowed.has(field));
+    if (unknown)
+        throw new customErrors_1.ValidationError(`Unsupported seller field: ${unknown}`);
+    const data = {};
+    if ("storeName" in input) {
+        if (typeof input.storeName !== "string" || input.storeName.trim() === "")
+            throw new customErrors_1.ValidationError("storeName is required");
+        data.storeName = input.storeName.trim();
+    }
+    else if (!allowEmpty)
+        throw new customErrors_1.ValidationError("storeName is required");
+    if ("description" in input) {
+        if (input.description !== null && typeof input.description !== "string")
+            throw new customErrors_1.ValidationError("description must be a string");
+        data.description = input.description === null ? null : input.description.trim() || null;
+    }
+    if ("logo" in input) {
+        if (input.logo !== null && typeof input.logo !== "string")
+            throw new customErrors_1.ValidationError("logo must be a string");
+        data.logo = input.logo === null ? null : input.logo.trim() || null;
+    }
+    return data;
+}
 class SellerService {
-    createSellerProfile(userId, sellerData) {
+    createSellerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!sellerData.storeName || !sellerData.description) {
-                throw new customErrors_1.ValidationError("Missing required fields");
-            }
-            const existingCustomer = yield customerModel_1.CustomerModel.getByUserId(userId);
-            const existingSeller = yield sellerModel_1.SellerModel.getByUserId(userId);
-            if (existingCustomer || existingSeller) {
+            const user = yield userRepository_1.userRepository.findById(userId);
+            if (!user)
+                throw new customErrors_1.ObjectNotFoundError("User");
+            if (user.role !== client_1.UserRole.SELLER)
+                throw new customErrors_1.ForbiddenError("Only SELLER users can create a seller profile");
+            if ((yield sellerRepository_1.sellerRepository.findByUserId(userId)) || (yield customerRepository_1.customerRepository.findByUserId(userId)))
                 throw new customErrors_1.ExistingProfileError();
+            try {
+                const data = sellerData(input);
+                if (!data.storeName)
+                    throw new customErrors_1.ValidationError("storeName is required");
+                return yield sellerRepository_1.sellerRepository.create({ userId, storeName: data.storeName, logo: data.logo, description: data.description });
             }
-            return yield sellerModel_1.SellerModel.create(Object.assign({ userId }, sellerData));
+            catch (error) {
+                if ((error === null || error === void 0 ? void 0 : error.code) === "P2002")
+                    throw new customErrors_1.ExistingProfileError();
+                throw error;
+            }
         });
     }
     getAllSellers() {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield sellerModel_1.SellerModel.getAllSellers();
+            return sellerRepository_1.sellerRepository.findAll();
         });
     }
     getSellerProfile(userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const seller = yield sellerModel_1.SellerModel.getByUserId(userId);
-            if (!seller) {
+            const seller = yield sellerRepository_1.sellerRepository.findByUserId(userId);
+            if (!seller)
                 throw new customErrors_1.ObjectNotFoundError("Seller");
-            }
             return seller;
         });
     }
-    updateSellerProfile(userId, data) {
+    updateSellerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            const seller = yield sellerModel_1.SellerModel.getByUserId(userId);
-            if (!seller) {
+            if (!(yield sellerRepository_1.sellerRepository.findByUserId(userId)))
                 throw new customErrors_1.ObjectNotFoundError("Seller");
-            }
-            try {
-                return yield sellerModel_1.SellerModel.updateSeller(userId, data);
-            }
-            catch (error) {
-                throw new Error(`Failed to update seller: ${error.message}`);
-            }
+            return sellerRepository_1.sellerRepository.update(userId, sellerData(input, true));
         });
     }
-    deleteSellerProfile(userId) {
+    deactivateSeller(userId, actor) {
         return __awaiter(this, void 0, void 0, function* () {
-            const seller = yield sellerModel_1.SellerModel.getByUserId(userId);
-            if (!seller) {
+            if (actor.role !== client_1.UserRole.ADMIN && actor.id !== userId)
+                throw new customErrors_1.ForbiddenError();
+            if (!(yield sellerRepository_1.sellerRepository.findByUserId(userId)))
                 throw new customErrors_1.ObjectNotFoundError("Seller");
-            }
-            try {
-                return yield sellerModel_1.SellerModel.deleteSeller(userId);
-            }
-            catch (error) {
-                throw new Error(`Failed to delete seller: ${error.message}`);
-            }
+            return sellerRepository_1.sellerRepository.deactivate(userId);
+        });
+    }
+    deleteSellerProfile() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new customErrors_1.ValidationError("Seller profiles are not physically deleted");
         });
     }
 }
 exports.SellerService = SellerService;
+exports.sellerService = new SellerService();

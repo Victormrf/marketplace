@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ExistingProfileError = exports.InvalidCredentialsError = exports.ConflictError = exports.ValidationError = exports.ObjectsNotFoundError = exports.ObjectNotFoundError = void 0;
+exports.ExistingProfileError = exports.InvalidCredentialsError = exports.ForbiddenError = exports.ConflictError = exports.ValidationError = exports.ObjectsNotFoundError = exports.ObjectNotFoundError = void 0;
 class ObjectNotFoundError extends Error {
     constructor(object) {
         super(`${object} not found.`);
@@ -29,6 +29,13 @@ class ConflictError extends Error {
     }
 }
 exports.ConflictError = ConflictError;
+class ForbiddenError extends Error {
+    constructor(message = "You do not have permission to perform this action") {
+        super(message);
+        this.name = "ForbiddenError";
+    }
+}
+exports.ForbiddenError = ForbiddenError;
 class InvalidCredentialsError extends Error {
     constructor() {
         super("User credentials are invalid.");

@@ -9,65 +9,66 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CustomerService = void 0;
-const customerModel_1 = require("../models/customerModel");
-const sellerModel_1 = require("../models/sellerModel");
+exports.customerService = exports.CustomerService = void 0;
+const client_1 = require("@prisma/client");
+const customerRepository_1 = require("../repositories/customerRepository");
+const sellerRepository_1 = require("../repositories/sellerRepository");
+const userRepository_1 = require("../repositories/userRepository");
 const customErrors_1 = require("../utils/customErrors");
+function profileData(input) {
+    const unknown = Object.keys(input).find((field) => field !== "phone");
+    if (unknown)
+        throw new customErrors_1.ValidationError(`Unsupported customer field: ${unknown}`);
+    if (input.phone !== undefined && input.phone !== null && typeof input.phone !== "string") {
+        throw new customErrors_1.ValidationError("phone must be a string");
+    }
+    return { phone: input.phone === undefined || input.phone === null ? null : input.phone.trim() || null };
+}
 class CustomerService {
-    createCustomerProfile(userId, customerData) {
+    createCustomerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!customerData.address || !customerData.phone) {
-                throw new customErrors_1.ValidationError("Missing required fields");
-            }
-            const existingCustomer = yield customerModel_1.CustomerModel.getByUserId(userId);
-            const existingSeller = yield sellerModel_1.SellerModel.getByUserId(userId);
-            if (existingCustomer || existingSeller) {
+            const user = yield userRepository_1.userRepository.findById(userId);
+            if (!user)
+                throw new customErrors_1.ObjectNotFoundError("User");
+            if (user.role !== client_1.UserRole.CUSTOMER)
+                throw new customErrors_1.ForbiddenError("Only CUSTOMER users can create a customer profile");
+            if ((yield customerRepository_1.customerRepository.findByUserId(userId)) || (yield sellerRepository_1.sellerRepository.findByUserId(userId)))
                 throw new customErrors_1.ExistingProfileError();
+            try {
+                return yield customerRepository_1.customerRepository.create(Object.assign({ userId }, profileData(input)));
             }
-            return yield customerModel_1.CustomerModel.create(Object.assign({ userId }, customerData));
+            catch (error) {
+                if ((error === null || error === void 0 ? void 0 : error.code) === "P2002")
+                    throw new customErrors_1.ExistingProfileError();
+                throw error;
+            }
         });
     }
     getAllCustomers() {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield customerModel_1.CustomerModel.getAllCustomers();
+            return customerRepository_1.customerRepository.findAll();
         });
     }
     getCustomerProfile(userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const customer = yield customerModel_1.CustomerModel.getByUserId(userId);
-            if (!customer) {
+            const customer = yield customerRepository_1.customerRepository.findByUserId(userId);
+            if (!customer)
                 throw new customErrors_1.ObjectNotFoundError("Customer");
-            }
             return customer;
         });
     }
-    updateCustomerProfile(userId, data) {
+    updateCustomerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            const customer = yield customerModel_1.CustomerModel.getByUserId(userId);
-            if (!customer) {
+            if (!(yield customerRepository_1.customerRepository.findByUserId(userId)))
                 throw new customErrors_1.ObjectNotFoundError("Customer");
-            }
-            try {
-                return yield customerModel_1.CustomerModel.updateCustomer(userId, data);
-            }
-            catch (error) {
-                throw new Error(`Failed to update customer: ${error.message}`);
-            }
+            return customerRepository_1.customerRepository.update(userId, profileData(input));
         });
     }
-    deleteCustomerProfile(userId) {
+    deleteCustomerProfile() {
         return __awaiter(this, void 0, void 0, function* () {
-            const customer = yield customerModel_1.CustomerModel.getByUserId(userId);
-            if (!customer) {
-                throw new customErrors_1.ObjectNotFoundError("Customer");
-            }
-            try {
-                return yield customerModel_1.CustomerModel.deleteCustomer(userId);
-            }
-            catch (error) {
-                throw new Error(`Failed to delete customer: ${error.message}`);
-            }
+            throw new customErrors_1.ValidationError("Customer profiles are not physically deleted");
         });
     }
 }
 exports.CustomerService = CustomerService;
+exports.customerService = new CustomerService();

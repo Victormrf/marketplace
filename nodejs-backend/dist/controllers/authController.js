@@ -13,37 +13,26 @@ exports.authRoutes = void 0;
 const express_1 = require("express");
 const authService_1 = require("../services/authService");
 const customErrors_1 = require("../utils/customErrors");
+const jwt_1 = require("../utils/jwt");
 exports.authRoutes = (0, express_1.Router)();
 const authService = new authService_1.AuthService();
 exports.authRoutes.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { email, password } = req.body;
+    var _a, _b;
     try {
-        const token = yield authService.login(email, password);
-        // Define o cookie HttpOnly com o token
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 1000 * 60 * 60 * 24, // 1 dia
-        });
-        res.send({
-            message: "User logged in successfully.",
-        });
+        const token = yield authService.login((_a = req.body) === null || _a === void 0 ? void 0 : _a.email, (_b = req.body) === null || _b === void 0 ? void 0 : _b.password);
+        res.cookie("token", token, (0, jwt_1.cookieOptions)());
+        res.status(200).json({ message: "User logged in successfully." });
     }
-    catch (e) {
-        if (e instanceof customErrors_1.InvalidCredentialsError) {
+    catch (error) {
+        if (error instanceof customErrors_1.InvalidCredentialsError) {
             res.status(401).json({ message: "Invalid credentials" });
             return;
         }
-        res.status(500).json({ error: e.message, stack: e.stack });
-        return;
+        res.status(500).json({ message: "Internal Server Error" });
     }
 }));
 exports.authRoutes.post("/logout", (req, res) => {
-    res.clearCookie("token", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-    });
+    const options = (0, jwt_1.cookieOptions)();
+    res.clearCookie("token", { httpOnly: options.httpOnly, secure: options.secure, sameSite: options.sameSite });
     res.status(200).json({ message: "User logged out successfully." });
 });

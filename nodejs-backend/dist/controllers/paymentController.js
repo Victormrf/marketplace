@@ -72,7 +72,7 @@ exports.paymentRoutes.put("/:paymentId", authMiddleware_1.authMiddleware, (req, 
     const requestorRole = req.user.role;
     const { paymentId } = req.params;
     const updateData = req.body;
-    if (requestorRole !== "admin" && requestorRole !== "seller") {
+    if (requestorRole !== "ADMIN" && requestorRole !== "SELLER") {
         res.status(403).json({ error: "Access denied." });
         return;
     }

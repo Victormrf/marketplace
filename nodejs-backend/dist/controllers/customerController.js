@@ -11,90 +11,60 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.customerRoutes = void 0;
 const express_1 = require("express");
-const customerService_1 = require("../services/customerService");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
-const customErrors_1 = require("../utils/customErrors");
 const roleMiddleware_1 = require("../middlewares/roleMiddleware");
+const customerService_1 = require("../services/customerService");
+const customErrors_1 = require("../utils/customErrors");
 exports.customerRoutes = (0, express_1.Router)();
-const customerService = new customerService_1.CustomerService();
+function sendError(error, res) {
+    if (error instanceof customErrors_1.ValidationError)
+        return res.status(400).json({ error: error.message });
+    if (error instanceof customErrors_1.ForbiddenError)
+        return res.status(403).json({ error: error.message });
+    if (error instanceof customErrors_1.ObjectNotFoundError)
+        return res.status(404).json({ error: error.message });
+    if (error instanceof customErrors_1.ExistingProfileError || error instanceof customErrors_1.ConflictError)
+        return res.status(409).json({ error: error.message });
+    return res.status(500).json({ message: "Internal Server Error" });
+}
 exports.customerRoutes.post("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.user.id;
-    const { address, phone } = req.body;
     try {
-        const newProfile = yield customerService.createCustomerProfile(userId, {
-            address,
-            phone,
-        });
-        res
-            .status(201)
-            .json({ message: "Customer profile created with success", newProfile });
+        res.status(201).json(yield customerService_1.customerService.createCustomerProfile(req.user.id, req.body || {}));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ExistingProfileError) {
-            res.status(409).json({ error: error.message });
-        }
-        else if (error instanceof customErrors_1.ValidationError) {
-            res.status(400).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error: error });
-        }
+        sendError(error, res);
     }
 }));
 exports.customerRoutes.get("/all", authMiddleware_1.authMiddleware, (0, roleMiddleware_1.roleMiddleware)("ADMIN"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const profiles = yield customerService.getAllCustomers();
-        res.status(200).json({ profiles });
+        res.status(200).json({ profiles: yield customerService_1.customerService.getAllCustomers() });
     }
     catch (error) {
-        res.status(500).json({ error: error.message || "Internal Server Error" });
+        sendError(error, res);
     }
 }));
 exports.customerRoutes.get("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.user.id;
     try {
-        const profile = yield customerService.getCustomerProfile(userId);
-        res.status(200).json({ profile });
+        res.status(200).json({ profile: yield customerService_1.customerService.getCustomerProfile(req.user.id) });
     }
     catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-            return;
-        }
-        res.status(500).json({ error: error.message || "Internal Server Error" });
-        return;
+        sendError(error, res);
     }
 }));
 exports.customerRoutes.put("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.user.id;
-    const updateData = req.body;
-    if (!updateData || Object.keys(updateData).length === 0) {
-        res.status(400).json({ error: "No fields to update." });
-        return;
-    }
     try {
-        const updatedCustomer = yield customerService.updateCustomerProfile(userId, req.body);
-        res.json(updatedCustomer);
+        res.status(200).json(yield customerService_1.customerService.updateCustomerProfile(req.user.id, req.body || {}));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-            return;
-        }
-        res.status(500).json({ error: "Internal Server Error" });
-        return;
+        sendError(error, res);
     }
 }));
 exports.customerRoutes.delete("/:userId", authMiddleware_1.authMiddleware, (0, roleMiddleware_1.roleMiddleware)("ADMIN"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { userId } = req.params;
     try {
-        yield customerService.deleteCustomerProfile(userId);
-        res.status(204).json({ message: "Customer was successfully deleted" });
+        yield customerService_1.customerService.deleteCustomerProfile();
+        res.status(204).send();
     }
     catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-        }
-        res.status(500).json({ error: error });
+        sendError(error, res);
     }
 }));

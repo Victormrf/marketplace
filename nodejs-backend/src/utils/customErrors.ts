@@ -26,6 +26,13 @@ export class ConflictError extends Error {
   }
 }
 
+export class ForbiddenError extends Error {
+  constructor(message = "You do not have permission to perform this action") {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
+
 export class InvalidCredentialsError extends Error {
   constructor() {
     super("User credentials are invalid.");
