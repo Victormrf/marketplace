@@ -1,6 +1,6 @@
 # Backend Revamp — Controle de Progresso
 
-Última atualização: 12/09/2026
+Última atualização: 13/09/2026 — Etapa 4 liberada
 
 ## Objetivo
 
@@ -49,22 +49,27 @@ Alinhar gradualmente o backend ao schema-v2 antes de introduzir carga sintética
 - [x] parsing de `search`, `category`, `sellerId` e `inStock`
 - [x] `isAvailable` no DTO
 - [x] filtros aplicados antes da paginação
-- [!] Substituir a busca global de IDs + `WHERE id IN (...)` por uma consulta paginada no banco
-- [!] Evitar repetir a consulta de disponibilidade em `count()` e `findMany()` de forma não escalável
-- [~] Validar novamente build, testes e paginação após a correção
+- [x] comparação de disponibilidade executada no PostgreSQL via Prisma FieldReference
+- [x] busca global de IDs e `WHERE id IN (...)` removidos
+- [x] `count()` e `findMany()` usam o mesmo filtro sem materialização em memória
+- [x] build, testes e paginação validados após a correção
 
 ### Etapa 3 — Operações de inventário
 
-- [ ] entrada de estoque
-- [ ] retirada e ajuste manual
-- [ ] atualização transacional
-- [ ] `InventoryMovement` obrigatório
-- [ ] consulta do histórico
-- [ ] ownership e autorização
-- [ ] impedir alteração de estoque pelo endpoint de produto
+- [x] entrada de estoque
+- [x] retirada e ajuste manual
+- [x] atualização atômica e transacional
+- [x] `InventoryMovement` obrigatório
+- [x] consulta paginada do histórico
+- [x] ownership e autorização
+- [x] alteração de estoque isolada dos endpoints de produto
+- [x] rollback e concorrência entre retiradas validados
+
+Observação futura: se desativação de produto/seller e movimentação de estoque puderem ocorrer concorrentemente em produção, ambas deverão compartilhar um lock ou isolamento transacional sobre o recurso de catálogo. Isso não bloqueia o escopo atual.
 
 ### Etapa 4 — Autenticação e perfis
 
+- [~] Etapa atual
 - [ ] `normalizedEmail`
 - [ ] separação entre User, CustomerProfile e Seller
 - [ ] contas ativas
@@ -146,7 +151,7 @@ Alinhar gradualmente o backend ao schema-v2 antes de introduzir carga sintética
 
 ## Próxima ação
 
-Corrigir a implementação do filtro de disponibilidade da Etapa 2.1. Depois da validação, marcar a Etapa 2.1 como concluída e mover `[~]` para a Etapa 3.
+Executar a Etapa 4 — autenticação e perfis — por meio de um handoff específico.
 
 ## Protocolo de atualização
 
