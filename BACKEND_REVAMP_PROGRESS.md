@@ -1,6 +1,6 @@
 # Backend Revamp — Controle de Progresso
 
-Última atualização: 14/09/2026 — Etapa 6 liberada
+Última atualização: 14/09/2026 — Etapa 7 liberada
 
 ## Objetivo
 
@@ -88,15 +88,15 @@ Observação futura: se desativação de produto/seller e movimentação de esto
 
 ### Etapa 6 — Carrinho
 
-- [~] Etapa atual
-- [ ] um Cart ACTIVE por customer
-- [ ] `CartItem.cartId`
-- [ ] merge de itens repetidos
-- [ ] validação informativa de disponibilidade
-- [ ] ownership
+- [x] um Cart ACTIVE por customer
+- [x] `CartItem.cartId`
+- [x] merge de itens repetidos
+- [x] validação informativa de disponibilidade
+- [x] ownership
 
 ### Etapa 7 — Checkout transacional e reservas
 
+- [~] Etapa atual
 - [ ] Order e SellerOrders
 - [ ] OrderItems e snapshots
 - [ ] OrderAddress
@@ -156,7 +156,7 @@ Observação futura: se desativação de produto/seller e movimentação de esto
 
 ## Próxima ação
 
-Executar a Etapa 6 — carrinho — por meio de um handoff específico.
+Executar a Etapa 7 — checkout transacional e reservas — por meio de um handoff específico.
 
 ## Protocolo de atualização
 
