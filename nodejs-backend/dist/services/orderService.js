@@ -16,8 +16,14 @@ const sellerRepository_1 = require("../repositories/sellerRepository");
 const orderRepository_1 = require("../repositories/orderRepository");
 const sellerOrderRepository_1 = require("../repositories/sellerOrderRepository");
 const customErrors_1 = require("../utils/customErrors");
-const orderTransitions = { PENDING_PAYMENT: [client_1.OrderStatus.CANCELLED], CONFIRMED: [client_1.OrderStatus.PARTIALLY_COMPLETED, client_1.OrderStatus.COMPLETED, client_1.OrderStatus.CANCELLED], PARTIALLY_COMPLETED: [client_1.OrderStatus.COMPLETED, client_1.OrderStatus.CANCELLED], COMPLETED: [], CANCELLED: [] };
-const sellerTransitions = { PENDING: [client_1.SellerOrderStatus.CONFIRMED, client_1.SellerOrderStatus.CANCELLED], CONFIRMED: [client_1.SellerOrderStatus.PROCESSING, client_1.SellerOrderStatus.CANCELLED], PROCESSING: [client_1.SellerOrderStatus.SHIPPED, client_1.SellerOrderStatus.CANCELLED], SHIPPED: [client_1.SellerOrderStatus.DELIVERED], DELIVERED: [client_1.SellerOrderStatus.RETURNED], CANCELLED: [], RETURNED: [] };
+// Only payment may confirm an order in this stage. Aggregate completion and cancellation
+// require reservation/payment coordination and remain disabled until their later stages.
+const internalOrderTransitions = { PENDING_PAYMENT: [client_1.OrderStatus.CONFIRMED], CONFIRMED: [], PARTIALLY_COMPLETED: [], COMPLETED: [], CANCELLED: [] };
+const publicSellerTransitions = { PENDING: [client_1.SellerOrderStatus.CONFIRMED], CONFIRMED: [client_1.SellerOrderStatus.PROCESSING], PROCESSING: [], SHIPPED: [], DELIVERED: [], CANCELLED: [], RETURNED: [] };
+function normalizeReason(reason) { if (reason === undefined)
+    return undefined; if (typeof reason !== "string")
+    throw new customErrors_1.ValidationError("Reason must be a string"); const normalized = reason.trim(); if (normalized.length > 500)
+    throw new customErrors_1.ValidationError("Reason is too long"); return normalized || undefined; }
 function page(total, current, limit) { return { page: current, limit, total, totalPages: Math.ceil(total / limit) }; }
 function itemDto(item) { return { id: item.id, productId: item.productId, quantity: item.quantity, unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.lineTotalInCents, currency: item.currency, productNameSnapshot: item.productNameSnapshot, productReferenceSnapshot: item.productReferenceSnapshot, sellerNameSnapshot: item.sellerNameSnapshot }; }
 function sellerHistoryDto(h) { return { id: h.id, fromStatus: h.fromStatus, toStatus: h.toStatus, reason: h.reason, createdAt: h.createdAt }; }
@@ -52,23 +58,22 @@ class OrderService {
         return __awaiter(this, void 0, void 0, function* () { const id = yield this.sellerIdFor(userId); const record = yield this.sellerOrders.findBySellerAndId(id, sellerOrderId); if (!record)
             throw new customErrors_1.ObjectNotFoundError("SellerOrder"); return sellerDetailDto(record); });
     }
-    transitionOrder(user, orderId, input) {
-        return __awaiter(this, void 0, void 0, function* () { if (user.role !== client_1.UserRole.ADMIN)
-            throw new customErrors_1.ForbiddenError(); const record = yield this.orders.findById(orderId); if (!record)
-            throw new customErrors_1.ObjectNotFoundError("Order"); const target = input.status; if (!Object.values(client_1.OrderStatus).includes(target))
-            throw new customErrors_1.ValidationError("Invalid order status"); if (record.status === target)
-            return orderDetailDto(record); if (!orderTransitions[record.status].includes(target))
-            throw new customErrors_1.ConflictError("Invalid order status transition"); const updated = yield this.orders.transition(orderId, record.status, target, input.reason); if (!updated)
+    /** Internal payment/order orchestration hook. It is intentionally not exposed by an HTTP route. */
+    transitionOrderInternally(orderId, input) {
+        return __awaiter(this, void 0, void 0, function* () { const record = yield this.orders.findById(orderId); if (!record)
+            throw new customErrors_1.ObjectNotFoundError("Order"); const target = input.status; const reason = normalizeReason(input.reason); if (record.status === target)
+            return orderDetailDto(record); if (!internalOrderTransitions[record.status].includes(target))
+            throw new customErrors_1.ConflictError("Invalid order status transition"); const updated = yield this.orders.transition(orderId, record.status, target, reason); if (!updated)
             throw new customErrors_1.ConflictError("Order status changed concurrently"); return orderDetailDto(updated); });
     }
     transitionSellerOrder(user, sellerOrderId, input) {
         return __awaiter(this, void 0, void 0, function* () { const sellerId = user.role === client_1.UserRole.SELLER ? yield this.sellerIdFor(user.id) : null; if (user.role !== client_1.UserRole.SELLER && user.role !== client_1.UserRole.ADMIN)
             throw new customErrors_1.ForbiddenError(); const record = sellerId ? yield this.sellerOrders.findBySellerAndId(sellerId, sellerOrderId) : yield this.sellerOrders.findById(sellerOrderId); if (!record)
-            throw new customErrors_1.ObjectNotFoundError("SellerOrder"); const target = input.status; if (!Object.values(client_1.SellerOrderStatus).includes(target))
+            throw new customErrors_1.ObjectNotFoundError("SellerOrder"); const target = input.status; const reason = normalizeReason(input.reason); if (!Object.values(client_1.SellerOrderStatus).includes(target))
             throw new customErrors_1.ValidationError("Invalid seller order status"); if (record.status === target)
-            return sellerDetailDto(record); if (!sellerTransitions[record.status].includes(target))
-            throw new customErrors_1.ConflictError("Invalid seller order status transition"); const updated = yield this.sellerOrders.transition(sellerOrderId, sellerId, record.status, target, input.reason); if (!updated)
-            throw new customErrors_1.ConflictError("Seller order status changed concurrently or parent order is awaiting payment"); return sellerDetailDto(updated); });
+            return sellerDetailDto(record); if (!publicSellerTransitions[record.status].includes(target))
+            throw new customErrors_1.ConflictError("Seller order transition is not enabled yet"); const updated = yield this.sellerOrders.transition(sellerOrderId, sellerId, record.status, target, reason); if (!updated)
+            throw new customErrors_1.ConflictError("Seller order status changed concurrently or parent order is not CONFIRMED"); return sellerDetailDto(updated); });
     }
 }
 exports.OrderService = OrderService;

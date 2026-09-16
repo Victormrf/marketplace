@@ -50,14 +50,6 @@ exports.orderRoutes.get("/:orderId", authMiddleware_1.authMiddleware, (req, res)
 catch (e) {
     handle(e, res);
 } }));
-exports.orderRoutes.patch("/:orderId/status", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
-    if (!req.body || typeof req.body.status !== "string" || Object.keys(req.body).some((key) => !["status", "reason"].includes(key)))
-        throw new customErrors_1.ValidationError("Invalid transition payload");
-    res.status(200).json(yield service.transitionOrder(req.user, req.params.orderId, { status: req.body.status, reason: req.body.reason }));
-}
-catch (e) {
-    handle(e, res);
-} }));
 exports.sellerOrderRoutes = (0, express_1.Router)();
 exports.sellerOrderRoutes.get("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
     const p = pagination(req);
@@ -73,7 +65,7 @@ catch (e) {
     handle(e, res);
 } }));
 exports.sellerOrderRoutes.patch("/:sellerOrderId/status", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
-    if (!req.body || typeof req.body.status !== "string" || Object.keys(req.body).some((key) => !["status", "reason"].includes(key)))
+    if (!req.body || typeof req.body.status !== "string" || Object.keys(req.body).some((key) => !["status", "reason"].includes(key)) || (req.body.reason !== undefined && typeof req.body.reason !== "string"))
         throw new customErrors_1.ValidationError("Invalid transition payload");
     res.status(200).json(yield service.transitionSellerOrder(req.user, req.params.sellerOrderId, { status: req.body.status, reason: req.body.reason }));
 }

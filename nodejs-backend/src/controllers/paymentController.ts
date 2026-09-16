@@ -1,150 +1,16 @@
+import { PaymentMethod, PaymentAttemptStatus } from "@prisma/client";
 import { Router } from "express";
-import { PaymentService } from "../services/paymentService";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import {
-  ObjectNotFoundError,
-  ObjectsNotFoundError,
-  ValidationError,
-} from "../utils/customErrors";
-import { roleMiddleware } from "../middlewares/roleMiddleware";
+import { PaymentService } from "../services/paymentService";
+import type { PaymentAttemptReadFilters } from "../types/payment";
+import { ConflictError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 
 export const paymentRoutes = Router();
-const paymentService = new PaymentService();
+const service = new PaymentService();
+function paging(q: Record<string, unknown>) { const page = q.page === undefined ? 1 : Number(q.page); const limit = q.limit === undefined ? 20 : Number(q.limit); if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ValidationError("Invalid pagination"); return { page, limit }; }
+function filters(q: Record<string, unknown>): PaymentAttemptReadFilters { const result: PaymentAttemptReadFilters = {}; if (q.status !== undefined) { if (typeof q.status !== "string" || !Object.values(PaymentAttemptStatus).includes(q.status as PaymentAttemptStatus)) throw new ValidationError("Invalid status"); result.status = q.status as PaymentAttemptStatus; } if (q.method !== undefined) { if (typeof q.method !== "string" || !Object.values(PaymentMethod).includes(q.method as PaymentMethod)) throw new ValidationError("Invalid method"); result.method = q.method as PaymentMethod; } for (const key of ["createdFrom", "createdTo"] as const) if (q[key] !== undefined) { if (typeof q[key] !== "string" || Number.isNaN(Date.parse(q[key]))) throw new ValidationError(`Invalid ${key}`); result[key] = new Date(q[key]); } if (result.createdFrom && result.createdTo && result.createdFrom > result.createdTo) throw new ValidationError("Invalid date range"); return result; }
+function handle(error: unknown, res: { status: (code: number) => { json: (body: unknown) => void } }) { if (error instanceof ValidationError) return res.status(400).json({ error: error.message }); if (error instanceof ForbiddenError) return res.status(403).json({ error: error.message }); if (error instanceof ObjectNotFoundError) return res.status(404).json({ error: error.message }); if (error instanceof ConflictError) return res.status(409).json({ error: error.message }); return res.status(500).json({ error: "Internal Server Error" }); }
 
-paymentRoutes.post("/", authMiddleware, async (req, res) => {
-  const { orderId, amount } = req.body;
-
-  if (!orderId || typeof amount !== "number" || amount <= 0) {
-    res.status(400).json({ error: "Missing or invalid fields" });
-    return;
-  }
-
-  try {
-    const payment = await paymentService.processPayment(orderId, amount);
-    res.status(201).json(payment);
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: (error as Error).message });
-    }
-  }
-});
-
-paymentRoutes.get("/order/:orderId", authMiddleware, async (req, res) => {
-  const { orderId } = req.params;
-
-  try {
-    const payment = await paymentService.getPaymentDetails(orderId);
-    res.status(200).json(payment);
-  } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-      return;
-    } else {
-      res.status(500).json({ error });
-      return;
-    }
-  }
-});
-
-paymentRoutes.get("/customer/:customerId", authMiddleware, async (req, res) => {
-  const { customerId } = req.params;
-
-  try {
-    const payments = await paymentService.getPaymentsByCustomer(customerId);
-    res.status(200).json(payments);
-  } catch (error) {
-    if (error instanceof ObjectsNotFoundError) {
-      res.status(404).json({ error: error.message });
-    } else {
-      res.status(500).json({ error });
-    }
-  }
-});
-
-paymentRoutes.put("/:paymentId", authMiddleware, async (req, res) => {
-  const requestorRole = req.user.role;
-  const { paymentId } = req.params;
-  const updateData = req.body;
-
-  if (requestorRole !== "ADMIN" && requestorRole !== "SELLER") {
-    res.status(403).json({ error: "Access denied." });
-    return;
-  }
-
-  if (!updateData || Object.keys(updateData).length === 0) {
-    res.status(400).json({ error: "No fields to update" });
-    return;
-  }
-
-  const allowedStatuses = ["PENDING", "COMPLETED", "FAILED"];
-  if (
-    updateData.status &&
-    !allowedStatuses.includes(updateData.status.toUpperCase())
-  ) {
-    res.status(400).json({ error: "Invalid payment status" });
-    return;
-  }
-
-  try {
-    const updatedPayment = await paymentService.updatePayment(
-      paymentId,
-      updateData
-    );
-    res.status(200).json(updatedPayment);
-  } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: (error as Error).message });
-    }
-  }
-});
-
-paymentRoutes.put("/:paymentId/status", authMiddleware, async (req, res) => {
-  const { paymentId } = req.params;
-  const { status } = req.body;
-
-  const allowedStatuses = ["PENDING", "COMPLETED", "FAILED"];
-  if (!allowedStatuses.includes(status?.toUpperCase())) {
-    res.status(400).json({ error: "Invalid payment status" });
-    return;
-  }
-
-  try {
-    const updatedPayment = await paymentService.updatePaymentStatus(
-      paymentId,
-      status
-    );
-    res.status(200).json(updatedPayment);
-  } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: (error as Error).message });
-    }
-  }
-});
-
-paymentRoutes.delete(
-  "/:paymentId",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  async (req, res) => {
-    const { paymentId } = req.params;
-
-    try {
-      await paymentService.deletePayment(paymentId);
-      res.status(204).send();
-    } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
-        res.status(404).json({ error: error.message });
-        return;
-      } else {
-        res.status(500).json({ error });
-        return;
-      }
-    }
-  }
-);
+paymentRoutes.post("/orders/:orderId/payment-attempts", authMiddleware, async (req, res) => { try { if (!req.body || Object.keys(req.body).length !== 1 || typeof req.body.method !== "string" || !Object.values(PaymentMethod).includes(req.body.method)) throw new ValidationError("Only method is accepted"); res.status(201).json(await service.createAttempt(req.user, req.params.orderId, { method: req.body.method })); } catch (e) { handle(e, res); } });
+paymentRoutes.get("/orders/:orderId/payment-attempts", authMiddleware, async (req, res) => { try { const p = paging(req.query); res.status(200).json(await service.listAttempts(req.user, req.params.orderId, filters(req.query), p.page, p.limit)); } catch (e) { handle(e, res); } });
+paymentRoutes.get("/payment-attempts/:paymentAttemptId", authMiddleware, async (req, res) => { try { res.status(200).json(await service.getAttempt(req.user, req.params.paymentAttemptId)); } catch (e) { handle(e, res); } });

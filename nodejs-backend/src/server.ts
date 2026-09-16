@@ -13,7 +13,6 @@ import cors from "cors";
 import { cartRoutes } from "./controllers/cartController";
 import cookieParser from "cookie-parser";
 import { deliveryRoutes } from "./controllers/deliveryController";
-import { refundRoutes } from "./controllers/refundController";
 import { inventoryRoutes } from "./controllers/inventoryController";
 import { customerAddressRoutes } from "./controllers/customerAddressController";
 import { checkoutRoutes } from "./controllers/checkoutController";
@@ -51,11 +50,10 @@ app.use("/cart", cartRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
 app.use("/seller-orders", sellerOrderRoutes);
-app.use("/payment", paymentRoutes);
+app.use("/", paymentRoutes);
 app.use("/review", reviewRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/delivery", deliveryRoutes);
-app.use("/refund", refundRoutes);
 app.use("/inventory", inventoryRoutes);
 app.use("/checkout", checkoutRoutes);
 
@@ -66,12 +64,16 @@ process.on("SIGINT", async () => {
   process.exit(0);
 });
 
-// Rodar a cada 1 hora
-cron.schedule("0 * * * *", async () => {
-  console.log("Starting automatic status update...");
-  await updateDeliveryStatuses();
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+  });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+  // Scheduled jobs belong to the executable server, not to imported test app instances.
+  cron.schedule("0 * * * *", async () => {
+    console.log("Starting automatic status update...");
+    await updateDeliveryStatuses();
+  });
+}
+
+export { app };

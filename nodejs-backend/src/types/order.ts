@@ -119,7 +119,12 @@ export type SellerOrderCollectionDto = {
   pagination: OrderPaginationDto;
 };
 
-export type OrderTransitionInput = {
-  status: string;
+export type SellerOrderTransitionInput = {
+  status: SellerOrderStatus;
+  reason?: string;
+};
+
+export type InternalOrderTransitionInput = {
+  status: OrderStatus;
   reason?: string;
 };

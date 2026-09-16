@@ -13,6 +13,7 @@ export type SellerOrderPublicDetailRecord = Omit<SellerOrderDetailRecord, "order
 function whereFor(sellerId: string, filters: SellerOrderReadFilters): Prisma.SellerOrderWhereInput { return { sellerId, ...(filters.status ? { status: filters.status } : {}), ...(filters.createdFrom || filters.createdTo ? { createdAt: { ...(filters.createdFrom ? { gte: filters.createdFrom } : {}), ...(filters.createdTo ? { lte: filters.createdTo } : {}) } } : {}) }; }
 
 export class SellerOrderRepository {
+  constructor(private readonly testHooks: { beforeSellerStatusUpdate?: () => Promise<void> | void; beforeSellerHistory?: () => Promise<void> | void } = {}) {}
   async countBySeller(sellerId: string, filters: SellerOrderReadFilters) { return prisma.sellerOrder.count({ where: whereFor(sellerId, filters) }); }
   async findBySeller(sellerId: string, filters: SellerOrderReadFilters, skip: number, take: number): Promise<SellerOrderSummaryRecord[]> { return prisma.sellerOrder.findMany({ where: whereFor(sellerId, filters), select: summarySelect, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip, take }); }
   async findBySellerAndId(sellerId: string, sellerOrderId: string): Promise<SellerOrderDetailRecord | null> { return prisma.sellerOrder.findFirst({ where: { id: sellerOrderId, sellerId }, select: detailSelect }); }
@@ -21,9 +22,11 @@ export class SellerOrderRepository {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const current = await tx.sellerOrder.findUnique({ where: { id: sellerOrderId }, select: { status: true, order: { select: { status: true } } } });
       if (!current || current.status !== fromStatus) return null;
-      if (current.order.status === "PENDING_PAYMENT" && toStatus !== "CANCELLED") return null;
-      const updated = await tx.sellerOrder.updateMany({ where: { id: sellerOrderId, ...(sellerId ? { sellerId } : {}), status: fromStatus }, data: { status: toStatus, ...(toStatus === "CONFIRMED" ? { confirmedAt: new Date() } : {}), ...(toStatus === "DELIVERED" ? { completedAt: new Date() } : {}), ...(toStatus === "CANCELLED" ? { cancelledAt: new Date() } : {}) } });
+      if (current.order.status !== "CONFIRMED") return null;
+      await this.testHooks.beforeSellerStatusUpdate?.();
+      const updated = await tx.sellerOrder.updateMany({ where: { id: sellerOrderId, ...(sellerId ? { sellerId } : {}), status: fromStatus, order: { status: "CONFIRMED" } }, data: { status: toStatus, ...(toStatus === "CONFIRMED" ? { confirmedAt: new Date() } : {}), ...(toStatus === "DELIVERED" ? { completedAt: new Date() } : {}), ...(toStatus === "CANCELLED" ? { cancelledAt: new Date() } : {}) } });
       if (updated.count !== 1) return null;
+      await this.testHooks.beforeSellerHistory?.();
       await tx.sellerOrderStatusHistory.create({ data: { sellerOrderId, fromStatus, toStatus, reason } });
       return tx.sellerOrder.findUnique({ where: { id: sellerOrderId }, select: detailSelect });
     });

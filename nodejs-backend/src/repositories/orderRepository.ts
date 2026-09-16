@@ -47,6 +47,7 @@ function orderWhere(customerId: string, filters: OrderReadFilters): Prisma.Order
 }
 
 export class OrderRepository {
+  constructor(private readonly testHooks: { beforeOrderHistory?: () => Promise<void> | void } = {}) {}
   async countByCustomer(customerId: string, filters: OrderReadFilters) { return prisma.order.count({ where: orderWhere(customerId, filters) }); }
   async findByCustomer(customerId: string, filters: OrderReadFilters, skip: number, take: number): Promise<OrderSummaryRecord[]> {
     return prisma.order.findMany({ where: orderWhere(customerId, filters), select: orderSummarySelect, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip, take });
@@ -54,11 +55,21 @@ export class OrderRepository {
   async findByCustomerAndId(customerId: string, orderId: string): Promise<OrderDetailRecord | null> { return prisma.order.findFirst({ where: { id: orderId, customerId }, select: orderDetailSelect }); }
   async findById(orderId: string): Promise<OrderDetailRecord | null> { return prisma.order.findUnique({ where: { id: orderId }, select: orderDetailSelect }); }
 
-  async getCompletedOrderItemsBySeller(sellerId: string) { return prisma.orderItem.findMany({ where: { sellerOrder: { sellerId, status: "DELIVERED" } }, select: { quantity: true, unitPriceInCents: true } }); }
-  async getOrdersByStatus(sellerId: string) { return prisma.order.findMany({ where: { sellerOrders: { some: { sellerId }, }, createdAt: { gte: new Date(Date.now() - 14 * 86400000) } }, select: { status: true } }); }
+  async getCompletedOrderItemsBySeller(sellerId: string) { 
+    return prisma.orderItem.findMany({ 
+      where: { sellerOrder: { sellerId, status: "DELIVERED" } }, 
+      select: { quantity: true, unitPriceInCents: true } }); 
+  }
+
+  async getOrdersByStatus(sellerId: string) { 
+    return prisma.sellerOrder.findMany({ 
+      where: { sellerId, createdAt: { gte: new Date(Date.now() - 14 * 86400000) } }, 
+      select: { status: true } }); 
+    }
+
   async getCompletedOrderItemsByCategory(sellerId: string) { return prisma.orderItem.findMany({ where: { sellerOrder: { sellerId, status: "DELIVERED" } }, select: { quantity: true, unitPriceInCents: true, product: { select: { category: true } } } }); }
-  async getMonthlySalesBySeller(sellerId: string) { return prisma.order.findMany({ where: { sellerOrders: { some: { sellerId, status: "DELIVERED" } }, createdAt: { gte: new Date(new Date().setMonth(new Date().getMonth() - 5)) } }, select: { totalInCents: true, createdAt: true } }); }
-  async getDailySalesBySeller(sellerId: string) { return prisma.order.findMany({ where: { sellerOrders: { some: { sellerId, status: "DELIVERED" } }, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } }, select: { totalInCents: true, createdAt: true } }); }
+  async getMonthlySalesBySeller(sellerId: string) { return prisma.sellerOrder.findMany({ where: { sellerId, status: "DELIVERED", createdAt: { gte: new Date(new Date().setMonth(new Date().getMonth() - 5)) } }, select: { totalInCents: true, createdAt: true } }); }
+  async getDailySalesBySeller(sellerId: string) { return prisma.sellerOrder.findMany({ where: { sellerId, status: "DELIVERED", createdAt: { gte: new Date(Date.now() - 30 * 86400000) } }, select: { totalInCents: true, createdAt: true } }); }
   async getOrdersBySeller(sellerId: string) { return prisma.sellerOrder.findMany({ where: { sellerId }, select: { id: true, orderId: true, status: true, totalInCents: true, createdAt: true } }); }
   async getBestSellingProductsBySeller(sellerId: string) { return prisma.orderItem.groupBy({ by: ["productId"], where: { sellerOrder: { sellerId } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: "desc" } }, take: 5 }); }
   async getNewCustomersByMonth(sellerId: string) { const result = await prisma.$queryRaw<{ month: Date; new_customers: bigint }[]>`SELECT DATE_TRUNC('month', MIN(o."createdAt")) AS month, COUNT(DISTINCT o."customerId") AS new_customers FROM "order" o JOIN "seller_order" so ON so."orderId" = o."id" WHERE so."sellerId" = ${sellerId} GROUP BY o."customerId" HAVING MIN(o."createdAt") >= NOW() - INTERVAL '6 months'`; return result.map((r: { month: Date; new_customers: bigint }) => ({ month: r.month, newCustomers: Number(r.new_customers) })); }
@@ -69,6 +80,7 @@ export class OrderRepository {
       if (!current || current.status !== fromStatus) return null;
       const updated = await tx.order.updateMany({ where: { id: orderId, status: fromStatus }, data: { status: toStatus, ...(toStatus === "CONFIRMED" ? { confirmedAt: new Date() } : {}), ...(toStatus === "COMPLETED" ? { completedAt: new Date() } : {}), ...(toStatus === "CANCELLED" ? { cancelledAt: new Date() } : {}) } });
       if (updated.count !== 1) return null;
+      await this.testHooks.beforeOrderHistory?.();
       await tx.orderStatusHistory.create({ data: { orderId, fromStatus, toStatus, reason } });
       return tx.order.findUnique({ where: { id: orderId }, select: orderDetailSelect });
     });

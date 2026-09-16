@@ -20,6 +20,9 @@ const detailSelect = { id: true, orderId: true, sellerId: true, status: true, su
 const summarySelect = { id: true, orderId: true, sellerId: true, status: true, totalInCents: true, currency: true, createdAt: true };
 function whereFor(sellerId, filters) { return Object.assign(Object.assign({ sellerId }, (filters.status ? { status: filters.status } : {})), (filters.createdFrom || filters.createdTo ? { createdAt: Object.assign(Object.assign({}, (filters.createdFrom ? { gte: filters.createdFrom } : {})), (filters.createdTo ? { lte: filters.createdTo } : {})) } : {})); }
 class SellerOrderRepository {
+    constructor(testHooks = {}) {
+        this.testHooks = testHooks;
+    }
     countBySeller(sellerId, filters) {
         return __awaiter(this, void 0, void 0, function* () { return db_1.default.sellerOrder.count({ where: whereFor(sellerId, filters) }); });
     }
@@ -35,14 +38,17 @@ class SellerOrderRepository {
     transition(sellerOrderId, sellerId, fromStatus, toStatus, reason) {
         return __awaiter(this, void 0, void 0, function* () {
             return db_1.default.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                var _a, _b, _c, _d;
                 const current = yield tx.sellerOrder.findUnique({ where: { id: sellerOrderId }, select: { status: true, order: { select: { status: true } } } });
                 if (!current || current.status !== fromStatus)
                     return null;
-                if (current.order.status === "PENDING_PAYMENT" && toStatus !== "CANCELLED")
+                if (current.order.status !== "CONFIRMED")
                     return null;
-                const updated = yield tx.sellerOrder.updateMany({ where: Object.assign(Object.assign({ id: sellerOrderId }, (sellerId ? { sellerId } : {})), { status: fromStatus }), data: Object.assign(Object.assign(Object.assign({ status: toStatus }, (toStatus === "CONFIRMED" ? { confirmedAt: new Date() } : {})), (toStatus === "DELIVERED" ? { completedAt: new Date() } : {})), (toStatus === "CANCELLED" ? { cancelledAt: new Date() } : {})) });
+                yield ((_b = (_a = this.testHooks).beforeSellerStatusUpdate) === null || _b === void 0 ? void 0 : _b.call(_a));
+                const updated = yield tx.sellerOrder.updateMany({ where: Object.assign(Object.assign({ id: sellerOrderId }, (sellerId ? { sellerId } : {})), { status: fromStatus, order: { status: "CONFIRMED" } }), data: Object.assign(Object.assign(Object.assign({ status: toStatus }, (toStatus === "CONFIRMED" ? { confirmedAt: new Date() } : {})), (toStatus === "DELIVERED" ? { completedAt: new Date() } : {})), (toStatus === "CANCELLED" ? { cancelledAt: new Date() } : {})) });
                 if (updated.count !== 1)
                     return null;
+                yield ((_d = (_c = this.testHooks).beforeSellerHistory) === null || _d === void 0 ? void 0 : _d.call(_c));
                 yield tx.sellerOrderStatusHistory.create({ data: { sellerOrderId, fromStatus, toStatus, reason } });
                 return tx.sellerOrder.findUnique({ where: { id: sellerOrderId }, select: detailSelect });
             }));

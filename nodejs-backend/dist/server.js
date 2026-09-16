@@ -12,6 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.app = void 0;
 const express_1 = __importDefault(require("express"));
 const db_1 = __importDefault(require("./config/db"));
 const userController_1 = require("./controllers/userController");
@@ -27,13 +28,13 @@ const cors_1 = __importDefault(require("cors"));
 const cartController_1 = require("./controllers/cartController");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const deliveryController_1 = require("./controllers/deliveryController");
-const refundController_1 = require("./controllers/refundController");
 const inventoryController_1 = require("./controllers/inventoryController");
 const customerAddressController_1 = require("./controllers/customerAddressController");
 const checkoutController_1 = require("./controllers/checkoutController");
 const node_cron_1 = __importDefault(require("node-cron"));
 const deliveryStatusUpdater_1 = require("./jobs/deliveryStatusUpdater");
 const app = (0, express_1.default)();
+exports.app = app;
 app.use(express_1.default.json());
 const PORT = process.env.PORT || 8000;
 app.get("/", (req, res) => {
@@ -56,11 +57,10 @@ app.use("/cart", cartController_1.cartRoutes);
 app.use("/products", productController_1.productRoutes);
 app.use("/orders", orderController_1.orderRoutes);
 app.use("/seller-orders", orderController_1.sellerOrderRoutes);
-app.use("/payment", paymentController_1.paymentRoutes);
+app.use("/", paymentController_1.paymentRoutes);
 app.use("/review", reviewController_1.reviewRoutes);
 app.use("/dashboard", dashboardController_1.dashboardRoutes);
 app.use("/delivery", deliveryController_1.deliveryRoutes);
-app.use("/refund", refundController_1.refundRoutes);
 app.use("/inventory", inventoryController_1.inventoryRoutes);
 app.use("/checkout", checkoutController_1.checkoutRoutes);
 // Encerrar conexão do Prisma quando o servidor for interrompido
@@ -69,11 +69,13 @@ process.on("SIGINT", () => __awaiter(void 0, void 0, void 0, function* () {
     console.log("Prisma disconnected.");
     process.exit(0);
 }));
-// Rodar a cada 1 hora
-node_cron_1.default.schedule("0 * * * *", () => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("Starting automatic status update...");
-    yield (0, deliveryStatusUpdater_1.updateDeliveryStatuses)();
-}));
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running at http://localhost:${PORT}`);
+    });
+    // Scheduled jobs belong to the executable server, not to imported test app instances.
+    node_cron_1.default.schedule("0 * * * *", () => __awaiter(void 0, void 0, void 0, function* () {
+        console.log("Starting automatic status update...");
+        yield (0, deliveryStatusUpdater_1.updateDeliveryStatuses)();
+    }));
+}
