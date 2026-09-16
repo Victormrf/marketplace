@@ -1,29 +1,16 @@
 import { ProductCategory } from "@prisma/client";
-import {
-  ProductCreateData,
-  ProductReadRecord,
-  ProductRepositoryPort,
-  ProductUpdateData,
-  productRepository,
-} from "../repositories/productRepository";
+import { productRepository } from "../repositories/productRepository";
+import type { ProductCreateData, ProductReadRecord, ProductRepositoryPort, ProductUpdateData } from "../repositories/productRepository";
 import {
   DEFAULT_LIMIT,
   DEFAULT_PAGE,
-  PaginationInput,
   ProductCollectionDto,
   ProductReadDto,
   ProductReadFilters,
 } from "../types/productRead";
+import type { PaginationInput } from "../types/productRead";
+import type { ProductActor, ProductAuthorizationRecord, ProductCreateInput, ProductUpdateInput } from "../types/product";
 import { ConflictError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
-
-export type ProductActor = { id: string; role?: string };
-export type ProductAuthorizationRecord = {
-  id: string;
-  sellerId: string;
-  isActive: boolean;
-};
-export type ProductCreateInput = Record<string, unknown>;
-export type ProductUpdateInput = Record<string, unknown>;
 
 export class ProductForbiddenError extends Error {
   constructor() {

@@ -1,16 +1,16 @@
-import { OrderItemModel } from "../models/orderItemModel";
-import { OrderModel } from "../models/orderModel";
+import { OrderRepository } from "../repositories/orderRepository";
 import { productRepository } from "../repositories/productRepository";
 import { ReviewModel } from "../models/reviewModel";
 import { format } from "date-fns";
 
 export class DashboardService {
+  private readonly orderRepository = new OrderRepository();
   async getSalesStats(sellerId: string) {
-    const items = await OrderModel.getCompletedOrderItemsBySeller(sellerId);
+    const items = await this.orderRepository.getCompletedOrderItemsBySeller(sellerId);
 
     const totalSales = items.reduce(
-      (sum: number, item: { quantity: number; unitPrice: number }) =>
-        sum + item.quantity * item.unitPrice,
+      (sum: number, item: { quantity: number; unitPriceInCents: number }) =>
+        sum + item.quantity * item.unitPriceInCents,
       0
     );
 
@@ -26,7 +26,7 @@ export class DashboardService {
   }
 
   async getOrdersCountByStatus(sellerId: string) {
-    const orders = await OrderModel.getOrdersByStatus(sellerId);
+    const orders = await this.orderRepository.getOrdersByStatus(sellerId);
 
     const statusTotals: Record<string, number> = {};
 
@@ -45,7 +45,7 @@ export class DashboardService {
   }
 
   async getSalesCountByCategory(sellerId: string) {
-    const orderItems = await OrderModel.getCompletedOrderItemsByCategory(
+    const orderItems = await this.orderRepository.getCompletedOrderItemsByCategory(
       sellerId
     );
 
@@ -53,7 +53,7 @@ export class DashboardService {
 
     for (const item of orderItems) {
       const category = item.product.category;
-      const totalItemValue = item.quantity * item.unitPrice;
+      const totalItemValue = item.quantity * item.unitPriceInCents;
       if (category) {
         categoryTotals[category] =
           (categoryTotals[category] || 0) + totalItemValue;
@@ -67,7 +67,7 @@ export class DashboardService {
   }
 
   async getMonthlySalesStats(sellerId: string) {
-    const orders = await OrderModel.getMonthlySalesBySeller(sellerId);
+    const orders = await this.orderRepository.getMonthlySalesBySeller(sellerId);
 
     const monthlySalesMap: Record<string, number> = {};
 
@@ -76,7 +76,7 @@ export class DashboardService {
       if (!monthlySalesMap[monthKey]) {
         monthlySalesMap[monthKey] = 0;
       }
-      monthlySalesMap[monthKey] += order.totalPrice || 0;
+      monthlySalesMap[monthKey] += order.totalInCents || 0;
     }
 
     // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
@@ -95,7 +95,7 @@ export class DashboardService {
   }
 
   async getDailySalesStats(sellerId: string) {
-    const orders = await OrderModel.getDailySalesBySeller(sellerId);
+    const orders = await this.orderRepository.getDailySalesBySeller(sellerId);
 
     const dailySalesMap: Record<string, number> = {};
 
@@ -104,7 +104,7 @@ export class DashboardService {
       if (!dailySalesMap[dayKey]) {
         dailySalesMap[dayKey] = 0;
       }
-      dailySalesMap[dayKey] += order.totalPrice || 0;
+      dailySalesMap[dayKey] += order.totalInCents || 0;
     }
 
     // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
@@ -124,23 +124,23 @@ export class DashboardService {
   }
 
   async getOrdersBySeller(sellerId: string) {
-    return await OrderModel.getOrdersBySeller(sellerId);
+    return await this.orderRepository.getOrdersBySeller(sellerId);
   }
 
   async getBestSellingProducts(sellerId: string) {
-    const groupedData = await OrderItemModel.getBestSellingProductsBySeller(
+    const groupedData = await this.orderRepository.getBestSellingProductsBySeller(
       sellerId
     );
 
     const productIds = groupedData
-      .map((item) => item.productId)
-      .filter((id): id is string => typeof id === "string");
+      .map((item: { productId: string }) => item.productId)
+      .filter((id: string): id is string => typeof id === "string");
 
     const products = await productRepository.getProductsByIds(productIds);
 
     const result = products.map((product) => {
       const quantityData = groupedData.find(
-        (item) => item.productId === product.id
+        (item: { productId: string }) => item.productId === product.id
       );
       return {
         ...product,
@@ -152,7 +152,7 @@ export class DashboardService {
   }
 
   async getNewCustomersPerMonth(sellerId: string) {
-    return await OrderModel.getNewCustomersByMonth(sellerId);
+    return await this.orderRepository.getNewCustomersByMonth(sellerId);
   }
 
   async getRatingDistributionOfSeller(sellerId: string) {

@@ -41,6 +41,12 @@ function sellerData(input, allowEmpty = false) {
     return data;
 }
 class SellerService {
+    toDto(record) {
+        return { id: record.id, userId: record.userId, storeName: record.storeName, logo: record.logo, description: record.description, isActive: record.isActive };
+    }
+    toWithUserDto(record) {
+        return Object.assign(Object.assign({}, this.toDto(record)), { user: record.user });
+    }
     createSellerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
             const user = yield userRepository_1.userRepository.findById(userId);
@@ -54,7 +60,7 @@ class SellerService {
                 const data = sellerData(input);
                 if (!data.storeName)
                     throw new customErrors_1.ValidationError("storeName is required");
-                return yield sellerRepository_1.sellerRepository.create({ userId, storeName: data.storeName, logo: data.logo, description: data.description });
+                return this.toDto(yield sellerRepository_1.sellerRepository.create({ userId, storeName: data.storeName, logo: data.logo, description: data.description }));
             }
             catch (error) {
                 if ((error === null || error === void 0 ? void 0 : error.code) === "P2002")
@@ -65,7 +71,7 @@ class SellerService {
     }
     getAllSellers() {
         return __awaiter(this, void 0, void 0, function* () {
-            return sellerRepository_1.sellerRepository.findAll();
+            return (yield sellerRepository_1.sellerRepository.findAll()).map((record) => this.toWithUserDto(record));
         });
     }
     getSellerProfile(userId) {
@@ -73,14 +79,14 @@ class SellerService {
             const seller = yield sellerRepository_1.sellerRepository.findByUserId(userId);
             if (!seller)
                 throw new customErrors_1.ObjectNotFoundError("Seller");
-            return seller;
+            return this.toDto(seller);
         });
     }
     updateSellerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!(yield sellerRepository_1.sellerRepository.findByUserId(userId)))
                 throw new customErrors_1.ObjectNotFoundError("Seller");
-            return sellerRepository_1.sellerRepository.update(userId, sellerData(input, true));
+            return this.toDto(yield sellerRepository_1.sellerRepository.update(userId, sellerData(input, true)));
         });
     }
     deactivateSeller(userId, actor) {
@@ -91,9 +97,9 @@ class SellerService {
             if (!record)
                 throw new customErrors_1.ObjectNotFoundError("Seller");
             if (!record.isActive) {
-                return record;
+                return this.toDto(record);
             }
-            return sellerRepository_1.sellerRepository.deactivate(record, new Date());
+            return this.toDto(yield sellerRepository_1.sellerRepository.deactivate(record, new Date()));
         });
     }
     deleteSellerProfile() {

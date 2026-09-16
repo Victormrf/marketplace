@@ -1,138 +1,30 @@
-import prisma from "../config/db";
-import { OrderModel, OrderStatus } from "../models/orderModel";
-import {
-  ObjectNotFoundError,
-  ObjectsNotFoundError,
-  ValidationError,
-} from "../utils/customErrors";
+import { OrderStatus, SellerOrderStatus, UserRole } from "@prisma/client";
+import { customerRepository } from "../repositories/customerRepository";
+import { sellerRepository } from "../repositories/sellerRepository";
+import { OrderRepository, type OrderDetailRecord, type OrderSummaryRecord } from "../repositories/orderRepository";
+import { SellerOrderRepository, type SellerOrderDetailRecord, type SellerOrderPublicDetailRecord, type SellerOrderSummaryRecord } from "../repositories/sellerOrderRepository";
+import type { AuthenticatedUserDto } from "../types/auth";
+import type { OrderCollectionDto, OrderDetailDto, OrderItemDto, OrderReadFilters, OrderStatusHistoryDto, OrderTransitionInput, SellerOrderCollectionDto, SellerOrderDetailDto, SellerOrderReadFilters, SellerOrderStatusHistoryDto, SellerOrderSummaryDto } from "../types/order";
+import { ConflictError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 
-interface OrderData {
-  customerId: string;
-  totalPrice: number;
-  status: OrderStatus;
-}
-
-interface OrderItemInput {
-  productId: string;
-  quantity: number;
-}
-
+const orderTransitions: Record<OrderStatus, readonly OrderStatus[]> = { PENDING_PAYMENT: [OrderStatus.CANCELLED], CONFIRMED: [OrderStatus.PARTIALLY_COMPLETED, OrderStatus.COMPLETED, OrderStatus.CANCELLED], PARTIALLY_COMPLETED: [OrderStatus.COMPLETED, OrderStatus.CANCELLED], COMPLETED: [], CANCELLED: [] };
+const sellerTransitions: Record<SellerOrderStatus, readonly SellerOrderStatus[]> = { PENDING: [SellerOrderStatus.CONFIRMED, SellerOrderStatus.CANCELLED], CONFIRMED: [SellerOrderStatus.PROCESSING, SellerOrderStatus.CANCELLED], PROCESSING: [SellerOrderStatus.SHIPPED, SellerOrderStatus.CANCELLED], SHIPPED: [SellerOrderStatus.DELIVERED], DELIVERED: [SellerOrderStatus.RETURNED], CANCELLED: [], RETURNED: [] };
+function page(total: number, current: number, limit: number) { return { page: current, limit, total, totalPages: Math.ceil(total / limit) }; }
+type ItemRecord = { id: string; productId: string; quantity: number; unitPriceInCents: number; lineTotalInCents: number; currency: OrderItemDto["currency"]; productNameSnapshot: string; productReferenceSnapshot: string | null; sellerNameSnapshot: string };
+function itemDto(item: ItemRecord): OrderItemDto { return { id: item.id, productId: item.productId, quantity: item.quantity, unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.lineTotalInCents, currency: item.currency, productNameSnapshot: item.productNameSnapshot, productReferenceSnapshot: item.productReferenceSnapshot, sellerNameSnapshot: item.sellerNameSnapshot }; }
+function sellerHistoryDto(h: SellerOrderDetailRecord["statusHistory"][number]): SellerOrderStatusHistoryDto { return { id: h.id, fromStatus: h.fromStatus, toStatus: h.toStatus, reason: h.reason, createdAt: h.createdAt }; }
+function sellerDetailDto(s: SellerOrderPublicDetailRecord): SellerOrderDetailDto { return { id: s.id, orderId: s.orderId, sellerId: s.sellerId, status: s.status, subtotalInCents: s.subtotalInCents, shippingInCents: s.shippingInCents, taxInCents: s.taxInCents, discountInCents: s.discountInCents, totalInCents: s.totalInCents, currency: s.currency, createdAt: s.createdAt, updatedAt: s.updatedAt, confirmedAt: s.confirmedAt, completedAt: s.completedAt, cancelledAt: s.cancelledAt, items: s.items.map(itemDto), statusHistory: s.statusHistory.map(sellerHistoryDto) }; }
+function sellerSummaryDto(s: SellerOrderSummaryRecord): SellerOrderSummaryDto { return { id: s.id, orderId: s.orderId, sellerId: s.sellerId, status: s.status, totalInCents: s.totalInCents, currency: s.currency, createdAt: s.createdAt }; }
+function orderHistoryDto(h: OrderDetailRecord["statusHistory"][number]): OrderStatusHistoryDto { return { id: h.id, fromStatus: h.fromStatus, toStatus: h.toStatus, reason: h.reason, createdAt: h.createdAt }; }
+function orderDetailDto(o: OrderDetailRecord): OrderDetailDto { return { id: o.id, customerId: o.customerId, status: o.status, subtotalInCents: o.subtotalInCents, shippingInCents: o.shippingInCents, taxInCents: o.taxInCents, discountInCents: o.discountInCents, totalInCents: o.totalInCents, currency: o.currency, createdAt: o.createdAt, updatedAt: o.updatedAt, confirmedAt: o.confirmedAt, completedAt: o.completedAt, cancelledAt: o.cancelledAt, address: o.address, sellerOrders: o.sellerOrders.map(sellerDetailDto), statusHistory: o.statusHistory.map(orderHistoryDto) }; }
 export class OrderService {
-  async createOrderWithItems(customerId: string, items: OrderItemInput[]) {
-    if (!customerId || !items?.length) {
-      throw new ValidationError("Customer ID and items are required.");
-    }
-
-    return await prisma.$transaction(async (tx: any) => {
-      // Buscar os preços dos produtos
-      const productIds = items.map((item) => item.productId);
-      const products = await tx.product.findMany({
-        where: { id: { in: productIds } },
-        select: { id: true, price: true },
-      });
-
-      const productMap: Map<string, number> = new Map(
-        products.map((p: { id: string; price: number }) => [p.id, p.price])
-      );
-
-      // Calcular o totalPrice
-      let totalPrice = 0;
-      const orderItemsData = items.map(({ productId, quantity }) => {
-        const unitPrice = productMap.get(productId);
-        if (unitPrice === undefined) {
-          throw new ValidationError(`Product ${productId} not found.`);
-        }
-
-        const itemTotal = unitPrice * quantity;
-        totalPrice += itemTotal;
-
-        return {
-          productId,
-          quantity,
-          unitPrice,
-        };
-      });
-
-      // Criar a order
-      const order = await tx.order.create({
-        data: {
-          customerId,
-          totalPrice,
-          status: "PENDING",
-        },
-      });
-
-      // Criar os order_items
-      await tx.order_item.createMany({
-        data: orderItemsData.map((item) => ({
-          orderId: order.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        })),
-      });
-
-      return order;
-    });
-  }
-
-  async getOrderById(id: string) {
-    const order = await OrderModel.getById(id);
-
-    if (!order) {
-      throw new ObjectNotFoundError("Order");
-    }
-
-    return order;
-  }
-
-  async getOrdersByCustomerId(customerId: string) {
-    const orders = await OrderModel.getOrdersByCustomerId(customerId);
-
-    if (!orders.length) {
-      throw new ObjectsNotFoundError("Orders");
-    }
-
-    return orders;
-  }
-
-  async updateOrder(id: string, orderData: Partial<OrderData>) {
-    const order = await OrderModel.getById(id);
-
-    if (!order) {
-      throw new ObjectNotFoundError("Order");
-    }
-
-    try {
-      return await OrderModel.update(id, orderData);
-    } catch (error) {
-      throw new Error(`Failed to update order: ${(error as Error).message}`);
-    }
-  }
-
-  async updateOrderStatus(orderId: string, status: string) {
-    const order = await OrderModel.getById(orderId);
-
-    if (!order) {
-      throw new ObjectNotFoundError("order");
-    }
-
-    try {
-      return await OrderModel.updateStatus(orderId, status);
-    } catch (error: any) {
-      throw new Error(
-        `Failed to update order status: ${(error as Error).message}`
-      );
-    }
-  }
-
-  async deleteOrder(id: string) {
-    const order = await OrderModel.getById(id);
-
-    if (!order) {
-      throw new ObjectNotFoundError("Order");
-    }
-
-    return await OrderModel.delete(id);
-  }
+  constructor(private readonly orders = new OrderRepository(), private readonly sellerOrders = new SellerOrderRepository()) {}
+  private async customerIdFor(userId: string) { const profile = await customerRepository.findByUserId(userId); if (!profile) throw new ForbiddenError("Only customers can access customer orders"); return profile.id; }
+  private async sellerIdFor(userId: string) { const seller = await sellerRepository.findByUserId(userId); if (!seller || !seller.isActive) throw new ForbiddenError("Only active sellers can access seller orders"); return seller.id; }
+  async listCustomerOrders(userId: string, filters: OrderReadFilters, current: number, limit: number): Promise<OrderCollectionDto> { const id = await this.customerIdFor(userId); const [total, records] = await Promise.all([this.orders.countByCustomer(id, filters), this.orders.findByCustomer(id, filters, (current - 1) * limit, limit)]); return { data: records.map((r) => ({ id: r.id, status: r.status, totalInCents: r.totalInCents, currency: r.currency, createdAt: r.createdAt })), pagination: page(total, current, limit) }; }
+  async getCustomerOrder(userId: string, orderId: string): Promise<OrderDetailDto> { const id = await this.customerIdFor(userId); const record = await this.orders.findByCustomerAndId(id, orderId); if (!record) throw new ObjectNotFoundError("Order"); return orderDetailDto(record); }
+  async listSellerOrders(userId: string, filters: SellerOrderReadFilters, current: number, limit: number): Promise<SellerOrderCollectionDto> { const id = await this.sellerIdFor(userId); const [total, records] = await Promise.all([this.sellerOrders.countBySeller(id, filters), this.sellerOrders.findBySeller(id, filters, (current - 1) * limit, limit)]); return { data: records.map(sellerSummaryDto), pagination: page(total, current, limit) }; }
+  async getSellerOrder(userId: string, sellerOrderId: string): Promise<SellerOrderDetailDto> { const id = await this.sellerIdFor(userId); const record = await this.sellerOrders.findBySellerAndId(id, sellerOrderId); if (!record) throw new ObjectNotFoundError("SellerOrder"); return sellerDetailDto(record); }
+  async transitionOrder(user: AuthenticatedUserDto, orderId: string, input: OrderTransitionInput): Promise<OrderDetailDto> { if (user.role !== UserRole.ADMIN) throw new ForbiddenError(); const record = await this.orders.findById(orderId); if (!record) throw new ObjectNotFoundError("Order"); const target = input.status as OrderStatus; if (!Object.values(OrderStatus).includes(target)) throw new ValidationError("Invalid order status"); if (record.status === target) return orderDetailDto(record); if (!orderTransitions[record.status].includes(target)) throw new ConflictError("Invalid order status transition"); const updated = await this.orders.transition(orderId, record.status, target, input.reason); if (!updated) throw new ConflictError("Order status changed concurrently"); return orderDetailDto(updated); }
+  async transitionSellerOrder(user: AuthenticatedUserDto, sellerOrderId: string, input: OrderTransitionInput): Promise<SellerOrderDetailDto> { const sellerId = user.role === UserRole.SELLER ? await this.sellerIdFor(user.id) : null; if (user.role !== UserRole.SELLER && user.role !== UserRole.ADMIN) throw new ForbiddenError(); const record = sellerId ? await this.sellerOrders.findBySellerAndId(sellerId, sellerOrderId) : await this.sellerOrders.findById(sellerOrderId); if (!record) throw new ObjectNotFoundError("SellerOrder"); const target = input.status as SellerOrderStatus; if (!Object.values(SellerOrderStatus).includes(target)) throw new ValidationError("Invalid seller order status"); if (record.status === target) return sellerDetailDto(record); if (!sellerTransitions[record.status].includes(target)) throw new ConflictError("Invalid seller order status transition"); const updated = await this.sellerOrders.transition(sellerOrderId, sellerId, record.status, target, input.reason); if (!updated) throw new ConflictError("Seller order status changed concurrently or parent order is awaiting payment"); return sellerDetailDto(updated); }
 }

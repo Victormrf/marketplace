@@ -28,6 +28,9 @@ function toDto(snapshot) {
         availableQuantity: snapshot.onHandQuantity - snapshot.reservedQuantity,
     };
 }
+function toMovementDto(movement) {
+    return Object.assign({}, movement);
+}
 function positiveInteger(value, field) {
     if (!Number.isSafeInteger(value) || value <= 0) {
         throw new customErrors_1.ValidationError(`${field} must be a positive integer`);
@@ -97,7 +100,7 @@ class InventoryService {
             const record = yield this.authorize(productId, actor);
             const result = yield this.repository.findMovements(record.inventoryId, (pagination.page - 1) * pagination.limit, pagination.limit);
             return {
-                data: result.data,
+                data: result.data.map(toMovementDto),
                 pagination: {
                     page: pagination.page,
                     limit: pagination.limit,

@@ -1,12 +1,9 @@
 import bcrypt from "bcrypt";
 import { Prisma, UserRole } from "@prisma/client";
-import { userRepository, UserSafeRecord } from "../repositories/userRepository";
+import { userRepository } from "../repositories/userRepository";
+import type { UserDto, UserRegistrationInput, UserUpdateInput } from "../types/user";
 import { normalizeEmail } from "../utils/email";
 import { ConflictError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
-
-export type UserDto = UserSafeRecord;
-export type UserRegistrationInput = Record<string, unknown>;
-export type UserUpdateInput = Record<string, unknown>;
 
 const REGISTRATION_FIELDS = new Set(["name", "email", "password", "role"]);
 const UPDATE_FIELDS = new Set(["name", "email", "password"]);

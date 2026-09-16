@@ -10,16 +10,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardService = void 0;
-const orderItemModel_1 = require("../models/orderItemModel");
-const orderModel_1 = require("../models/orderModel");
+const orderRepository_1 = require("../repositories/orderRepository");
 const productRepository_1 = require("../repositories/productRepository");
 const reviewModel_1 = require("../models/reviewModel");
 const date_fns_1 = require("date-fns");
 class DashboardService {
+    constructor() {
+        this.orderRepository = new orderRepository_1.OrderRepository();
+    }
     getSalesStats(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const items = yield orderModel_1.OrderModel.getCompletedOrderItemsBySeller(sellerId);
-            const totalSales = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+            const items = yield this.orderRepository.getCompletedOrderItemsBySeller(sellerId);
+            const totalSales = items.reduce((sum, item) => sum + item.quantity * item.unitPriceInCents, 0);
             const totalItemsSold = items.reduce((sum, item) => sum + item.quantity, 0);
             return {
                 totalSales,
@@ -29,7 +31,7 @@ class DashboardService {
     }
     getOrdersCountByStatus(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const orders = yield orderModel_1.OrderModel.getOrdersByStatus(sellerId);
+            const orders = yield this.orderRepository.getOrdersByStatus(sellerId);
             const statusTotals = {};
             for (const order of orders) {
                 const status = order.status;
@@ -45,11 +47,11 @@ class DashboardService {
     }
     getSalesCountByCategory(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const orderItems = yield orderModel_1.OrderModel.getCompletedOrderItemsByCategory(sellerId);
+            const orderItems = yield this.orderRepository.getCompletedOrderItemsByCategory(sellerId);
             const categoryTotals = {};
             for (const item of orderItems) {
                 const category = item.product.category;
-                const totalItemValue = item.quantity * item.unitPrice;
+                const totalItemValue = item.quantity * item.unitPriceInCents;
                 if (category) {
                     categoryTotals[category] =
                         (categoryTotals[category] || 0) + totalItemValue;
@@ -63,14 +65,14 @@ class DashboardService {
     }
     getMonthlySalesStats(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const orders = yield orderModel_1.OrderModel.getMonthlySalesBySeller(sellerId);
+            const orders = yield this.orderRepository.getMonthlySalesBySeller(sellerId);
             const monthlySalesMap = {};
             for (const order of orders) {
                 const monthKey = (0, date_fns_1.format)(order.createdAt, "yyyy-MM"); // Ex: "2025-05"
                 if (!monthlySalesMap[monthKey]) {
                     monthlySalesMap[monthKey] = 0;
                 }
-                monthlySalesMap[monthKey] += order.totalPrice || 0;
+                monthlySalesMap[monthKey] += order.totalInCents || 0;
             }
             // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
             const result = [];
@@ -88,14 +90,14 @@ class DashboardService {
     }
     getDailySalesStats(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const orders = yield orderModel_1.OrderModel.getDailySalesBySeller(sellerId);
+            const orders = yield this.orderRepository.getDailySalesBySeller(sellerId);
             const dailySalesMap = {};
             for (const order of orders) {
                 const dayKey = (0, date_fns_1.format)(order.createdAt, "yyyy-MM-dd"); // Ex: "2025-05-05"
                 if (!dailySalesMap[dayKey]) {
                     dailySalesMap[dayKey] = 0;
                 }
-                dailySalesMap[dayKey] += order.totalPrice || 0;
+                dailySalesMap[dayKey] += order.totalInCents || 0;
             }
             // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
             const result = [];
@@ -114,12 +116,12 @@ class DashboardService {
     }
     getOrdersBySeller(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield orderModel_1.OrderModel.getOrdersBySeller(sellerId);
+            return yield this.orderRepository.getOrdersBySeller(sellerId);
         });
     }
     getBestSellingProducts(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const groupedData = yield orderItemModel_1.OrderItemModel.getBestSellingProductsBySeller(sellerId);
+            const groupedData = yield this.orderRepository.getBestSellingProductsBySeller(sellerId);
             const productIds = groupedData
                 .map((item) => item.productId)
                 .filter((id) => typeof id === "string");
@@ -134,7 +136,7 @@ class DashboardService {
     }
     getNewCustomersPerMonth(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield orderModel_1.OrderModel.getNewCustomersByMonth(sellerId);
+            return yield this.orderRepository.getNewCustomersByMonth(sellerId);
         });
     }
     getRatingDistributionOfSeller(sellerId) {

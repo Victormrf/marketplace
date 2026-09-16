@@ -25,6 +25,12 @@ function profileData(input) {
     return { phone: input.phone === undefined || input.phone === null ? null : input.phone.trim() || null };
 }
 class CustomerService {
+    toDto(record) {
+        return { id: record.id, userId: record.userId, phone: record.phone };
+    }
+    toWithUserDto(record) {
+        return { id: record.id, userId: record.userId, phone: record.phone, user: record.user };
+    }
     createCustomerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
             const user = yield userRepository_1.userRepository.findById(userId);
@@ -35,7 +41,7 @@ class CustomerService {
             if ((yield customerRepository_1.customerRepository.findByUserId(userId)) || (yield sellerRepository_1.sellerRepository.findByUserId(userId)))
                 throw new customErrors_1.ExistingProfileError();
             try {
-                return yield customerRepository_1.customerRepository.create(Object.assign({ userId }, profileData(input)));
+                return this.toDto(yield customerRepository_1.customerRepository.create(Object.assign({ userId }, profileData(input))));
             }
             catch (error) {
                 if ((error === null || error === void 0 ? void 0 : error.code) === "P2002")
@@ -46,7 +52,7 @@ class CustomerService {
     }
     getAllCustomers() {
         return __awaiter(this, void 0, void 0, function* () {
-            return customerRepository_1.customerRepository.findAll();
+            return (yield customerRepository_1.customerRepository.findAll()).map((record) => this.toWithUserDto(record));
         });
     }
     getCustomerProfile(userId) {
@@ -54,14 +60,14 @@ class CustomerService {
             const customer = yield customerRepository_1.customerRepository.findByUserId(userId);
             if (!customer)
                 throw new customErrors_1.ObjectNotFoundError("Customer");
-            return customer;
+            return this.toDto(customer);
         });
     }
     updateCustomerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!(yield customerRepository_1.customerRepository.findByUserId(userId)))
                 throw new customErrors_1.ObjectNotFoundError("Customer");
-            return customerRepository_1.customerRepository.update(userId, profileData(input));
+            return this.toDto(yield customerRepository_1.customerRepository.update(userId, profileData(input)));
         });
     }
     deleteCustomerProfile() {

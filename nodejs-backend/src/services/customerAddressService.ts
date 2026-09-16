@@ -1,12 +1,11 @@
 import { UserRole } from "@prisma/client";
-import { customerAddressRepository, CustomerAddressData, CustomerAddressRecord } from "../repositories/customerAddressRepository";
+import { customerAddressRepository } from "../repositories/customerAddressRepository";
+import type { CustomerAddressData, CustomerAddressRecord } from "../repositories/customerAddressRepository";
 import { customerRepository } from "../repositories/customerRepository";
 import { userRepository } from "../repositories/userRepository";
 import { ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
 import { PaginationInput } from "../types/productRead";
-
-export type CustomerAddressInput = Record<string, unknown>;
-export type CustomerAddressDto = Omit<CustomerAddressRecord, "countryCode"> & { countryCode: "BR" };
+import type { CustomerAddressDto, CustomerAddressInput } from "../types/customerAddress";
 
 function toDto(address: CustomerAddressRecord): CustomerAddressDto {
   return { ...address, countryCode: "BR" };

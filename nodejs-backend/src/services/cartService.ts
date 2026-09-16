@@ -1,24 +1,10 @@
 import { UserRole } from "@prisma/client";
-import { cartRepository, CartMutationConflictError, CartReadRecord } from "../repositories/cartRepository";
+import { cartRepository, CartMutationConflictError } from "../repositories/cartRepository";
+import type { CartReadRecord } from "../repositories/cartRepository";
 import { customerRepository } from "../repositories/customerRepository";
 import { userRepository } from "../repositories/userRepository";
 import { ConflictError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
-
-export type CartItemDto = {
-  id: string;
-  productId: string;
-  quantity: number;
-  name: string;
-  priceInCents: number;
-  currency: "BRL";
-  image: string | null;
-  availableQuantity: number;
-  hasSufficientStock: boolean;
-  isAvailable: boolean;
-  lineTotalInCents: number;
-};
-
-export type CartDto = { id: string; status: "ACTIVE"; items: CartItemDto[]; totalInCents: number };
+import type { CartDto } from "../types/cart";
 
 function exactFields(input: Record<string, unknown>, allowed: string[]) {
   const unknown = Object.keys(input).find((key) => !allowed.includes(key));

@@ -1,26 +1,10 @@
 import { InventoryMovementType } from "@prisma/client";
-import {
-  InventoryAuthorizationRecord,
-  InventoryMovementRecord,
-  InventoryRepository,
-  InventorySnapshot,
-  inventoryRepository,
-} from "../repositories/inventoryRepository";
+import { inventoryRepository } from "../repositories/inventoryRepository";
+import type { InventoryAuthorizationRecord, InventoryMovementRecord, InventoryRepository, InventorySnapshot } from "../repositories/inventoryRepository";
 import { ConflictError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
-import { PaginationInput } from "../types/productRead";
-
-export type InventoryActor = { id: string; role?: string };
-export type RestockInput = Record<string, unknown>;
-export type AdjustmentInput = Record<string, unknown>;
-
-export type InventoryDto = {
-  productId: string;
-  onHandQuantity: number;
-  reservedQuantity: number;
-  availableQuantity: number;
-};
-
-export type InventoryMovementDto = InventoryMovementRecord;
+import type { PaginationInput } from "../types/productRead";
+import type { AdjustmentInput, InventoryActor, InventoryDto, RestockInput } from "../types/inventory";
+import type { InventoryMovementCollectionDto, InventoryMovementDto } from "../types/inventory";
 
 export class InventoryForbiddenError extends Error {
   constructor() {
@@ -36,6 +20,10 @@ function toDto(snapshot: InventorySnapshot): InventoryDto {
     reservedQuantity: snapshot.reservedQuantity,
     availableQuantity: snapshot.onHandQuantity - snapshot.reservedQuantity,
   };
+}
+
+function toMovementDto(movement: InventoryMovementRecord): InventoryMovementDto {
+  return { ...movement };
 }
 
 function positiveInteger(value: unknown, field: string): number {
@@ -107,7 +95,7 @@ export class InventoryService {
     return toDto({ productId, onHandQuantity: movement.onHandAfter, reservedQuantity: movement.reservedAfter });
   }
 
-  async listMovements(productId: string, actor: InventoryActor, pagination: PaginationInput) {
+  async listMovements(productId: string, actor: InventoryActor, pagination: PaginationInput): Promise<InventoryMovementCollectionDto> {
     const record = await this.authorize(productId, actor);
     const result = await this.repository.findMovements(
       record.inventoryId,
@@ -115,7 +103,7 @@ export class InventoryService {
       pagination.limit
     );
     return {
-      data: result.data,
+      data: result.data.map(toMovementDto),
       pagination: {
         page: pagination.page,
         limit: pagination.limit,

@@ -9,101 +9,74 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.orderRoutes = void 0;
+exports.sellerOrderRoutes = exports.orderRoutes = void 0;
+const client_1 = require("@prisma/client");
 const express_1 = require("express");
-const orderService_1 = require("../services/orderService");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
+const orderService_1 = require("../services/orderService");
 const customErrors_1 = require("../utils/customErrors");
-const console_1 = require("console");
-const roleMiddleware_1 = require("../middlewares/roleMiddleware");
 exports.orderRoutes = (0, express_1.Router)();
-const orderService = new orderService_1.OrderService();
-exports.orderRoutes.get("/:orderId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { orderId } = req.params;
-    try {
-        const order = yield orderService.getOrderById(orderId);
-        res.status(200).json({ order });
+const service = new orderService_1.OrderService();
+function pagination(req) { const page = req.query.page === undefined ? 1 : Number(req.query.page); const limit = req.query.limit === undefined ? 20 : Number(req.query.limit); if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100)
+    throw new customErrors_1.ValidationError("Invalid pagination"); return { page, limit }; }
+function filters(query, seller = false) { const result = {}; const status = query.status; const allowed = seller ? Object.values(client_1.SellerOrderStatus) : Object.values(client_1.OrderStatus); if (status !== undefined) {
+    if (typeof status !== "string" || !allowed.includes(status))
+        throw new customErrors_1.ValidationError("Invalid status");
+    result.status = status;
+} for (const key of ["createdFrom", "createdTo"]) {
+    const value = query[key];
+    if (value !== undefined) {
+        if (typeof value !== "string" || Number.isNaN(Date.parse(value)))
+            throw new customErrors_1.ValidationError(`Invalid ${key}`);
+        result[key] = new Date(value);
     }
-    catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-            return;
-        }
-        else {
-            res.status(500).json({ message: "Internal Server Error" });
-            return;
-        }
-    }
-}));
-exports.orderRoutes.get("/customer/:customerId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { customerId } = req.params;
-    try {
-        const orders = yield orderService.getOrdersByCustomerId(customerId);
-        res.status(200).json({ orders });
-    }
-    catch (error) {
-        if (error instanceof customErrors_1.ObjectsNotFoundError) {
-            res.status(404).json({ error: error.message });
-            return;
-        }
-        else {
-            res.status(500).json({ message: "Internal Server Error" });
-            return;
-        }
-    }
-}));
-exports.orderRoutes.put("/:orderId", authMiddleware_1.authMiddleware, (0, roleMiddleware_1.roleMiddleware)("ADMIN"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { orderId } = req.params;
-    const updateData = req.body;
-    if (!updateData || Object.keys(updateData).length === 0) {
-        res.status(400).json({ error: "No fields to update" });
-        return;
-    }
-    try {
-        const updatedOrder = yield orderService.updateOrder(orderId, updateData);
-        res.status(200).json(updatedOrder);
-    }
-    catch (_a) {
-        if (console_1.error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: console_1.error.message });
-            return;
-        }
-        res.status(500).json({ error: "Internal Server Error" });
-        return;
-    }
-}));
-exports.orderRoutes.put("/:orderId/status", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { orderId } = req.params;
-    const { status } = req.body;
-    try {
-        const updatedOrder = yield orderService.updateOrderStatus(orderId, status);
-        res.status(200).json(updatedOrder);
-    }
-    catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-            return;
-        }
-        else {
-            res.status(500).json({ error });
-            return;
-        }
-    }
-}));
-exports.orderRoutes.delete("/:orderId", authMiddleware_1.authMiddleware, (0, roleMiddleware_1.roleMiddleware)("ADMIN"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { orderId } = req.params;
-    try {
-        const deletedOrder = yield orderService.deleteOrder(orderId);
-        res
-            .status(200)
-            .json({ message: "Order deleted successfully", deletedOrder });
-    }
-    catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-            return;
-        }
-        res.status(500).json({ error: "Internal Server Error" });
-        return;
-    }
-}));
+} if (result.createdFrom && result.createdTo && result.createdFrom > result.createdTo)
+    throw new customErrors_1.ValidationError("Invalid date range"); return result; }
+function handle(error, res) { if (error instanceof customErrors_1.ValidationError)
+    return res.status(400).json({ error: error.message }); if (error instanceof customErrors_1.ForbiddenError)
+    return res.status(403).json({ error: error.message }); if (error instanceof customErrors_1.ObjectNotFoundError)
+    return res.status(404).json({ error: error.message }); if (error instanceof customErrors_1.ConflictError)
+    return res.status(409).json({ error: error.message }); return res.status(500).json({ error: "Internal Server Error" }); }
+exports.orderRoutes.get("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
+    const p = pagination(req);
+    res.status(200).json(yield service.listCustomerOrders(req.user.id, filters(req.query), p.page, p.limit));
+}
+catch (e) {
+    handle(e, res);
+} }));
+exports.orderRoutes.get("/:orderId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
+    res.status(200).json(yield service.getCustomerOrder(req.user.id, req.params.orderId));
+}
+catch (e) {
+    handle(e, res);
+} }));
+exports.orderRoutes.patch("/:orderId/status", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
+    if (!req.body || typeof req.body.status !== "string" || Object.keys(req.body).some((key) => !["status", "reason"].includes(key)))
+        throw new customErrors_1.ValidationError("Invalid transition payload");
+    res.status(200).json(yield service.transitionOrder(req.user, req.params.orderId, { status: req.body.status, reason: req.body.reason }));
+}
+catch (e) {
+    handle(e, res);
+} }));
+exports.sellerOrderRoutes = (0, express_1.Router)();
+exports.sellerOrderRoutes.get("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
+    const p = pagination(req);
+    res.status(200).json(yield service.listSellerOrders(req.user.id, filters(req.query, true), p.page, p.limit));
+}
+catch (e) {
+    handle(e, res);
+} }));
+exports.sellerOrderRoutes.get("/:sellerOrderId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
+    res.status(200).json(yield service.getSellerOrder(req.user.id, req.params.sellerOrderId));
+}
+catch (e) {
+    handle(e, res);
+} }));
+exports.sellerOrderRoutes.patch("/:sellerOrderId/status", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () { try {
+    if (!req.body || typeof req.body.status !== "string" || Object.keys(req.body).some((key) => !["status", "reason"].includes(key)))
+        throw new customErrors_1.ValidationError("Invalid transition payload");
+    res.status(200).json(yield service.transitionSellerOrder(req.user, req.params.sellerOrderId, { status: req.body.status, reason: req.body.reason }));
+}
+catch (e) {
+    handle(e, res);
+} }));

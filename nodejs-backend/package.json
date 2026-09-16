@@ -17,7 +17,8 @@
     "test:auth": "npm run build && node --test tests/auth.integration.test.js",
     "test:addresses": "npm run build && node --test tests/customer-address.integration.test.js",
     "test:cart": "npm run build && node --test tests/cart.integration.test.js",
-    "test:checkout": "npm run build && node --test tests/checkout.integration.test.js"
+    "test:checkout": "npm run build && node --test tests/checkout.integration.test.js",
+    "test:orders": "npm run build && node --test tests/orders.integration.test.js"
   },
   "keywords": [],
   "author": "",

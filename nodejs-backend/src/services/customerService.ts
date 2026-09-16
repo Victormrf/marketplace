@@ -1,10 +1,11 @@
 import { UserRole } from "@prisma/client";
-import { customerRepository, CustomerRecord, CustomerWithUserRecord } from "../repositories/customerRepository";
+import { customerRepository } from "../repositories/customerRepository";
+import type { CustomerRecord, CustomerWithUserRecord } from "../repositories/customerRepository";
 import { sellerRepository } from "../repositories/sellerRepository";
 import { userRepository } from "../repositories/userRepository";
 import { ExistingProfileError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
-
-export type CustomerProfileInput = Record<string, unknown>;
+import type { CustomerProfileInput } from "../types/profile";
+import type { CustomerProfileDto, CustomerProfileWithUserDto } from "../types/profile";
 
 function profileData(input: CustomerProfileInput) {
   const unknown = Object.keys(input).find((field) => field !== "phone");
@@ -16,32 +17,40 @@ function profileData(input: CustomerProfileInput) {
 }
 
 export class CustomerService {
-  async createCustomerProfile(userId: string, input: CustomerProfileInput): Promise<CustomerRecord> {
+  private toDto(record: CustomerRecord): CustomerProfileDto {
+    return { id: record.id, userId: record.userId, phone: record.phone };
+  }
+
+  private toWithUserDto(record: CustomerWithUserRecord): CustomerProfileWithUserDto {
+    return { id: record.id, userId: record.userId, phone: record.phone, user: record.user };
+  }
+
+  async createCustomerProfile(userId: string, input: CustomerProfileInput): Promise<CustomerProfileDto> {
     const user = await userRepository.findById(userId);
     if (!user) throw new ObjectNotFoundError("User");
     if (user.role !== UserRole.CUSTOMER) throw new ForbiddenError("Only CUSTOMER users can create a customer profile");
     if (await customerRepository.findByUserId(userId) || await sellerRepository.findByUserId(userId)) throw new ExistingProfileError();
     try {
-      return await customerRepository.create({ userId, ...profileData(input) });
+      return this.toDto(await customerRepository.create({ userId, ...profileData(input) }));
     } catch (error: any) {
       if (error?.code === "P2002") throw new ExistingProfileError();
       throw error;
     }
   }
 
-  async getAllCustomers(): Promise<CustomerWithUserRecord[]> {
-    return customerRepository.findAll();
+  async getAllCustomers(): Promise<CustomerProfileWithUserDto[]> {
+    return (await customerRepository.findAll()).map((record) => this.toWithUserDto(record));
   }
 
-  async getCustomerProfile(userId: string): Promise<CustomerRecord> {
+  async getCustomerProfile(userId: string): Promise<CustomerProfileDto> {
     const customer = await customerRepository.findByUserId(userId);
     if (!customer) throw new ObjectNotFoundError("Customer");
-    return customer;
+    return this.toDto(customer);
   }
 
-  async updateCustomerProfile(userId: string, input: CustomerProfileInput): Promise<CustomerRecord> {
+  async updateCustomerProfile(userId: string, input: CustomerProfileInput): Promise<CustomerProfileDto> {
     if (!(await customerRepository.findByUserId(userId))) throw new ObjectNotFoundError("Customer");
-    return customerRepository.update(userId, profileData(input));
+    return this.toDto(await customerRepository.update(userId, profileData(input)));
   }
 
   async deleteCustomerProfile(): Promise<void> {

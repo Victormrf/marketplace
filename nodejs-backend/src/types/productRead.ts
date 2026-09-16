@@ -1,44 +1,4 @@
-import { ProductCategory } from "@prisma/client";
-
-export type ProductReadDto = {
-  id: string;
-  sellerId: string;
-  sellerName: string;
-  name: string;
-  reference: string | null;
-  description: string | null;
-  priceInCents: number;
-  currency: "BRL";
-  category: ProductCategory;
-  image: string | null;
-  inventory: {
-    onHandQuantity: number;
-    reservedQuantity: number;
-    availableQuantity: number;
-  };
-  isAvailable: boolean;
-  averageRating: number | null;
-};
-
-export type ProductReadFilters = {
-  search?: string;
-  category?: ProductCategory;
-  sellerId?: string;
-  inStock?: boolean;
-  ids?: string[];
-};
-
-export type ProductPagination = {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-};
-
-export type ProductCollectionDto = {
-  data: ProductReadDto[];
-  pagination: ProductPagination;
-};
+export type { ProductCollectionDto, ProductPagination, ProductReadDto, ProductReadFilters } from "./product";
 
 export type PaginationInput = {
   page: number;
