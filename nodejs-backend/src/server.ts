@@ -17,6 +17,7 @@ import { deliveryRoutes } from "./controllers/deliveryController";
 import { refundRoutes } from "./controllers/refundController";
 import { inventoryRoutes } from "./controllers/inventoryController";
 import { customerAddressRoutes } from "./controllers/customerAddressController";
+import { checkoutRoutes } from "./controllers/checkoutController";
 import cron from "node-cron";
 import { updateDeliveryStatuses } from "./jobs/deliveryStatusUpdater";
 
@@ -57,6 +58,7 @@ app.use("/dashboard", dashboardRoutes);
 app.use("/delivery", deliveryRoutes);
 app.use("/refund", refundRoutes);
 app.use("/inventory", inventoryRoutes);
+app.use("/checkout", checkoutRoutes);
 
 // Encerrar conexão do Prisma quando o servidor for interrompido
 process.on("SIGINT", async () => {

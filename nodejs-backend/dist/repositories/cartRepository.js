@@ -134,8 +134,10 @@ class CartRepository {
     }
     updateItem(customerId, productId, quantity) {
         return __awaiter(this, void 0, void 0, function* () {
-            var _a;
-            const rows = yield db_1.default.$queryRaw(client_1.Prisma.sql `
+            return db_1.default.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                var _a;
+                yield lockCustomer(tx, customerId);
+                const rows = yield tx.$queryRaw(client_1.Prisma.sql `
       UPDATE "cart_item" ci
       SET "quantity" = ${quantity}, "updatedAt" = CURRENT_TIMESTAMP
       FROM "cart" c, "product" p, "seller" s, "inventory" i
@@ -151,25 +153,32 @@ class CartRepository {
         AND i."onHandQuantity" - i."reservedQuantity" >= ${quantity}
       RETURNING ci."id", ci."productId", ci."quantity"
     `);
-            return (_a = rows[0]) !== null && _a !== void 0 ? _a : null;
+                return (_a = rows[0]) !== null && _a !== void 0 ? _a : null;
+            }));
         });
     }
     removeItem(customerId, productId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const result = yield db_1.default.cartItem.deleteMany({
-                where: {
-                    productId,
-                    cart: { customerId, status: client_1.CartStatus.ACTIVE },
-                },
-            });
-            return result.count > 0;
+            return db_1.default.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                yield lockCustomer(tx, customerId);
+                const result = yield tx.cartItem.deleteMany({
+                    where: {
+                        productId,
+                        cart: { customerId, status: client_1.CartStatus.ACTIVE },
+                    },
+                });
+                return result.count > 0;
+            }));
         });
     }
     clear(customerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield db_1.default.cartItem.deleteMany({
-                where: { cart: { customerId, status: client_1.CartStatus.ACTIVE } },
-            });
+            yield db_1.default.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
+                yield lockCustomer(tx, customerId);
+                yield tx.cartItem.deleteMany({
+                    where: { cart: { customerId, status: client_1.CartStatus.ACTIVE } },
+                });
+            }));
         });
     }
 }

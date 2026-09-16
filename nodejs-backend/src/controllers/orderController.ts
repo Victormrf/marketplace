@@ -12,24 +12,6 @@ import { roleMiddleware } from "../middlewares/roleMiddleware";
 export const orderRoutes = Router();
 const orderService = new OrderService();
 
-orderRoutes.post("/", authMiddleware, async (req, res) => {
-  const { customerId, items } = req.body; // items: [{ productId, quantity }]
-  try {
-    const newOrder = await orderService.createOrderWithItems(customerId, items);
-    res.status(201).json({ message: "Order created with items", newOrder });
-  } catch (error) {
-    console.log(error);
-
-    if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
-      return;
-    } else {
-      res.status(500).json({ error: "Internal Server Error" });
-      return;
-    }
-  }
-});
-
 orderRoutes.get("/:orderId", authMiddleware, async (req, res) => {
   const { orderId } = req.params;
 

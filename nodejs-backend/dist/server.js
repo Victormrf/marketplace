@@ -31,6 +31,7 @@ const deliveryController_1 = require("./controllers/deliveryController");
 const refundController_1 = require("./controllers/refundController");
 const inventoryController_1 = require("./controllers/inventoryController");
 const customerAddressController_1 = require("./controllers/customerAddressController");
+const checkoutController_1 = require("./controllers/checkoutController");
 const node_cron_1 = __importDefault(require("node-cron"));
 const deliveryStatusUpdater_1 = require("./jobs/deliveryStatusUpdater");
 const app = (0, express_1.default)();
@@ -62,6 +63,7 @@ app.use("/dashboard", dashboardController_1.dashboardRoutes);
 app.use("/delivery", deliveryController_1.deliveryRoutes);
 app.use("/refund", refundController_1.refundRoutes);
 app.use("/inventory", inventoryController_1.inventoryRoutes);
+app.use("/checkout", checkoutController_1.checkoutRoutes);
 // Encerrar conexão do Prisma quando o servidor for interrompido
 process.on("SIGINT", () => __awaiter(void 0, void 0, void 0, function* () {
     yield db_1.default.$disconnect();

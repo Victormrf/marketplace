@@ -18,24 +18,6 @@ const console_1 = require("console");
 const roleMiddleware_1 = require("../middlewares/roleMiddleware");
 exports.orderRoutes = (0, express_1.Router)();
 const orderService = new orderService_1.OrderService();
-exports.orderRoutes.post("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { customerId, items } = req.body; // items: [{ productId, quantity }]
-    try {
-        const newOrder = yield orderService.createOrderWithItems(customerId, items);
-        res.status(201).json({ message: "Order created with items", newOrder });
-    }
-    catch (error) {
-        console.log(error);
-        if (error instanceof customErrors_1.ValidationError) {
-            res.status(400).json({ error: error.message });
-            return;
-        }
-        else {
-            res.status(500).json({ error: "Internal Server Error" });
-            return;
-        }
-    }
-}));
 exports.orderRoutes.get("/:orderId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { orderId } = req.params;
     try {

@@ -122,7 +122,9 @@ export class CartRepository {
   }
 
   async updateItem(customerId: string, productId: string, quantity: number): Promise<AtomicCartItemRow | null> {
-    const rows = await prisma.$queryRaw(Prisma.sql`
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await lockCustomer(tx, customerId);
+    const rows = await tx.$queryRaw(Prisma.sql`
       UPDATE "cart_item" ci
       SET "quantity" = ${quantity}, "updatedAt" = CURRENT_TIMESTAMP
       FROM "cart" c, "product" p, "seller" s, "inventory" i
@@ -139,21 +141,28 @@ export class CartRepository {
       RETURNING ci."id", ci."productId", ci."quantity"
     `) as AtomicCartItemRow[];
     return rows[0] ?? null;
+    });
   }
 
   async removeItem(customerId: string, productId: string): Promise<boolean> {
-    const result = await prisma.cartItem.deleteMany({
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await lockCustomer(tx, customerId);
+    const result = await tx.cartItem.deleteMany({
       where: {
         productId,
         cart: { customerId, status: CartStatus.ACTIVE },
       },
     });
     return result.count > 0;
+    });
   }
 
   async clear(customerId: string): Promise<void> {
-    await prisma.cartItem.deleteMany({
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await lockCustomer(tx, customerId);
+      await tx.cartItem.deleteMany({
       where: { cart: { customerId, status: CartStatus.ACTIVE } },
+      });
     });
   }
 }

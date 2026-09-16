@@ -1,6 +1,6 @@
 # Backend Revamp — Controle de Progresso
 
-Última atualização: 14/09/2026 — Etapa 7 liberada
+Última atualização: 15/09/2026 — Etapa 9 liberada
 
 ## Objetivo
 
@@ -96,23 +96,28 @@ Observação futura: se desativação de produto/seller e movimentação de esto
 
 ### Etapa 7 — Checkout transacional e reservas
 
-- [~] Etapa atual
-- [ ] Order e SellerOrders
-- [ ] OrderItems e snapshots
-- [ ] OrderAddress
-- [ ] reserva atômica de inventário
-- [ ] InventoryReservation e InventoryMovement
-- [ ] tratamento de concorrência
-- [ ] rollback completo
+- [x] Order e SellerOrders
+- [x] OrderItems e snapshots
+- [x] OrderAddress
+- [x] reserva atômica de inventário
+- [x] InventoryReservation e InventoryMovement
+- [x] tratamento de concorrência
+- [x] rollback completo
+- [x] locks compartilhados para snapshots comerciais consistentes
+- [x] DTO explícito de checkout
 
 ### Etapa 8 — Idempotência do checkout
 
-- [ ] persistência da chave
-- [ ] replay seguro
-- [ ] rejeição de chave reutilizada com payload diferente
+- [x] persistência da chave
+- [x] fingerprint determinístico da requisição
+- [x] replay seguro do resultado persistido
+- [x] concorrência com uma única execução efetiva
+- [x] rejeição de chave reutilizada com payload diferente
+- [x] rollback conjunto da chave e do checkout
 
 ### Etapa 9 — Consultas e estados de pedidos
 
+- [~] Etapa atual
 - [ ] visão consolidada do customer
 - [ ] visão do SellerOrder
 - [ ] históricos
@@ -156,7 +161,7 @@ Observação futura: se desativação de produto/seller e movimentação de esto
 
 ## Próxima ação
 
-Executar a Etapa 7 — checkout transacional e reservas — por meio de um handoff específico.
+Executar a Etapa 9 — consultas e estados de pedidos — por meio de um handoff específico.
 
 ## Protocolo de atualização
 
