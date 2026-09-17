@@ -19,33 +19,63 @@ const userRepository_1 = require("../repositories/userRepository");
 const customErrors_1 = require("../utils/customErrors");
 function toCheckoutDto(record) {
     return {
-        id: record.id, status: record.status, subtotalInCents: record.subtotalInCents,
-        shippingInCents: record.shippingInCents, taxInCents: record.taxInCents,
-        discountInCents: record.discountInCents, totalInCents: record.totalInCents,
-        currency: record.currency, createdAt: record.createdAt.toISOString(), updatedAt: record.updatedAt.toISOString(),
-        address: record.address ? {
-            id: record.address.id, sourceAddressId: record.address.sourceAddressId,
-            recipientName: record.address.recipientName, postalCode: record.address.postalCode,
-            street: record.address.street, number: record.address.number, complement: record.address.complement,
-            neighborhood: record.address.neighborhood, city: record.address.city, state: record.address.state,
-            countryCode: record.address.countryCode, phone: record.address.phone, createdAt: record.address.createdAt.toISOString(),
-        } : null,
+        id: record.id,
+        status: record.status,
+        subtotalInCents: record.subtotalInCents,
+        shippingInCents: record.shippingInCents,
+        taxInCents: record.taxInCents,
+        discountInCents: record.discountInCents,
+        totalInCents: record.totalInCents,
+        currency: record.currency,
+        createdAt: record.createdAt.toISOString(),
+        updatedAt: record.updatedAt.toISOString(),
+        address: record.address
+            ? {
+                id: record.address.id,
+                sourceAddressId: record.address.sourceAddressId,
+                recipientName: record.address.recipientName,
+                postalCode: record.address.postalCode,
+                street: record.address.street,
+                number: record.address.number,
+                complement: record.address.complement,
+                neighborhood: record.address.neighborhood,
+                city: record.address.city,
+                state: record.address.state,
+                countryCode: record.address.countryCode,
+                phone: record.address.phone,
+                createdAt: record.address.createdAt.toISOString(),
+            }
+            : null,
         sellerOrders: record.sellerOrders.map((sellerOrder) => ({
-            id: sellerOrder.id, sellerId: sellerOrder.sellerId, status: sellerOrder.status,
-            subtotalInCents: sellerOrder.subtotalInCents, shippingInCents: sellerOrder.shippingInCents,
-            taxInCents: sellerOrder.taxInCents, discountInCents: sellerOrder.discountInCents,
-            totalInCents: sellerOrder.totalInCents, currency: sellerOrder.currency,
+            id: sellerOrder.id,
+            sellerId: sellerOrder.sellerId,
+            status: sellerOrder.status,
+            subtotalInCents: sellerOrder.subtotalInCents,
+            shippingInCents: sellerOrder.shippingInCents,
+            taxInCents: sellerOrder.taxInCents,
+            discountInCents: sellerOrder.discountInCents,
+            totalInCents: sellerOrder.totalInCents,
+            currency: sellerOrder.currency,
             items: sellerOrder.items.map((item) => {
                 var _a, _b;
                 return ({
-                    id: item.id, productId: item.productId, quantity: item.quantity,
-                    unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.lineTotalInCents,
-                    currency: item.currency, productNameSnapshot: item.productNameSnapshot,
-                    productReferenceSnapshot: item.productReferenceSnapshot, sellerNameSnapshot: item.sellerNameSnapshot,
-                    reservation: item.inventoryReservation ? {
-                        id: item.inventoryReservation.id, status: item.inventoryReservation.status,
-                        quantity: item.inventoryReservation.quantity, expiresAt: (_b = (_a = item.inventoryReservation.expiresAt) === null || _a === void 0 ? void 0 : _a.toISOString()) !== null && _b !== void 0 ? _b : null,
-                    } : null,
+                    id: item.id,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    unitPriceInCents: item.unitPriceInCents,
+                    lineTotalInCents: item.lineTotalInCents,
+                    currency: item.currency,
+                    productNameSnapshot: item.productNameSnapshot,
+                    productReferenceSnapshot: item.productReferenceSnapshot,
+                    sellerNameSnapshot: item.sellerNameSnapshot,
+                    reservation: item.inventoryReservation
+                        ? {
+                            id: item.inventoryReservation.id,
+                            status: item.inventoryReservation.status,
+                            quantity: item.inventoryReservation.quantity,
+                            expiresAt: (_b = (_a = item.inventoryReservation.expiresAt) === null || _a === void 0 ? void 0 : _a.toISOString()) !== null && _b !== void 0 ? _b : null,
+                        }
+                        : null,
                 });
             }),
         })),
@@ -74,10 +104,18 @@ class CheckoutService {
             if (!customer)
                 throw new customErrors_1.ObjectNotFoundError("CustomerProfile");
             try {
-                const requestFingerprint = (0, crypto_1.createHash)("sha256").update(JSON.stringify({ addressId: input.addressId.trim() })).digest("hex");
+                const requestFingerprint = (0, crypto_1.createHash)("sha256")
+                    .update(JSON.stringify({ addressId: input.addressId.trim() }))
+                    .digest("hex");
                 const execution = yield this.repository.createIdempotentCheckout({
-                    userId, customerId: customer.id, addressId: input.addressId.trim(), operation: "CHECKOUT_V1", key,
-                    requestFingerprint, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), serialize: toCheckoutDto,
+                    userId,
+                    customerId: customer.id,
+                    addressId: input.addressId.trim(),
+                    operation: "CHECKOUT_V1",
+                    key,
+                    requestFingerprint,
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                    serialize: toCheckoutDto,
                 });
                 return { result: execution.result, replayed: execution.replayed };
             }

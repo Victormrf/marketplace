@@ -67,7 +67,9 @@ type UpdatedInventoryRow = {
   reservedQuantity: number;
 };
 
-function mapAuthorization(row: InventoryAuthorizationRow): InventoryAuthorizationRecord {
+function mapAuthorization(
+  row: InventoryAuthorizationRow,
+): InventoryAuthorizationRecord {
   return {
     inventoryId: row.id,
     productId: row.productId,
@@ -81,7 +83,9 @@ function mapAuthorization(row: InventoryAuthorizationRow): InventoryAuthorizatio
 }
 
 export class InventoryRepository {
-  async findByProductForAuthorization(productId: string): Promise<InventoryAuthorizationRecord | null> {
+  async findByProductForAuthorization(
+    productId: string,
+  ): Promise<InventoryAuthorizationRecord | null> {
     const row = await prisma.inventory.findUnique({
       where: { productId },
       select: INVENTORY_AUTH_SELECT,
@@ -89,7 +93,9 @@ export class InventoryRepository {
     return row ? mapAuthorization(row) : null;
   }
 
-  async findSnapshotByProduct(productId: string): Promise<InventorySnapshot | null> {
+  async findSnapshotByProduct(
+    productId: string,
+  ): Promise<InventorySnapshot | null> {
     const row = await prisma.inventory.findUnique({
       where: { productId },
       select: { productId: true, onHandQuantity: true, reservedQuantity: true },
@@ -101,7 +107,7 @@ export class InventoryRepository {
     inventoryId: string,
     movementType: InventoryMovementType,
     onHandDelta: number,
-    reason: string | null
+    reason: string | null,
   ): Promise<InventoryMovementRecord | null> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const updated = await tx.$queryRaw<UpdatedInventoryRow[]>(Prisma.sql`
@@ -135,7 +141,7 @@ export class InventoryRepository {
   async findMovements(
     inventoryId: string,
     skip: number,
-    take: number
+    take: number,
   ): Promise<{ total: number; data: InventoryMovementRecord[] }> {
     const where = { inventoryId };
     const [total, data] = await prisma.$transaction([

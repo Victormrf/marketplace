@@ -29,10 +29,12 @@ const PRODUCT_READ_SELECT = {
     inventory: { select: { onHandQuantity: true, reservedQuantity: true } },
 };
 function buildWhere(filters) {
-    const and = [{
+    const and = [
+        {
             isActive: true,
             seller: { isActive: true },
-        }];
+        },
+    ];
     if (filters.search) {
         and.push({ name: { contains: filters.search, mode: "insensitive" } });
     }
@@ -106,7 +108,10 @@ class ProductRepository {
             });
             return new Map(grouped
                 .filter((row) => row.productId !== null && row._avg.rating !== null)
-                .map((row) => [row.productId, Number(row._avg.rating.toFixed(2))]));
+                .map((row) => [
+                row.productId,
+                Number(row._avg.rating.toFixed(2)),
+            ]));
         });
     }
     findActiveSellerByUserId(userId) {

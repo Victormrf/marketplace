@@ -31,7 +31,10 @@ const PRODUCT_WRITE_FIELDS = new Set([
     "image",
 ]);
 function isUniqueViolation(error) {
-    return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+    return (typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "P2002");
 }
 function normalizeRequiredString(value, field) {
     if (typeof value !== "string" || value.trim() === "") {
@@ -94,7 +97,11 @@ class ProductService {
             currency: "BRL",
             category: product.category,
             image: product.image,
-            inventory: { onHandQuantity, reservedQuantity, availableQuantity: onHandQuantity - reservedQuantity },
+            inventory: {
+                onHandQuantity,
+                reservedQuantity,
+                availableQuantity: onHandQuantity - reservedQuantity,
+            },
             isAvailable: onHandQuantity - reservedQuantity > 0,
             averageRating: (_e = ratings.get(product.id)) !== null && _e !== void 0 ? _e : null,
         };
@@ -106,7 +113,12 @@ class ProductService {
             const ratings = yield this.repository.averageRatings(products.map((product) => product.id));
             return {
                 data: products.map((product) => this.toReadDto(product, ratings)),
-                pagination: { page: pagination.page, limit: pagination.limit, total, totalPages: Math.ceil(total / pagination.limit) },
+                pagination: {
+                    page: pagination.page,
+                    limit: pagination.limit,
+                    total,
+                    totalPages: Math.ceil(total / pagination.limit),
+                },
             };
         });
     }
@@ -165,7 +177,9 @@ class ProductService {
     createProduct(actor, input) {
         return __awaiter(this, void 0, void 0, function* () {
             rejectUnknownFields(input);
-            const seller = actor.role === "SELLER" ? yield this.repository.findActiveSellerByUserId(actor.id) : null;
+            const seller = actor.role === "SELLER"
+                ? yield this.repository.findActiveSellerByUserId(actor.id)
+                : null;
             if (actor.role !== "SELLER" || !seller)
                 throw new ProductForbiddenError();
             const data = {

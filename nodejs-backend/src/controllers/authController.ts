@@ -22,6 +22,10 @@ authRoutes.post("/login", async (req, res) => {
 
 authRoutes.post("/logout", (req, res) => {
   const options = cookieOptions();
-  res.clearCookie("token", { httpOnly: options.httpOnly, secure: options.secure, sameSite: options.sameSite });
+  res.clearCookie("token", {
+    httpOnly: options.httpOnly,
+    secure: options.secure,
+    sameSite: options.sameSite,
+  });
   res.status(200).json({ message: "User logged out successfully." });
 });

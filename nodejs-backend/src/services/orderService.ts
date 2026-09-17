@@ -1,34 +1,297 @@
 import { OrderStatus, SellerOrderStatus, UserRole } from "@prisma/client";
 import { customerRepository } from "../repositories/customerRepository";
 import { sellerRepository } from "../repositories/sellerRepository";
-import { OrderRepository, type OrderDetailRecord, type OrderSummaryRecord } from "../repositories/orderRepository";
-import { SellerOrderRepository, type SellerOrderDetailRecord, type SellerOrderPublicDetailRecord, type SellerOrderSummaryRecord } from "../repositories/sellerOrderRepository";
+import {
+  OrderRepository,
+  type OrderDetailRecord,
+  type OrderSummaryRecord,
+} from "../repositories/orderRepository";
+import {
+  SellerOrderRepository,
+  type SellerOrderDetailRecord,
+  type SellerOrderPublicDetailRecord,
+  type SellerOrderSummaryRecord,
+} from "../repositories/sellerOrderRepository";
 import type { AuthenticatedUserDto } from "../types/auth";
-import type { InternalOrderTransitionInput, OrderCollectionDto, OrderDetailDto, OrderItemDto, OrderReadFilters, OrderStatusHistoryDto, SellerOrderCollectionDto, SellerOrderDetailDto, SellerOrderReadFilters, SellerOrderStatusHistoryDto, SellerOrderSummaryDto, SellerOrderTransitionInput } from "../types/order";
-import { ConflictError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
+import type {
+  InternalOrderTransitionInput,
+  OrderCollectionDto,
+  OrderDetailDto,
+  OrderItemDto,
+  OrderReadFilters,
+  OrderStatusHistoryDto,
+  SellerOrderCollectionDto,
+  SellerOrderDetailDto,
+  SellerOrderReadFilters,
+  SellerOrderStatusHistoryDto,
+  SellerOrderSummaryDto,
+  SellerOrderTransitionInput,
+} from "../types/order";
+import {
+  ConflictError,
+  ForbiddenError,
+  ObjectNotFoundError,
+  ValidationError,
+} from "../utils/customErrors";
 
 // Only payment may confirm an order in this stage. Aggregate completion and cancellation
 // require reservation/payment coordination and remain disabled until their later stages.
-const internalOrderTransitions: Record<OrderStatus, readonly OrderStatus[]> = { PENDING_PAYMENT: [OrderStatus.CONFIRMED], CONFIRMED: [], PARTIALLY_COMPLETED: [], COMPLETED: [], CANCELLED: [] };
-const publicSellerTransitions: Record<SellerOrderStatus, readonly SellerOrderStatus[]> = { PENDING: [SellerOrderStatus.CONFIRMED], CONFIRMED: [SellerOrderStatus.PROCESSING], PROCESSING: [], SHIPPED: [], DELIVERED: [], CANCELLED: [], RETURNED: [] };
-function normalizeReason(reason: unknown): string | undefined { if (reason === undefined) return undefined; if (typeof reason !== "string") throw new ValidationError("Reason must be a string"); const normalized = reason.trim(); if (normalized.length > 500) throw new ValidationError("Reason is too long"); return normalized || undefined; }
-function page(total: number, current: number, limit: number) { return { page: current, limit, total, totalPages: Math.ceil(total / limit) }; }
-type ItemRecord = { id: string; productId: string; quantity: number; unitPriceInCents: number; lineTotalInCents: number; currency: OrderItemDto["currency"]; productNameSnapshot: string; productReferenceSnapshot: string | null; sellerNameSnapshot: string };
-function itemDto(item: ItemRecord): OrderItemDto { return { id: item.id, productId: item.productId, quantity: item.quantity, unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.lineTotalInCents, currency: item.currency, productNameSnapshot: item.productNameSnapshot, productReferenceSnapshot: item.productReferenceSnapshot, sellerNameSnapshot: item.sellerNameSnapshot }; }
-function sellerHistoryDto(h: SellerOrderDetailRecord["statusHistory"][number]): SellerOrderStatusHistoryDto { return { id: h.id, fromStatus: h.fromStatus, toStatus: h.toStatus, reason: h.reason, createdAt: h.createdAt }; }
-function sellerDetailDto(s: SellerOrderPublicDetailRecord): SellerOrderDetailDto { return { id: s.id, orderId: s.orderId, sellerId: s.sellerId, status: s.status, subtotalInCents: s.subtotalInCents, shippingInCents: s.shippingInCents, taxInCents: s.taxInCents, discountInCents: s.discountInCents, totalInCents: s.totalInCents, currency: s.currency, createdAt: s.createdAt, updatedAt: s.updatedAt, confirmedAt: s.confirmedAt, completedAt: s.completedAt, cancelledAt: s.cancelledAt, items: s.items.map(itemDto), statusHistory: s.statusHistory.map(sellerHistoryDto) }; }
-function sellerSummaryDto(s: SellerOrderSummaryRecord): SellerOrderSummaryDto { return { id: s.id, orderId: s.orderId, sellerId: s.sellerId, status: s.status, totalInCents: s.totalInCents, currency: s.currency, createdAt: s.createdAt }; }
-function orderHistoryDto(h: OrderDetailRecord["statusHistory"][number]): OrderStatusHistoryDto { return { id: h.id, fromStatus: h.fromStatus, toStatus: h.toStatus, reason: h.reason, createdAt: h.createdAt }; }
-function orderDetailDto(o: OrderDetailRecord): OrderDetailDto { return { id: o.id, customerId: o.customerId, status: o.status, subtotalInCents: o.subtotalInCents, shippingInCents: o.shippingInCents, taxInCents: o.taxInCents, discountInCents: o.discountInCents, totalInCents: o.totalInCents, currency: o.currency, createdAt: o.createdAt, updatedAt: o.updatedAt, confirmedAt: o.confirmedAt, completedAt: o.completedAt, cancelledAt: o.cancelledAt, address: o.address, sellerOrders: o.sellerOrders.map(sellerDetailDto), statusHistory: o.statusHistory.map(orderHistoryDto) }; }
+const internalOrderTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
+  PENDING_PAYMENT: [OrderStatus.CONFIRMED],
+  CONFIRMED: [],
+  PARTIALLY_COMPLETED: [],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+const publicSellerTransitions: Record<
+  SellerOrderStatus,
+  readonly SellerOrderStatus[]
+> = {
+  PENDING: [SellerOrderStatus.CONFIRMED],
+  CONFIRMED: [SellerOrderStatus.PROCESSING],
+  PROCESSING: [],
+  SHIPPED: [],
+  DELIVERED: [],
+  CANCELLED: [],
+  RETURNED: [],
+};
+function normalizeReason(reason: unknown): string | undefined {
+  if (reason === undefined) return undefined;
+  if (typeof reason !== "string")
+    throw new ValidationError("Reason must be a string");
+  const normalized = reason.trim();
+  if (normalized.length > 500) throw new ValidationError("Reason is too long");
+  return normalized || undefined;
+}
+function page(total: number, current: number, limit: number) {
+  return { page: current, limit, total, totalPages: Math.ceil(total / limit) };
+}
+type ItemRecord = {
+  id: string;
+  productId: string;
+  quantity: number;
+  unitPriceInCents: number;
+  lineTotalInCents: number;
+  currency: OrderItemDto["currency"];
+  productNameSnapshot: string;
+  productReferenceSnapshot: string | null;
+  sellerNameSnapshot: string;
+};
+function itemDto(item: ItemRecord): OrderItemDto {
+  return {
+    id: item.id,
+    productId: item.productId,
+    quantity: item.quantity,
+    unitPriceInCents: item.unitPriceInCents,
+    lineTotalInCents: item.lineTotalInCents,
+    currency: item.currency,
+    productNameSnapshot: item.productNameSnapshot,
+    productReferenceSnapshot: item.productReferenceSnapshot,
+    sellerNameSnapshot: item.sellerNameSnapshot,
+  };
+}
+function sellerHistoryDto(
+  h: SellerOrderDetailRecord["statusHistory"][number],
+): SellerOrderStatusHistoryDto {
+  return {
+    id: h.id,
+    fromStatus: h.fromStatus,
+    toStatus: h.toStatus,
+    reason: h.reason,
+    createdAt: h.createdAt,
+  };
+}
+function sellerDetailDto(
+  s: SellerOrderPublicDetailRecord,
+): SellerOrderDetailDto {
+  return {
+    id: s.id,
+    orderId: s.orderId,
+    sellerId: s.sellerId,
+    status: s.status,
+    subtotalInCents: s.subtotalInCents,
+    shippingInCents: s.shippingInCents,
+    taxInCents: s.taxInCents,
+    discountInCents: s.discountInCents,
+    totalInCents: s.totalInCents,
+    currency: s.currency,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
+    confirmedAt: s.confirmedAt,
+    completedAt: s.completedAt,
+    cancelledAt: s.cancelledAt,
+    items: s.items.map(itemDto),
+    statusHistory: s.statusHistory.map(sellerHistoryDto),
+  };
+}
+function sellerSummaryDto(s: SellerOrderSummaryRecord): SellerOrderSummaryDto {
+  return {
+    id: s.id,
+    orderId: s.orderId,
+    sellerId: s.sellerId,
+    status: s.status,
+    totalInCents: s.totalInCents,
+    currency: s.currency,
+    createdAt: s.createdAt,
+  };
+}
+function orderHistoryDto(
+  h: OrderDetailRecord["statusHistory"][number],
+): OrderStatusHistoryDto {
+  return {
+    id: h.id,
+    fromStatus: h.fromStatus,
+    toStatus: h.toStatus,
+    reason: h.reason,
+    createdAt: h.createdAt,
+  };
+}
+function orderDetailDto(o: OrderDetailRecord): OrderDetailDto {
+  return {
+    id: o.id,
+    customerId: o.customerId,
+    status: o.status,
+    subtotalInCents: o.subtotalInCents,
+    shippingInCents: o.shippingInCents,
+    taxInCents: o.taxInCents,
+    discountInCents: o.discountInCents,
+    totalInCents: o.totalInCents,
+    currency: o.currency,
+    createdAt: o.createdAt,
+    updatedAt: o.updatedAt,
+    confirmedAt: o.confirmedAt,
+    completedAt: o.completedAt,
+    cancelledAt: o.cancelledAt,
+    address: o.address,
+    sellerOrders: o.sellerOrders.map(sellerDetailDto),
+    statusHistory: o.statusHistory.map(orderHistoryDto),
+  };
+}
 export class OrderService {
-  constructor(private readonly orders = new OrderRepository(), private readonly sellerOrders = new SellerOrderRepository()) {}
-  private async customerIdFor(userId: string) { const profile = await customerRepository.findByUserId(userId); if (!profile) throw new ForbiddenError("Only customers can access customer orders"); return profile.id; }
-  private async sellerIdFor(userId: string) { const seller = await sellerRepository.findByUserId(userId); if (!seller || !seller.isActive) throw new ForbiddenError("Only active sellers can access seller orders"); return seller.id; }
-  async listCustomerOrders(userId: string, filters: OrderReadFilters, current: number, limit: number): Promise<OrderCollectionDto> { const id = await this.customerIdFor(userId); const [total, records] = await Promise.all([this.orders.countByCustomer(id, filters), this.orders.findByCustomer(id, filters, (current - 1) * limit, limit)]); return { data: records.map((r) => ({ id: r.id, status: r.status, totalInCents: r.totalInCents, currency: r.currency, createdAt: r.createdAt })), pagination: page(total, current, limit) }; }
-  async getCustomerOrder(userId: string, orderId: string): Promise<OrderDetailDto> { const id = await this.customerIdFor(userId); const record = await this.orders.findByCustomerAndId(id, orderId); if (!record) throw new ObjectNotFoundError("Order"); return orderDetailDto(record); }
-  async listSellerOrders(userId: string, filters: SellerOrderReadFilters, current: number, limit: number): Promise<SellerOrderCollectionDto> { const id = await this.sellerIdFor(userId); const [total, records] = await Promise.all([this.sellerOrders.countBySeller(id, filters), this.sellerOrders.findBySeller(id, filters, (current - 1) * limit, limit)]); return { data: records.map(sellerSummaryDto), pagination: page(total, current, limit) }; }
-  async getSellerOrder(userId: string, sellerOrderId: string): Promise<SellerOrderDetailDto> { const id = await this.sellerIdFor(userId); const record = await this.sellerOrders.findBySellerAndId(id, sellerOrderId); if (!record) throw new ObjectNotFoundError("SellerOrder"); return sellerDetailDto(record); }
+  constructor(
+    private readonly orders = new OrderRepository(),
+    private readonly sellerOrders = new SellerOrderRepository(),
+  ) {}
+  private async customerIdFor(userId: string) {
+    const profile = await customerRepository.findByUserId(userId);
+    if (!profile)
+      throw new ForbiddenError("Only customers can access customer orders");
+    return profile.id;
+  }
+  private async sellerIdFor(userId: string) {
+    const seller = await sellerRepository.findByUserId(userId);
+    if (!seller || !seller.isActive)
+      throw new ForbiddenError("Only active sellers can access seller orders");
+    return seller.id;
+  }
+  async listCustomerOrders(
+    userId: string,
+    filters: OrderReadFilters,
+    current: number,
+    limit: number,
+  ): Promise<OrderCollectionDto> {
+    const id = await this.customerIdFor(userId);
+    const [total, records] = await Promise.all([
+      this.orders.countByCustomer(id, filters),
+      this.orders.findByCustomer(id, filters, (current - 1) * limit, limit),
+    ]);
+    return {
+      data: records.map((r) => ({
+        id: r.id,
+        status: r.status,
+        totalInCents: r.totalInCents,
+        currency: r.currency,
+        createdAt: r.createdAt,
+      })),
+      pagination: page(total, current, limit),
+    };
+  }
+  async getCustomerOrder(
+    userId: string,
+    orderId: string,
+  ): Promise<OrderDetailDto> {
+    const id = await this.customerIdFor(userId);
+    const record = await this.orders.findByCustomerAndId(id, orderId);
+    if (!record) throw new ObjectNotFoundError("Order");
+    return orderDetailDto(record);
+  }
+  async listSellerOrders(
+    userId: string,
+    filters: SellerOrderReadFilters,
+    current: number,
+    limit: number,
+  ): Promise<SellerOrderCollectionDto> {
+    const id = await this.sellerIdFor(userId);
+    const [total, records] = await Promise.all([
+      this.sellerOrders.countBySeller(id, filters),
+      this.sellerOrders.findBySeller(id, filters, (current - 1) * limit, limit),
+    ]);
+    return {
+      data: records.map(sellerSummaryDto),
+      pagination: page(total, current, limit),
+    };
+  }
+  async getSellerOrder(
+    userId: string,
+    sellerOrderId: string,
+  ): Promise<SellerOrderDetailDto> {
+    const id = await this.sellerIdFor(userId);
+    const record = await this.sellerOrders.findBySellerAndId(id, sellerOrderId);
+    if (!record) throw new ObjectNotFoundError("SellerOrder");
+    return sellerDetailDto(record);
+  }
   /** Internal payment/order orchestration hook. It is intentionally not exposed by an HTTP route. */
-  async transitionOrderInternally(orderId: string, input: InternalOrderTransitionInput): Promise<OrderDetailDto> { const record = await this.orders.findById(orderId); if (!record) throw new ObjectNotFoundError("Order"); const target = input.status; const reason = normalizeReason(input.reason); if (record.status === target) return orderDetailDto(record); if (!internalOrderTransitions[record.status].includes(target)) throw new ConflictError("Invalid order status transition"); const updated = await this.orders.transition(orderId, record.status, target, reason); if (!updated) throw new ConflictError("Order status changed concurrently"); return orderDetailDto(updated); }
-  async transitionSellerOrder(user: AuthenticatedUserDto, sellerOrderId: string, input: SellerOrderTransitionInput): Promise<SellerOrderDetailDto> { const sellerId = user.role === UserRole.SELLER ? await this.sellerIdFor(user.id) : null; if (user.role !== UserRole.SELLER && user.role !== UserRole.ADMIN) throw new ForbiddenError(); const record = sellerId ? await this.sellerOrders.findBySellerAndId(sellerId, sellerOrderId) : await this.sellerOrders.findById(sellerOrderId); if (!record) throw new ObjectNotFoundError("SellerOrder"); const target = input.status; const reason = normalizeReason(input.reason); if (!Object.values(SellerOrderStatus).includes(target)) throw new ValidationError("Invalid seller order status"); if (record.status === target) return sellerDetailDto(record); if (!publicSellerTransitions[record.status].includes(target)) throw new ConflictError("Seller order transition is not enabled yet"); const updated = await this.sellerOrders.transition(sellerOrderId, sellerId, record.status, target, reason); if (!updated) throw new ConflictError("Seller order status changed concurrently or parent order is not CONFIRMED"); return sellerDetailDto(updated); }
+  async transitionOrderInternally(
+    orderId: string,
+    input: InternalOrderTransitionInput,
+  ): Promise<OrderDetailDto> {
+    const record = await this.orders.findById(orderId);
+    if (!record) throw new ObjectNotFoundError("Order");
+    const target = input.status;
+    const reason = normalizeReason(input.reason);
+    if (record.status === target) return orderDetailDto(record);
+    if (!internalOrderTransitions[record.status].includes(target))
+      throw new ConflictError("Invalid order status transition");
+    const updated = await this.orders.transition(
+      orderId,
+      record.status,
+      target,
+      reason,
+    );
+    if (!updated) throw new ConflictError("Order status changed concurrently");
+    return orderDetailDto(updated);
+  }
+  async transitionSellerOrder(
+    user: AuthenticatedUserDto,
+    sellerOrderId: string,
+    input: SellerOrderTransitionInput,
+  ): Promise<SellerOrderDetailDto> {
+    const sellerId =
+      user.role === UserRole.SELLER ? await this.sellerIdFor(user.id) : null;
+    if (user.role !== UserRole.SELLER && user.role !== UserRole.ADMIN)
+      throw new ForbiddenError();
+    const record = sellerId
+      ? await this.sellerOrders.findBySellerAndId(sellerId, sellerOrderId)
+      : await this.sellerOrders.findById(sellerOrderId);
+    if (!record) throw new ObjectNotFoundError("SellerOrder");
+    const target = input.status;
+    const reason = normalizeReason(input.reason);
+    if (!Object.values(SellerOrderStatus).includes(target))
+      throw new ValidationError("Invalid seller order status");
+    if (record.status === target) return sellerDetailDto(record);
+    if (!publicSellerTransitions[record.status].includes(target))
+      throw new ConflictError("Seller order transition is not enabled yet");
+    const updated = await this.sellerOrders.transition(
+      sellerOrderId,
+      sellerId,
+      record.status,
+      target,
+      reason,
+    );
+    if (!updated)
+      throw new ConflictError(
+        "Seller order status changed concurrently or parent order is not CONFIRMED",
+      );
+    return sellerDetailDto(updated);
+  }
 }

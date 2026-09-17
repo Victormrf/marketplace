@@ -81,7 +81,11 @@ class InventoryService {
             const movement = yield this.repository.applyOnHandMovement(record.inventoryId, client_1.InventoryMovementType.RESTOCK, quantity, reason);
             if (!movement)
                 throw new customErrors_1.ConflictError("Inventory movement cannot be applied");
-            return toDto({ productId, onHandQuantity: movement.onHandAfter, reservedQuantity: movement.reservedAfter });
+            return toDto({
+                productId,
+                onHandQuantity: movement.onHandAfter,
+                reservedQuantity: movement.reservedAfter,
+            });
         });
     }
     adjust(productId, actor, input) {
@@ -92,7 +96,11 @@ class InventoryService {
             const movement = yield this.repository.applyOnHandMovement(record.inventoryId, client_1.InventoryMovementType.MANUAL_CORRECTION, onHandDelta, reason);
             if (!movement)
                 throw new customErrors_1.ConflictError("Inventory movement cannot be applied");
-            return toDto({ productId, onHandQuantity: movement.onHandAfter, reservedQuantity: movement.reservedAfter });
+            return toDto({
+                productId,
+                onHandQuantity: movement.onHandAfter,
+                reservedQuantity: movement.reservedAfter,
+            });
         });
     }
     listMovements(productId, actor, pagination) {

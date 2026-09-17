@@ -39,23 +39,30 @@ export interface ProductRepositoryPort {
   findMany(
     filters: ProductReadFilters,
     skip: number,
-    take: number
+    take: number,
   ): Promise<ProductReadRecord[]>;
   findById(id: string): Promise<ProductReadRecord | null>;
   averageRatings(productIds: string[]): Promise<Map<string, number>>;
   findActiveSellerByUserId(userId: string): Promise<{ id: string } | null>;
-  findForAuthorization(id: string): Promise<{ id: string; sellerId: string; isActive: boolean } | null>;
-  createWithInventory(data: ProductCreateData, initialInventory?: { onHandQuantity: number; reservedQuantity: number }): Promise<{ id: string }>;
+  findForAuthorization(
+    id: string,
+  ): Promise<{ id: string; sellerId: string; isActive: boolean } | null>;
+  createWithInventory(
+    data: ProductCreateData,
+    initialInventory?: { onHandQuantity: number; reservedQuantity: number },
+  ): Promise<{ id: string }>;
   updateProduct(id: string, data: ProductUpdateData): Promise<{ id: string }>;
   deactivateProduct(id: string, deactivatedAt: Date): Promise<{ id: string }>;
   getProductsByIds(productIds: string[]): Promise<ProductReadRecord[]>;
 }
 
 function buildWhere(filters: ProductReadFilters): Prisma.ProductWhereInput {
-  const and: Prisma.ProductWhereInput[] = [{
-    isActive: true,
-    seller: { isActive: true },
-  }];
+  const and: Prisma.ProductWhereInput[] = [
+    {
+      isActive: true,
+      seller: { isActive: true },
+    },
+  ];
 
   if (filters.search) {
     and.push({ name: { contains: filters.search, mode: "insensitive" } });
@@ -104,7 +111,7 @@ export class ProductRepository implements ProductRepositoryPort {
   async findMany(
     filters: ProductReadFilters,
     skip: number,
-    take: number
+    take: number,
   ): Promise<ProductReadRecord[]> {
     return prisma.product.findMany({
       where: buildWhere(filters),
@@ -125,21 +132,28 @@ export class ProductRepository implements ProductRepositoryPort {
   async averageRatings(productIds: string[]): Promise<Map<string, number>> {
     if (productIds.length === 0) return new Map();
 
-    const grouped: Array<{ productId: string | null; _avg: { rating: number | null } }> =
-      await prisma.review.groupBy({
-        by: ["productId"],
-        where: { productId: { in: productIds } },
-        _avg: { rating: true },
-      });
+    const grouped: Array<{
+      productId: string | null;
+      _avg: { rating: number | null };
+    }> = await prisma.review.groupBy({
+      by: ["productId"],
+      where: { productId: { in: productIds } },
+      _avg: { rating: true },
+    });
 
     return new Map(
       grouped
         .filter((row) => row.productId !== null && row._avg.rating !== null)
-        .map((row) => [row.productId as string, Number(row._avg.rating!.toFixed(2))])
+        .map((row) => [
+          row.productId as string,
+          Number(row._avg.rating!.toFixed(2)),
+        ]),
     );
   }
 
-  async findActiveSellerByUserId(userId: string): Promise<{ id: string } | null> {
+  async findActiveSellerByUserId(
+    userId: string,
+  ): Promise<{ id: string } | null> {
     return prisma.seller.findFirst({
       where: { userId, isActive: true },
       select: { id: true },
@@ -147,7 +161,7 @@ export class ProductRepository implements ProductRepositoryPort {
   }
 
   async findForAuthorization(
-    id: string
+    id: string,
   ): Promise<{ id: string; sellerId: string; isActive: boolean } | null> {
     return prisma.product.findUnique({
       where: { id },
@@ -157,7 +171,7 @@ export class ProductRepository implements ProductRepositoryPort {
 
   async createWithInventory(
     data: ProductCreateData,
-    initialInventory = { onHandQuantity: 0, reservedQuantity: 0 }
+    initialInventory = { onHandQuantity: 0, reservedQuantity: 0 },
   ): Promise<{ id: string }> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const product = await tx.product.create({
@@ -186,11 +200,17 @@ export class ProductRepository implements ProductRepositoryPort {
     });
   }
 
-  async updateProduct(id: string, data: ProductUpdateData): Promise<{ id: string }> {
+  async updateProduct(
+    id: string,
+    data: ProductUpdateData,
+  ): Promise<{ id: string }> {
     return prisma.product.update({ where: { id }, data, select: { id: true } });
   }
 
-  async deactivateProduct(id: string, deactivatedAt: Date): Promise<{ id: string }> {
+  async deactivateProduct(
+    id: string,
+    deactivatedAt: Date,
+  ): Promise<{ id: string }> {
     return prisma.product.update({
       where: { id },
       data: { isActive: false, deactivatedAt },

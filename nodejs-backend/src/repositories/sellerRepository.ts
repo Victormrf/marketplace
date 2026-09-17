@@ -21,7 +21,9 @@ const SELLER_DEACTIVATION_SELECT = {
   deactivatedAt: true,
 } satisfies Prisma.SellerSelect;
 
-export type SellerRecord = Prisma.SellerGetPayload<{ select: typeof SELLER_SELECT }>;
+export type SellerRecord = Prisma.SellerGetPayload<{
+  select: typeof SELLER_SELECT;
+}>;
 export type SellerWithUserRecord = Prisma.SellerGetPayload<{
   select: typeof SELLER_WITH_USER_SELECT;
 }>;
@@ -31,7 +33,10 @@ export type SellerDeactivationRecord = Prisma.SellerGetPayload<{
 
 export class SellerRepository {
   async findByUserId(userId: string): Promise<SellerRecord | null> {
-    return prisma.seller.findUnique({ where: { userId }, select: SELLER_SELECT });
+    return prisma.seller.findUnique({
+      where: { userId },
+      select: SELLER_SELECT,
+    });
   }
 
   async findAll(): Promise<SellerWithUserRecord[]> {
@@ -52,21 +57,40 @@ export class SellerRepository {
 
   async update(
     userId: string,
-    data: { storeName?: string; logo?: string | null; description?: string | null }
+    data: {
+      storeName?: string;
+      logo?: string | null;
+      description?: string | null;
+    },
   ): Promise<SellerRecord> {
-    return prisma.seller.update({ where: { userId }, data, select: SELLER_SELECT });
+    return prisma.seller.update({
+      where: { userId },
+      data,
+      select: SELLER_SELECT,
+    });
   }
 
-  async findForDeactivation(userId: string): Promise<SellerDeactivationRecord | null> {
-    return prisma.seller.findUnique({ where: { userId }, select: SELLER_DEACTIVATION_SELECT });
+  async findForDeactivation(
+    userId: string,
+  ): Promise<SellerDeactivationRecord | null> {
+    return prisma.seller.findUnique({
+      where: { userId },
+      select: SELLER_DEACTIVATION_SELECT,
+    });
   }
 
-  async deactivate(record: SellerDeactivationRecord, deactivationTime: Date): Promise<SellerRecord> {
+  async deactivate(
+    record: SellerDeactivationRecord,
+    deactivationTime: Date,
+  ): Promise<SellerRecord> {
     await prisma.seller.updateMany({
       where: { id: record.id, isActive: true },
       data: { isActive: false, deactivatedAt: deactivationTime },
     });
-    return prisma.seller.findUniqueOrThrow({ where: { id: record.id }, select: SELLER_SELECT });
+    return prisma.seller.findUniqueOrThrow({
+      where: { id: record.id },
+      select: SELLER_SELECT,
+    });
   }
 }
 

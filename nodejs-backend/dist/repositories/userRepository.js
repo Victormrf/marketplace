@@ -32,7 +32,10 @@ class UserRepository {
     }
     findForAuthentication(normalizedEmail) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.user.findUnique({ where: { normalizedEmail }, select: USER_AUTH_SELECT });
+            return db_1.default.user.findUnique({
+                where: { normalizedEmail },
+                select: USER_AUTH_SELECT,
+            });
         });
     }
     findIdentity(id) {
@@ -47,12 +50,19 @@ class UserRepository {
     }
     update(id, data) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.user.update({ where: { id }, data, select: exports.USER_SAFE_SELECT });
+            return db_1.default.user.update({
+                where: { id },
+                data,
+                select: exports.USER_SAFE_SELECT,
+            });
         });
     }
     findForDeactivation(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.user.findUnique({ where: { id }, select: USER_DEACTIVATION_SELECT });
+            return db_1.default.user.findUnique({
+                where: { id },
+                select: USER_DEACTIVATION_SELECT,
+            });
         });
     }
     deactivateWithSeller(record, deactivationTime) {
@@ -71,7 +81,10 @@ class UserRepository {
                         data: { isActive: false, deactivatedAt: deactivationTime },
                     });
                 }
-                return tx.user.findUniqueOrThrow({ where: { id: record.id }, select: exports.USER_SAFE_SELECT });
+                return tx.user.findUniqueOrThrow({
+                    where: { id: record.id },
+                    select: exports.USER_SAFE_SELECT,
+                });
             }));
         });
     }

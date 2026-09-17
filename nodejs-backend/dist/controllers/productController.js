@@ -66,7 +66,9 @@ function readCatalogFilters(query, overrides = {}) {
         : readOptionalString(query, "search");
     const sellerId = (_a = overrides.sellerId) !== null && _a !== void 0 ? _a : readOptionalString(query, "sellerId");
     const categoryValue = (_b = overrides.category) !== null && _b !== void 0 ? _b : readOptionalString(query, "category");
-    const category = typeof categoryValue === "string" ? readCategory(categoryValue) : categoryValue;
+    const category = typeof categoryValue === "string"
+        ? readCategory(categoryValue)
+        : categoryValue;
     const inStock = (_c = overrides.inStock) !== null && _c !== void 0 ? _c : readInStock(query);
     return Object.assign(Object.assign(Object.assign(Object.assign({}, (search ? { search } : {})), (sellerId ? { sellerId } : {})), (category ? { category } : {})), (inStock !== undefined ? { inStock } : {}));
 }
@@ -103,7 +105,9 @@ exports.productRoutes.post("/", authMiddleware_1.authMiddleware, uploadProductIm
 }));
 exports.productRoutes.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield productService.listProducts(readCatalogFilters(req.query), readPagination(req.query)));
+        res
+            .status(200)
+            .json(yield productService.listProducts(readCatalogFilters(req.query), readPagination(req.query)));
     }
     catch (error) {
         sendProductError(error, res);
@@ -113,7 +117,9 @@ exports.productRoutes.get("/search", (req, res) => __awaiter(void 0, void 0, voi
     try {
         if (typeof req.query.q !== "string")
             throw new customErrors_1.ValidationError("Invalid search query");
-        res.status(200).json(yield productService.listProducts(readCatalogFilters(req.query, { search: req.query.q }), readPagination(req.query)));
+        res
+            .status(200)
+            .json(yield productService.listProducts(readCatalogFilters(req.query, { search: req.query.q }), readPagination(req.query)));
     }
     catch (error) {
         sendProductError(error, res);
@@ -121,7 +127,9 @@ exports.productRoutes.get("/search", (req, res) => __awaiter(void 0, void 0, voi
 }));
 exports.productRoutes.get("/seller/:sellerId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield productService.listProducts(readCatalogFilters(req.query, { sellerId: req.params.sellerId }), readPagination(req.query)));
+        res
+            .status(200)
+            .json(yield productService.listProducts(readCatalogFilters(req.query, { sellerId: req.params.sellerId }), readPagination(req.query)));
     }
     catch (error) {
         sendProductError(error, res);
@@ -129,7 +137,11 @@ exports.productRoutes.get("/seller/:sellerId", (req, res) => __awaiter(void 0, v
 }));
 exports.productRoutes.get("/category/:category", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield productService.listProducts(readCatalogFilters(req.query, { category: readCategory(req.params.category) }), readPagination(req.query)));
+        res
+            .status(200)
+            .json(yield productService.listProducts(readCatalogFilters(req.query, {
+            category: readCategory(req.params.category),
+        }), readPagination(req.query)));
     }
     catch (error) {
         sendProductError(error, res);
@@ -142,7 +154,9 @@ exports.productRoutes.get("/:productIds", (req, res) => __awaiter(void 0, void 0
             res.status(200).json(yield productService.getProductReadById(ids[0]));
             return;
         }
-        res.status(200).json(yield productService.getProductsReadByIds(ids, readPagination(req.query)));
+        res
+            .status(200)
+            .json(yield productService.getProductsReadByIds(ids, readPagination(req.query)));
     }
     catch (error) {
         sendProductError(error, res);

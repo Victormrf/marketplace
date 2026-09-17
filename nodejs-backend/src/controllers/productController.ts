@@ -40,7 +40,10 @@ function readCategory(value: string): ProductCategory {
   return value as ProductCategory;
 }
 
-function readOptionalString(query: Record<string, unknown>, field: string): string | undefined {
+function readOptionalString(
+  query: Record<string, unknown>,
+  field: string,
+): string | undefined {
   const value = query[field];
   if (value === undefined) return undefined;
   if (typeof value !== "string" || value.trim() === "") {
@@ -59,16 +62,19 @@ function readInStock(query: Record<string, unknown>): boolean | undefined {
 
 export function readCatalogFilters(
   query: Record<string, unknown>,
-  overrides: Partial<ProductReadFilters> = {}
+  overrides: Partial<ProductReadFilters> = {},
 ): ProductReadFilters {
   const search =
     overrides.search !== undefined
       ? readOptionalString({ search: overrides.search }, "search")
       : readOptionalString(query, "search");
   const sellerId = overrides.sellerId ?? readOptionalString(query, "sellerId");
-  const categoryValue = overrides.category ?? readOptionalString(query, "category");
+  const categoryValue =
+    overrides.category ?? readOptionalString(query, "category");
   const category =
-    typeof categoryValue === "string" ? readCategory(categoryValue) : categoryValue;
+    typeof categoryValue === "string"
+      ? readCategory(categoryValue)
+      : categoryValue;
   const inStock = overrides.inStock ?? readInStock(query);
 
   return {
@@ -114,23 +120,25 @@ productRoutes.post(
     try {
       const product = await productService.createProduct(
         { id: req.user.id, role: req.user.role },
-        inputWithUploadedImage(req)
+        inputWithUploadedImage(req),
       );
       res.status(201).json(product);
     } catch (error) {
       sendProductError(error, res);
     }
-  }
+  },
 );
 
 productRoutes.get("/", async (req, res) => {
   try {
-    res.status(200).json(
-      await productService.listProducts(
-        readCatalogFilters(req.query),
-        readPagination(req.query)
-      )
-    );
+    res
+      .status(200)
+      .json(
+        await productService.listProducts(
+          readCatalogFilters(req.query),
+          readPagination(req.query),
+        ),
+      );
   } catch (error) {
     sendProductError(error, res);
   }
@@ -138,13 +146,16 @@ productRoutes.get("/", async (req, res) => {
 
 productRoutes.get("/search", async (req, res) => {
   try {
-    if (typeof req.query.q !== "string") throw new ValidationError("Invalid search query");
-    res.status(200).json(
-      await productService.listProducts(
-        readCatalogFilters(req.query, { search: req.query.q }),
-        readPagination(req.query)
-      )
-    );
+    if (typeof req.query.q !== "string")
+      throw new ValidationError("Invalid search query");
+    res
+      .status(200)
+      .json(
+        await productService.listProducts(
+          readCatalogFilters(req.query, { search: req.query.q }),
+          readPagination(req.query),
+        ),
+      );
   } catch (error) {
     sendProductError(error, res);
   }
@@ -152,12 +163,14 @@ productRoutes.get("/search", async (req, res) => {
 
 productRoutes.get("/seller/:sellerId", async (req, res) => {
   try {
-    res.status(200).json(
-      await productService.listProducts(
-        readCatalogFilters(req.query, { sellerId: req.params.sellerId }),
-        readPagination(req.query)
-      )
-    );
+    res
+      .status(200)
+      .json(
+        await productService.listProducts(
+          readCatalogFilters(req.query, { sellerId: req.params.sellerId }),
+          readPagination(req.query),
+        ),
+      );
   } catch (error) {
     sendProductError(error, res);
   }
@@ -165,17 +178,20 @@ productRoutes.get("/seller/:sellerId", async (req, res) => {
 
 productRoutes.get("/category/:category", async (req, res) => {
   try {
-    res.status(200).json(
-      await productService.listProducts(
-        readCatalogFilters(req.query, { category: readCategory(req.params.category) }),
-        readPagination(req.query)
-      )
-    );
+    res
+      .status(200)
+      .json(
+        await productService.listProducts(
+          readCatalogFilters(req.query, {
+            category: readCategory(req.params.category),
+          }),
+          readPagination(req.query),
+        ),
+      );
   } catch (error) {
     sendProductError(error, res);
   }
 });
-
 
 productRoutes.get("/:productIds", async (req, res) => {
   try {
@@ -184,9 +200,14 @@ productRoutes.get("/:productIds", async (req, res) => {
       res.status(200).json(await productService.getProductReadById(ids[0]));
       return;
     }
-    res.status(200).json(
-      await productService.getProductsReadByIds(ids, readPagination(req.query))
-    );
+    res
+      .status(200)
+      .json(
+        await productService.getProductsReadByIds(
+          ids,
+          readPagination(req.query),
+        ),
+      );
   } catch (error) {
     sendProductError(error, res);
   }
@@ -201,27 +222,23 @@ productRoutes.put(
       const product = await productService.updateProduct(
         req.params.productId,
         { id: req.user.id, role: req.user.role },
-        inputWithUploadedImage(req)
+        inputWithUploadedImage(req),
       );
       res.status(200).json(product);
     } catch (error) {
       sendProductError(error, res);
     }
-  }
+  },
 );
 
-productRoutes.delete(
-  "/:productId",
-  authMiddleware,
-  async (req, res) => {
-    try {
-      await productService.deactivateProduct(req.params.productId, {
-        id: req.user.id,
-        role: req.user.role,
-      });
-      res.status(204).send();
-    } catch (error) {
-      sendProductError(error, res);
-    }
+productRoutes.delete("/:productId", authMiddleware, async (req, res) => {
+  try {
+    await productService.deactivateProduct(req.params.productId, {
+      id: req.user.id,
+      role: req.user.role,
+    });
+    res.status(204).send();
+  } catch (error) {
+    sendProductError(error, res);
   }
-);
+});

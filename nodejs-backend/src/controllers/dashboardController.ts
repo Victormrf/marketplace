@@ -23,7 +23,7 @@ dashboardRoutes.get(
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-  }
+  },
 );
 
 dashboardRoutes.get(
@@ -41,7 +41,7 @@ dashboardRoutes.get(
       }
       res.status(500).json({ error: error });
     }
-  }
+  },
 );
 
 dashboardRoutes.get(
@@ -60,7 +60,7 @@ dashboardRoutes.get(
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-  }
+  },
 );
 
 dashboardRoutes.get(
@@ -79,7 +79,7 @@ dashboardRoutes.get(
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-  }
+  },
 );
 
 dashboardRoutes.get(
@@ -98,7 +98,7 @@ dashboardRoutes.get(
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-  }
+  },
 );
 
 dashboardRoutes.get(
@@ -117,7 +117,7 @@ dashboardRoutes.get(
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-  }
+  },
 );
 
 dashboardRoutes.get(
@@ -136,7 +136,7 @@ dashboardRoutes.get(
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-  }
+  },
 );
 
 dashboardRoutes.get(
@@ -155,7 +155,7 @@ dashboardRoutes.get(
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-  }
+  },
 );
 
 dashboardRoutes.get(
@@ -164,9 +164,8 @@ dashboardRoutes.get(
   async (req, res) => {
     const { sellerId } = req.params;
     try {
-      const products = await dashboardService.getRatingDistributionOfSeller(
-        sellerId
-      );
+      const products =
+        await dashboardService.getRatingDistributionOfSeller(sellerId);
       res.status(200).json(products);
     } catch (error) {
       if (error instanceof ObjectsNotFoundError) {
@@ -176,5 +175,5 @@ dashboardRoutes.get(
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-  }
+  },
 );

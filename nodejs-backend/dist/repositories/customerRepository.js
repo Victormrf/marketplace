@@ -24,7 +24,10 @@ const CUSTOMER_WITH_USER_SELECT = Object.assign(Object.assign({}, CUSTOMER_SELEC
 class CustomerRepository {
     findByUserId(userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.customerProfile.findUnique({ where: { userId }, select: CUSTOMER_SELECT });
+            return db_1.default.customerProfile.findUnique({
+                where: { userId },
+                select: CUSTOMER_SELECT,
+            });
         });
     }
     findAll() {
@@ -42,7 +45,11 @@ class CustomerRepository {
     }
     update(userId, data) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.customerProfile.update({ where: { userId }, data, select: CUSTOMER_SELECT });
+            return db_1.default.customerProfile.update({
+                where: { userId },
+                data,
+                select: CUSTOMER_SELECT,
+            });
         });
     }
 }

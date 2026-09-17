@@ -27,7 +27,9 @@ function sendError(error, res) {
         return res.status(409).json({ error: error.message });
     return res.status(500).json({ message: "Internal Server Error" });
 }
-function userId(req) { return req.user.id; }
+function userId(req) {
+    return req.user.id;
+}
 exports.cartRoutes.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         res.status(200).json(yield cartService_1.cartService.getCart(userId(req)));
@@ -39,7 +41,9 @@ exports.cartRoutes.get("/", (req, res) => __awaiter(void 0, void 0, void 0, func
 exports.cartRoutes.post("/items", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        res.status(201).json(yield cartService_1.cartService.addItem(userId(req), (_a = req.body) !== null && _a !== void 0 ? _a : {}));
+        res
+            .status(201)
+            .json(yield cartService_1.cartService.addItem(userId(req), (_a = req.body) !== null && _a !== void 0 ? _a : {}));
     }
     catch (error) {
         sendError(error, res);
@@ -48,7 +52,9 @@ exports.cartRoutes.post("/items", (req, res) => __awaiter(void 0, void 0, void 0
 exports.cartRoutes.put("/items/:productId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        res.status(200).json(yield cartService_1.cartService.updateItem(userId(req), req.params.productId, (_a = req.body) !== null && _a !== void 0 ? _a : {}));
+        res
+            .status(200)
+            .json(yield cartService_1.cartService.updateItem(userId(req), req.params.productId, (_a = req.body) !== null && _a !== void 0 ? _a : {}));
     }
     catch (error) {
         sendError(error, res);

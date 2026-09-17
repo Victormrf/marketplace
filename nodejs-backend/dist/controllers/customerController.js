@@ -29,7 +29,9 @@ function sendError(error, res) {
 }
 exports.customerRoutes.post("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(201).json(yield customerService_1.customerService.createCustomerProfile(req.user.id, req.body || {}));
+        res
+            .status(201)
+            .json(yield customerService_1.customerService.createCustomerProfile(req.user.id, req.body || {}));
     }
     catch (error) {
         sendError(error, res);
@@ -37,7 +39,9 @@ exports.customerRoutes.post("/", authMiddleware_1.authMiddleware, (req, res) => 
 }));
 exports.customerRoutes.get("/all", authMiddleware_1.authMiddleware, (0, roleMiddleware_1.roleMiddleware)("ADMIN"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json({ profiles: yield customerService_1.customerService.getAllCustomers() });
+        res
+            .status(200)
+            .json({ profiles: yield customerService_1.customerService.getAllCustomers() });
     }
     catch (error) {
         sendError(error, res);
@@ -45,7 +49,9 @@ exports.customerRoutes.get("/all", authMiddleware_1.authMiddleware, (0, roleMidd
 }));
 exports.customerRoutes.get("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json({ profile: yield customerService_1.customerService.getCustomerProfile(req.user.id) });
+        res
+            .status(200)
+            .json({ profile: yield customerService_1.customerService.getCustomerProfile(req.user.id) });
     }
     catch (error) {
         sendError(error, res);
@@ -53,7 +59,9 @@ exports.customerRoutes.get("/", authMiddleware_1.authMiddleware, (req, res) => _
 }));
 exports.customerRoutes.put("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield customerService_1.customerService.updateCustomerProfile(req.user.id, req.body || {}));
+        res
+            .status(200)
+            .json(yield customerService_1.customerService.updateCustomerProfile(req.user.id, req.body || {}));
     }
     catch (error) {
         sendError(error, res);

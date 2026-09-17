@@ -1,10 +1,27 @@
 import { InventoryMovementType } from "@prisma/client";
 import { inventoryRepository } from "../repositories/inventoryRepository";
-import type { InventoryAuthorizationRecord, InventoryMovementRecord, InventoryRepository, InventorySnapshot } from "../repositories/inventoryRepository";
-import { ConflictError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
+import type {
+  InventoryAuthorizationRecord,
+  InventoryMovementRecord,
+  InventoryRepository,
+  InventorySnapshot,
+} from "../repositories/inventoryRepository";
+import {
+  ConflictError,
+  ObjectNotFoundError,
+  ValidationError,
+} from "../utils/customErrors";
 import type { PaginationInput } from "../types/productRead";
-import type { AdjustmentInput, InventoryActor, InventoryDto, RestockInput } from "../types/inventory";
-import type { InventoryMovementCollectionDto, InventoryMovementDto } from "../types/inventory";
+import type {
+  AdjustmentInput,
+  InventoryActor,
+  InventoryDto,
+  RestockInput,
+} from "../types/inventory";
+import type {
+  InventoryMovementCollectionDto,
+  InventoryMovementDto,
+} from "../types/inventory";
 
 export class InventoryForbiddenError extends Error {
   constructor() {
@@ -22,7 +39,9 @@ function toDto(snapshot: InventorySnapshot): InventoryDto {
   };
 }
 
-function toMovementDto(movement: InventoryMovementRecord): InventoryMovementDto {
+function toMovementDto(
+  movement: InventoryMovementRecord,
+): InventoryMovementDto {
   return { ...movement };
 }
 
@@ -48,10 +67,16 @@ function requiredReason(value: unknown): string {
 }
 
 export class InventoryService {
-  constructor(private readonly repository: InventoryRepository = inventoryRepository) {}
+  constructor(
+    private readonly repository: InventoryRepository = inventoryRepository,
+  ) {}
 
-  private async authorize(productId: string, actor: InventoryActor): Promise<InventoryAuthorizationRecord> {
-    const record = await this.repository.findByProductForAuthorization(productId);
+  private async authorize(
+    productId: string,
+    actor: InventoryActor,
+  ): Promise<InventoryAuthorizationRecord> {
+    const record =
+      await this.repository.findByProductForAuthorization(productId);
     if (!record || !record.productIsActive || !record.sellerIsActive) {
       throw new ObjectNotFoundError("Product or inventory");
     }
@@ -62,26 +87,43 @@ export class InventoryService {
     return record;
   }
 
-  async getInventory(productId: string, actor: InventoryActor): Promise<InventoryDto> {
+  async getInventory(
+    productId: string,
+    actor: InventoryActor,
+  ): Promise<InventoryDto> {
     const record = await this.authorize(productId, actor);
     return toDto(record);
   }
 
-  async restock(productId: string, actor: InventoryActor, input: RestockInput): Promise<InventoryDto> {
+  async restock(
+    productId: string,
+    actor: InventoryActor,
+    input: RestockInput,
+  ): Promise<InventoryDto> {
     const quantity = positiveInteger(input.quantity, "quantity");
-    const reason = input.reason === undefined ? null : requiredReason(input.reason);
+    const reason =
+      input.reason === undefined ? null : requiredReason(input.reason);
     const record = await this.authorize(productId, actor);
     const movement = await this.repository.applyOnHandMovement(
       record.inventoryId,
       InventoryMovementType.RESTOCK,
       quantity,
-      reason
+      reason,
     );
-    if (!movement) throw new ConflictError("Inventory movement cannot be applied");
-    return toDto({ productId, onHandQuantity: movement.onHandAfter, reservedQuantity: movement.reservedAfter });
+    if (!movement)
+      throw new ConflictError("Inventory movement cannot be applied");
+    return toDto({
+      productId,
+      onHandQuantity: movement.onHandAfter,
+      reservedQuantity: movement.reservedAfter,
+    });
   }
 
-  async adjust(productId: string, actor: InventoryActor, input: AdjustmentInput): Promise<InventoryDto> {
+  async adjust(
+    productId: string,
+    actor: InventoryActor,
+    input: AdjustmentInput,
+  ): Promise<InventoryDto> {
     const onHandDelta = nonZeroInteger(input.onHandDelta, "onHandDelta");
     const reason = requiredReason(input.reason);
     const record = await this.authorize(productId, actor);
@@ -89,18 +131,27 @@ export class InventoryService {
       record.inventoryId,
       InventoryMovementType.MANUAL_CORRECTION,
       onHandDelta,
-      reason
+      reason,
     );
-    if (!movement) throw new ConflictError("Inventory movement cannot be applied");
-    return toDto({ productId, onHandQuantity: movement.onHandAfter, reservedQuantity: movement.reservedAfter });
+    if (!movement)
+      throw new ConflictError("Inventory movement cannot be applied");
+    return toDto({
+      productId,
+      onHandQuantity: movement.onHandAfter,
+      reservedQuantity: movement.reservedAfter,
+    });
   }
 
-  async listMovements(productId: string, actor: InventoryActor, pagination: PaginationInput): Promise<InventoryMovementCollectionDto> {
+  async listMovements(
+    productId: string,
+    actor: InventoryActor,
+    pagination: PaginationInput,
+  ): Promise<InventoryMovementCollectionDto> {
     const record = await this.authorize(productId, actor);
     const result = await this.repository.findMovements(
       record.inventoryId,
       (pagination.page - 1) * pagination.limit,
-      pagination.limit
+      pagination.limit,
     );
     return {
       data: result.data.map(toMovementDto),

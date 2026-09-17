@@ -31,18 +31,29 @@ function sellerData(input, allowEmpty = false) {
     if ("description" in input) {
         if (input.description !== null && typeof input.description !== "string")
             throw new customErrors_1.ValidationError("description must be a string");
-        data.description = input.description === null ? null : input.description.trim() || null;
+        data.description =
+            input.description === null
+                ? null
+                : input.description.trim() || null;
     }
     if ("logo" in input) {
         if (input.logo !== null && typeof input.logo !== "string")
             throw new customErrors_1.ValidationError("logo must be a string");
-        data.logo = input.logo === null ? null : input.logo.trim() || null;
+        data.logo =
+            input.logo === null ? null : input.logo.trim() || null;
     }
     return data;
 }
 class SellerService {
     toDto(record) {
-        return { id: record.id, userId: record.userId, storeName: record.storeName, logo: record.logo, description: record.description, isActive: record.isActive };
+        return {
+            id: record.id,
+            userId: record.userId,
+            storeName: record.storeName,
+            logo: record.logo,
+            description: record.description,
+            isActive: record.isActive,
+        };
     }
     toWithUserDto(record) {
         return Object.assign(Object.assign({}, this.toDto(record)), { user: record.user });
@@ -54,13 +65,19 @@ class SellerService {
                 throw new customErrors_1.ObjectNotFoundError("User");
             if (user.role !== client_1.UserRole.SELLER)
                 throw new customErrors_1.ForbiddenError("Only SELLER users can create a seller profile");
-            if ((yield sellerRepository_1.sellerRepository.findByUserId(userId)) || (yield customerRepository_1.customerRepository.findByUserId(userId)))
+            if ((yield sellerRepository_1.sellerRepository.findByUserId(userId)) ||
+                (yield customerRepository_1.customerRepository.findByUserId(userId)))
                 throw new customErrors_1.ExistingProfileError();
             try {
                 const data = sellerData(input);
                 if (!data.storeName)
                     throw new customErrors_1.ValidationError("storeName is required");
-                return this.toDto(yield sellerRepository_1.sellerRepository.create({ userId, storeName: data.storeName, logo: data.logo, description: data.description }));
+                return this.toDto(yield sellerRepository_1.sellerRepository.create({
+                    userId,
+                    storeName: data.storeName,
+                    logo: data.logo,
+                    description: data.description,
+                }));
             }
             catch (error) {
                 if ((error === null || error === void 0 ? void 0 : error.code) === "P2002")

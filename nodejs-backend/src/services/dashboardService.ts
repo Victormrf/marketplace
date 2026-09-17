@@ -6,17 +6,18 @@ import { format } from "date-fns";
 export class DashboardService {
   private readonly orderRepository = new OrderRepository();
   async getSalesStats(sellerId: string) {
-    const items = await this.orderRepository.getCompletedOrderItemsBySeller(sellerId);
+    const items =
+      await this.orderRepository.getCompletedOrderItemsBySeller(sellerId);
 
     const totalSales = items.reduce(
       (sum: number, item: { quantity: number; unitPriceInCents: number }) =>
         sum + item.quantity * item.unitPriceInCents,
-      0
+      0,
     );
 
     const totalItemsSold = items.reduce(
       (sum: number, item: { quantity: number }) => sum + item.quantity,
-      0
+      0,
     );
 
     return {
@@ -45,9 +46,8 @@ export class DashboardService {
   }
 
   async getSalesCountByCategory(sellerId: string) {
-    const orderItems = await this.orderRepository.getCompletedOrderItemsByCategory(
-      sellerId
-    );
+    const orderItems =
+      await this.orderRepository.getCompletedOrderItemsByCategory(sellerId);
 
     const categoryTotals: Record<string, number> = {};
 
@@ -128,9 +128,8 @@ export class DashboardService {
   }
 
   async getBestSellingProducts(sellerId: string) {
-    const groupedData = await this.orderRepository.getBestSellingProductsBySeller(
-      sellerId
-    );
+    const groupedData =
+      await this.orderRepository.getBestSellingProductsBySeller(sellerId);
 
     const productIds = groupedData
       .map((item: { productId: string }) => item.productId)
@@ -140,7 +139,7 @@ export class DashboardService {
 
     const result = products.map((product) => {
       const quantityData = groupedData.find(
-        (item: { productId: string }) => item.productId === product.id
+        (item: { productId: string }) => item.productId === product.id,
       );
       return {
         ...product,

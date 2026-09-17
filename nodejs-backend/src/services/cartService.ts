@@ -1,9 +1,17 @@
 import { UserRole } from "@prisma/client";
-import { cartRepository, CartMutationConflictError } from "../repositories/cartRepository";
+import {
+  cartRepository,
+  CartMutationConflictError,
+} from "../repositories/cartRepository";
 import type { CartReadRecord } from "../repositories/cartRepository";
 import { customerRepository } from "../repositories/customerRepository";
 import { userRepository } from "../repositories/userRepository";
-import { ConflictError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
+import {
+  ConflictError,
+  ForbiddenError,
+  ObjectNotFoundError,
+  ValidationError,
+} from "../utils/customErrors";
 import type { CartDto } from "../types/cart";
 
 function exactFields(input: Record<string, unknown>, allowed: string[]) {
@@ -19,7 +27,8 @@ function positiveQuantity(value: unknown): number {
 }
 
 function productId(value: unknown): string {
-  if (typeof value !== "string" || value.trim() === "") throw new ValidationError("productId is required");
+  if (typeof value !== "string" || value.trim() === "")
+    throw new ValidationError("productId is required");
   return value.trim();
 }
 
@@ -28,7 +37,8 @@ function toDto(cart: CartReadRecord): CartDto {
     const onHand = item.product.inventory?.onHandQuantity ?? 0;
     const reserved = item.product.inventory?.reservedQuantity ?? 0;
     const available = onHand - reserved;
-    const hasSufficientStock = item.product.inventory !== null && available >= item.quantity;
+    const hasSufficientStock =
+      item.product.inventory !== null && available >= item.quantity;
     return {
       id: item.id,
       productId: item.productId,
@@ -39,11 +49,22 @@ function toDto(cart: CartReadRecord): CartDto {
       image: item.product.image,
       availableQuantity: available,
       hasSufficientStock,
-      isAvailable: item.product.isActive && item.product.seller.isActive && hasSufficientStock,
+      isAvailable:
+        item.product.isActive &&
+        item.product.seller.isActive &&
+        hasSufficientStock,
       lineTotalInCents: item.quantity * item.product.priceInCents,
     };
   });
-  return { id: cart.id, status: "ACTIVE", items, totalInCents: items.reduce((total, item) => total + item.lineTotalInCents, 0) };
+  return {
+    id: cart.id,
+    status: "ACTIVE",
+    items,
+    totalInCents: items.reduce(
+      (total, item) => total + item.lineTotalInCents,
+      0,
+    ),
+  };
 }
 
 export class CartService {
@@ -64,34 +85,60 @@ export class CartService {
     return toDto(cart);
   }
 
-  async addItem(userId: string, input: Record<string, unknown>): Promise<CartDto> {
+  async addItem(
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<CartDto> {
     exactFields(input, ["productId", "quantity"]);
     const customerId = await this.customerIdFor(userId);
     try {
-      await cartRepository.addItem(customerId, productId(input.productId), positiveQuantity(input.quantity));
+      await cartRepository.addItem(
+        customerId,
+        productId(input.productId),
+        positiveQuantity(input.quantity),
+      );
     } catch (error) {
-      if (error instanceof CartMutationConflictError) throw new ConflictError("Product is unavailable or stock is insufficient");
+      if (error instanceof CartMutationConflictError)
+        throw new ConflictError(
+          "Product is unavailable or stock is insufficient",
+        );
       throw error;
     }
     return this.getCart(userId);
   }
 
-  async updateItem(userId: string, rawProductId: string, input: Record<string, unknown>): Promise<CartDto> {
+  async updateItem(
+    userId: string,
+    rawProductId: string,
+    input: Record<string, unknown>,
+  ): Promise<CartDto> {
     exactFields(input, ["quantity"]);
     const customerId = await this.customerIdFor(userId);
-    const updated = await cartRepository.updateItem(customerId, productId(rawProductId), positiveQuantity(input.quantity));
-    if (!updated) throw new ConflictError("Cart item is unavailable or stock is insufficient");
+    const updated = await cartRepository.updateItem(
+      customerId,
+      productId(rawProductId),
+      positiveQuantity(input.quantity),
+    );
+    if (!updated)
+      throw new ConflictError(
+        "Cart item is unavailable or stock is insufficient",
+      );
     return this.getCart(userId);
   }
 
   async removeItem(userId: string, rawProductId: string): Promise<void> {
     const customerId = await this.customerIdFor(userId);
-    const removed = await cartRepository.removeItem(customerId, productId(rawProductId));
+    const removed = await cartRepository.removeItem(
+      customerId,
+      productId(rawProductId),
+    );
     if (!removed) throw new ObjectNotFoundError("CartItem");
   }
 
   async clear(userId: string): Promise<void> {
-    await this.customerIdFor(userId).then((customerId) => cartRepository.clear(customerId));
+    await this.customerIdFor(userId).then((customerId) =>
+      cartRepository.clear(customerId),
+    );
   }
 }
 

@@ -45,7 +45,9 @@ function lockCustomer(tx, customerId) {
 class CustomerAddressRepository {
     count(customerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.customerAddress.count({ where: { customerId, isActive: true } });
+            return db_1.default.customerAddress.count({
+                where: { customerId, isActive: true },
+            });
         });
     }
     findMany(customerId, skip, take) {
@@ -71,7 +73,9 @@ class CustomerAddressRepository {
         return __awaiter(this, void 0, void 0, function* () {
             return db_1.default.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
                 yield lockCustomer(tx, customerId);
-                const activeCount = yield tx.customerAddress.count({ where: { customerId, isActive: true } });
+                const activeCount = yield tx.customerAddress.count({
+                    where: { customerId, isActive: true },
+                });
                 const shouldBeDefault = requestedDefault || activeCount === 0;
                 if (shouldBeDefault) {
                     yield tx.customerAddress.updateMany({

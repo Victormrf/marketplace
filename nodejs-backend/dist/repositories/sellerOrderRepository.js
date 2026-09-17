@@ -14,43 +14,129 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SellerOrderRepository = void 0;
 const db_1 = __importDefault(require("../config/db"));
-const itemSelect = { id: true, productId: true, quantity: true, unitPriceInCents: true, lineTotalInCents: true, currency: true, productNameSnapshot: true, productReferenceSnapshot: true, sellerNameSnapshot: true };
-const historySelect = { id: true, fromStatus: true, toStatus: true, reason: true, createdAt: true };
-const detailSelect = { id: true, orderId: true, sellerId: true, status: true, subtotalInCents: true, shippingInCents: true, taxInCents: true, discountInCents: true, totalInCents: true, currency: true, createdAt: true, updatedAt: true, confirmedAt: true, completedAt: true, cancelledAt: true, order: { select: { status: true } }, items: { select: itemSelect, orderBy: [{ createdAt: "desc" }, { id: "desc" }] }, statusHistory: { select: historySelect, orderBy: [{ createdAt: "desc" }, { id: "desc" }] } };
-const summarySelect = { id: true, orderId: true, sellerId: true, status: true, totalInCents: true, currency: true, createdAt: true };
-function whereFor(sellerId, filters) { return Object.assign(Object.assign({ sellerId }, (filters.status ? { status: filters.status } : {})), (filters.createdFrom || filters.createdTo ? { createdAt: Object.assign(Object.assign({}, (filters.createdFrom ? { gte: filters.createdFrom } : {})), (filters.createdTo ? { lte: filters.createdTo } : {})) } : {})); }
+const itemSelect = {
+    id: true,
+    productId: true,
+    quantity: true,
+    unitPriceInCents: true,
+    lineTotalInCents: true,
+    currency: true,
+    productNameSnapshot: true,
+    productReferenceSnapshot: true,
+    sellerNameSnapshot: true,
+};
+const historySelect = {
+    id: true,
+    fromStatus: true,
+    toStatus: true,
+    reason: true,
+    createdAt: true,
+};
+const detailSelect = {
+    id: true,
+    orderId: true,
+    sellerId: true,
+    status: true,
+    subtotalInCents: true,
+    shippingInCents: true,
+    taxInCents: true,
+    discountInCents: true,
+    totalInCents: true,
+    currency: true,
+    createdAt: true,
+    updatedAt: true,
+    confirmedAt: true,
+    completedAt: true,
+    cancelledAt: true,
+    order: { select: { status: true } },
+    items: {
+        select: itemSelect,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    },
+    statusHistory: {
+        select: historySelect,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    },
+};
+const summarySelect = {
+    id: true,
+    orderId: true,
+    sellerId: true,
+    status: true,
+    totalInCents: true,
+    currency: true,
+    createdAt: true,
+};
+function whereFor(sellerId, filters) {
+    return Object.assign(Object.assign({ sellerId }, (filters.status ? { status: filters.status } : {})), (filters.createdFrom || filters.createdTo
+        ? {
+            createdAt: Object.assign(Object.assign({}, (filters.createdFrom ? { gte: filters.createdFrom } : {})), (filters.createdTo ? { lte: filters.createdTo } : {})),
+        }
+        : {}));
+}
 class SellerOrderRepository {
     constructor(testHooks = {}) {
         this.testHooks = testHooks;
     }
     countBySeller(sellerId, filters) {
-        return __awaiter(this, void 0, void 0, function* () { return db_1.default.sellerOrder.count({ where: whereFor(sellerId, filters) }); });
+        return __awaiter(this, void 0, void 0, function* () {
+            return db_1.default.sellerOrder.count({ where: whereFor(sellerId, filters) });
+        });
     }
     findBySeller(sellerId, filters, skip, take) {
-        return __awaiter(this, void 0, void 0, function* () { return db_1.default.sellerOrder.findMany({ where: whereFor(sellerId, filters), select: summarySelect, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip, take }); });
+        return __awaiter(this, void 0, void 0, function* () {
+            return db_1.default.sellerOrder.findMany({
+                where: whereFor(sellerId, filters),
+                select: summarySelect,
+                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+                skip,
+                take,
+            });
+        });
     }
     findBySellerAndId(sellerId, sellerOrderId) {
-        return __awaiter(this, void 0, void 0, function* () { return db_1.default.sellerOrder.findFirst({ where: { id: sellerOrderId, sellerId }, select: detailSelect }); });
+        return __awaiter(this, void 0, void 0, function* () {
+            return db_1.default.sellerOrder.findFirst({
+                where: { id: sellerOrderId, sellerId },
+                select: detailSelect,
+            });
+        });
     }
     findById(sellerOrderId) {
-        return __awaiter(this, void 0, void 0, function* () { return db_1.default.sellerOrder.findUnique({ where: { id: sellerOrderId }, select: detailSelect }); });
+        return __awaiter(this, void 0, void 0, function* () {
+            return db_1.default.sellerOrder.findUnique({
+                where: { id: sellerOrderId },
+                select: detailSelect,
+            });
+        });
     }
     transition(sellerOrderId, sellerId, fromStatus, toStatus, reason) {
         return __awaiter(this, void 0, void 0, function* () {
             return db_1.default.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
                 var _a, _b, _c, _d;
-                const current = yield tx.sellerOrder.findUnique({ where: { id: sellerOrderId }, select: { status: true, order: { select: { status: true } } } });
+                const current = yield tx.sellerOrder.findUnique({
+                    where: { id: sellerOrderId },
+                    select: { status: true, order: { select: { status: true } } },
+                });
                 if (!current || current.status !== fromStatus)
                     return null;
                 if (current.order.status !== "CONFIRMED")
                     return null;
                 yield ((_b = (_a = this.testHooks).beforeSellerStatusUpdate) === null || _b === void 0 ? void 0 : _b.call(_a));
-                const updated = yield tx.sellerOrder.updateMany({ where: Object.assign(Object.assign({ id: sellerOrderId }, (sellerId ? { sellerId } : {})), { status: fromStatus, order: { status: "CONFIRMED" } }), data: Object.assign(Object.assign(Object.assign({ status: toStatus }, (toStatus === "CONFIRMED" ? { confirmedAt: new Date() } : {})), (toStatus === "DELIVERED" ? { completedAt: new Date() } : {})), (toStatus === "CANCELLED" ? { cancelledAt: new Date() } : {})) });
+                const updated = yield tx.sellerOrder.updateMany({
+                    where: Object.assign(Object.assign({ id: sellerOrderId }, (sellerId ? { sellerId } : {})), { status: fromStatus, order: { status: "CONFIRMED" } }),
+                    data: Object.assign(Object.assign(Object.assign({ status: toStatus }, (toStatus === "CONFIRMED" ? { confirmedAt: new Date() } : {})), (toStatus === "DELIVERED" ? { completedAt: new Date() } : {})), (toStatus === "CANCELLED" ? { cancelledAt: new Date() } : {})),
+                });
                 if (updated.count !== 1)
                     return null;
                 yield ((_d = (_c = this.testHooks).beforeSellerHistory) === null || _d === void 0 ? void 0 : _d.call(_c));
-                yield tx.sellerOrderStatusHistory.create({ data: { sellerOrderId, fromStatus, toStatus, reason } });
-                return tx.sellerOrder.findUnique({ where: { id: sellerOrderId }, select: detailSelect });
+                yield tx.sellerOrderStatusHistory.create({
+                    data: { sellerOrderId, fromStatus, toStatus, reason },
+                });
+                return tx.sellerOrder.findUnique({
+                    where: { id: sellerOrderId },
+                    select: detailSelect,
+                });
             }));
         });
     }

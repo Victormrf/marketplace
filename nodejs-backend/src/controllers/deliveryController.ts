@@ -15,7 +15,7 @@ deliveryRoutes.post("/", authMiddleware, async (req, res) => {
       orderId,
       status,
       trackingCode,
-      estimatedDelivery ? new Date(estimatedDelivery) : undefined
+      estimatedDelivery ? new Date(estimatedDelivery) : undefined,
     );
     res.status(201).json(delivery);
   } catch (error) {
@@ -66,7 +66,7 @@ deliveryRoutes.put("/:orderId/tracking", authMiddleware, async (req, res) => {
     const updated = await deliveryService.updateTrackingInfo(
       orderId,
       trackingCode,
-      new Date(estimatedDelivery)
+      new Date(estimatedDelivery),
     );
     res.status(200).json(updated);
   } catch (error) {
@@ -95,5 +95,5 @@ deliveryRoutes.delete(
         res.status(500).json({ error });
       }
     }
-  }
+  },
 );

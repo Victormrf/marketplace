@@ -21,7 +21,8 @@ const customErrors_1 = require("../utils/customErrors");
 const REGISTRATION_FIELDS = new Set(["name", "email", "password", "role"]);
 const UPDATE_FIELDS = new Set(["name", "email", "password"]);
 function isUniqueViolation(error) {
-    return error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+    return (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002");
 }
 function requiredString(value, field) {
     if (typeof value !== "string" || value.trim() === "")

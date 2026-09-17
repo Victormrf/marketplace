@@ -19,14 +19,18 @@ const CART_SELECT = {
           currency: true,
           image: true,
           seller: { select: { isActive: true } },
-          inventory: { select: { onHandQuantity: true, reservedQuantity: true } },
+          inventory: {
+            select: { onHandQuantity: true, reservedQuantity: true },
+          },
         },
       },
     },
   },
 } satisfies Prisma.CartSelect;
 
-export type CartReadRecord = Prisma.CartGetPayload<{ select: typeof CART_SELECT }>;
+export type CartReadRecord = Prisma.CartGetPayload<{
+  select: typeof CART_SELECT;
+}>;
 
 const CART_ITEM_SELECT = {
   id: true,
@@ -34,7 +38,9 @@ const CART_ITEM_SELECT = {
   quantity: true,
 } satisfies Prisma.CartItemSelect;
 
-export type CartItemRecord = Prisma.CartItemGetPayload<{ select: typeof CART_ITEM_SELECT }>;
+export type CartItemRecord = Prisma.CartItemGetPayload<{
+  select: typeof CART_ITEM_SELECT;
+}>;
 
 type AtomicCartItemRow = { id: string; productId: string; quantity: number };
 
@@ -45,7 +51,10 @@ export class CartMutationConflictError extends Error {
   }
 }
 
-async function lockCustomer(tx: Prisma.TransactionClient, customerId: string): Promise<void> {
+async function lockCustomer(
+  tx: Prisma.TransactionClient,
+  customerId: string,
+): Promise<void> {
   await tx.$queryRaw(Prisma.sql`
     SELECT "id"
     FROM "customer"
@@ -78,7 +87,11 @@ export class CartRepository {
     });
   }
 
-  async addItem(customerId: string, productId: string, quantity: number): Promise<AtomicCartItemRow | null> {
+  async addItem(
+    customerId: string,
+    productId: string,
+    quantity: number,
+  ): Promise<AtomicCartItemRow | null> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await lockCustomer(tx, customerId);
       let cart = await tx.cart.findFirst({
@@ -121,10 +134,14 @@ export class CartRepository {
     });
   }
 
-  async updateItem(customerId: string, productId: string, quantity: number): Promise<AtomicCartItemRow | null> {
+  async updateItem(
+    customerId: string,
+    productId: string,
+    quantity: number,
+  ): Promise<AtomicCartItemRow | null> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await lockCustomer(tx, customerId);
-    const rows = await tx.$queryRaw(Prisma.sql`
+      await lockCustomer(tx, customerId);
+      const rows = (await tx.$queryRaw(Prisma.sql`
       UPDATE "cart_item" ci
       SET "quantity" = ${quantity}, "updatedAt" = CURRENT_TIMESTAMP
       FROM "cart" c, "product" p, "seller" s, "inventory" i
@@ -139,21 +156,21 @@ export class CartRepository {
         AND s."isActive" = true
         AND i."onHandQuantity" - i."reservedQuantity" >= ${quantity}
       RETURNING ci."id", ci."productId", ci."quantity"
-    `) as AtomicCartItemRow[];
-    return rows[0] ?? null;
+    `)) as AtomicCartItemRow[];
+      return rows[0] ?? null;
     });
   }
 
   async removeItem(customerId: string, productId: string): Promise<boolean> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await lockCustomer(tx, customerId);
-    const result = await tx.cartItem.deleteMany({
-      where: {
-        productId,
-        cart: { customerId, status: CartStatus.ACTIVE },
-      },
-    });
-    return result.count > 0;
+      await lockCustomer(tx, customerId);
+      const result = await tx.cartItem.deleteMany({
+        where: {
+          productId,
+          cart: { customerId, status: CartStatus.ACTIVE },
+        },
+      });
+      return result.count > 0;
     });
   }
 
@@ -161,7 +178,7 @@ export class CartRepository {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await lockCustomer(tx, customerId);
       await tx.cartItem.deleteMany({
-      where: { cart: { customerId, status: CartStatus.ACTIVE } },
+        where: { cart: { customerId, status: CartStatus.ACTIVE } },
       });
     });
   }

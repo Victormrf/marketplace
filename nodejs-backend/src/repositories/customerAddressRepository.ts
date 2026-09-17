@@ -27,9 +27,15 @@ export type CustomerAddressRecord = Prisma.CustomerAddressGetPayload<{
   select: typeof ADDRESS_SELECT;
 }>;
 
-export type CustomerAddressData = Omit<CustomerAddressRecord, "id" | "createdAt" | "updatedAt" | "isDefault">;
+export type CustomerAddressData = Omit<
+  CustomerAddressRecord,
+  "id" | "createdAt" | "updatedAt" | "isDefault"
+>;
 
-async function lockCustomer(tx: Prisma.TransactionClient, customerId: string): Promise<void> {
+async function lockCustomer(
+  tx: Prisma.TransactionClient,
+  customerId: string,
+): Promise<void> {
   await tx.$queryRaw(Prisma.sql`
     SELECT "id"
     FROM "customer"
@@ -40,10 +46,16 @@ async function lockCustomer(tx: Prisma.TransactionClient, customerId: string): P
 
 export class CustomerAddressRepository {
   async count(customerId: string): Promise<number> {
-    return prisma.customerAddress.count({ where: { customerId, isActive: true } });
+    return prisma.customerAddress.count({
+      where: { customerId, isActive: true },
+    });
   }
 
-  async findMany(customerId: string, skip: number, take: number): Promise<CustomerAddressRecord[]> {
+  async findMany(
+    customerId: string,
+    skip: number,
+    take: number,
+  ): Promise<CustomerAddressRecord[]> {
     return prisma.customerAddress.findMany({
       where: { customerId, isActive: true },
       select: ADDRESS_SELECT,
@@ -53,7 +65,10 @@ export class CustomerAddressRepository {
     });
   }
 
-  async findActiveById(customerId: string, addressId: string): Promise<CustomerAddressRecord | null> {
+  async findActiveById(
+    customerId: string,
+    addressId: string,
+  ): Promise<CustomerAddressRecord | null> {
     return prisma.customerAddress.findFirst({
       where: { id: addressId, customerId, isActive: true },
       select: ADDRESS_SELECT,
@@ -63,11 +78,13 @@ export class CustomerAddressRepository {
   async create(
     customerId: string,
     data: CustomerAddressData,
-    requestedDefault: boolean
+    requestedDefault: boolean,
   ): Promise<CustomerAddressRecord> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await lockCustomer(tx, customerId);
-      const activeCount = await tx.customerAddress.count({ where: { customerId, isActive: true } });
+      const activeCount = await tx.customerAddress.count({
+        where: { customerId, isActive: true },
+      });
       const shouldBeDefault = requestedDefault || activeCount === 0;
       if (shouldBeDefault) {
         await tx.customerAddress.updateMany({
@@ -85,7 +102,7 @@ export class CustomerAddressRepository {
   async update(
     customerId: string,
     addressId: string,
-    data: Partial<CustomerAddressData>
+    data: Partial<CustomerAddressData>,
   ): Promise<CustomerAddressRecord | null> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const result = await tx.customerAddress.updateMany({
@@ -101,7 +118,10 @@ export class CustomerAddressRepository {
     });
   }
 
-  async setDefault(customerId: string, addressId: string): Promise<CustomerAddressRecord | null> {
+  async setDefault(
+    customerId: string,
+    addressId: string,
+  ): Promise<CustomerAddressRecord | null> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await lockCustomer(tx, customerId);
       const address = await tx.customerAddress.findFirst({
@@ -122,7 +142,10 @@ export class CustomerAddressRepository {
     });
   }
 
-  async deactivate(customerId: string, addressId: string): Promise<CustomerAddressRecord | null> {
+  async deactivate(
+    customerId: string,
+    addressId: string,
+  ): Promise<CustomerAddressRecord | null> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await lockCustomer(tx, customerId);
       const address = await tx.customerAddress.findFirst({

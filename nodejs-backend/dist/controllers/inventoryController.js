@@ -40,7 +40,9 @@ function sendError(error, res) {
 exports.inventoryRoutes.use(authMiddleware_1.authMiddleware);
 exports.inventoryRoutes.get("/products/:productId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield service.getInventory(req.params.productId, actor(req)));
+        res
+            .status(200)
+            .json(yield service.getInventory(req.params.productId, actor(req)));
     }
     catch (error) {
         sendError(error, res);
@@ -48,7 +50,9 @@ exports.inventoryRoutes.get("/products/:productId", (req, res) => __awaiter(void
 }));
 exports.inventoryRoutes.get("/products/:productId/movements", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield service.listMovements(req.params.productId, actor(req), pagination(req.query)));
+        res
+            .status(200)
+            .json(yield service.listMovements(req.params.productId, actor(req), pagination(req.query)));
     }
     catch (error) {
         sendError(error, res);
@@ -56,7 +60,9 @@ exports.inventoryRoutes.get("/products/:productId/movements", (req, res) => __aw
 }));
 exports.inventoryRoutes.post("/products/:productId/restock", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield service.restock(req.params.productId, actor(req), req.body));
+        res
+            .status(200)
+            .json(yield service.restock(req.params.productId, actor(req), req.body));
     }
     catch (error) {
         sendError(error, res);
@@ -64,7 +70,9 @@ exports.inventoryRoutes.post("/products/:productId/restock", (req, res) => __awa
 }));
 exports.inventoryRoutes.post("/products/:productId/adjustments", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield service.adjust(req.params.productId, actor(req), req.body));
+        res
+            .status(200)
+            .json(yield service.adjust(req.params.productId, actor(req), req.body));
     }
     catch (error) {
         sendError(error, res);

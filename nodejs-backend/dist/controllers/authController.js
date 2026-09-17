@@ -33,6 +33,10 @@ exports.authRoutes.post("/login", (req, res) => __awaiter(void 0, void 0, void 0
 }));
 exports.authRoutes.post("/logout", (req, res) => {
     const options = (0, jwt_1.cookieOptions)();
-    res.clearCookie("token", { httpOnly: options.httpOnly, secure: options.secure, sameSite: options.sameSite });
+    res.clearCookie("token", {
+        httpOnly: options.httpOnly,
+        secure: options.secure,
+        sameSite: options.sameSite,
+    });
     res.status(200).json({ message: "User logged out successfully." });
 });

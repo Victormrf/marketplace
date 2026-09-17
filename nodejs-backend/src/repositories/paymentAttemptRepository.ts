@@ -1,25 +1,354 @@
 import type { Prisma, PaymentAttemptStatus, OrderStatus } from "@prisma/client";
 import prisma from "../config/db";
-import type { CreatePaymentAttemptInput, PaymentAttemptReadFilters } from "../types/payment";
+import type {
+  CreatePaymentAttemptInput,
+  PaymentAttemptReadFilters,
+} from "../types/payment";
 import { ConflictError } from "../utils/customErrors";
 
-const paymentSelect = { id: true, orderId: true, provider: true, providerReference: true, method: true, status: true, amountInCents: true, currency: true, failureCode: true, failureMessage: true, createdAt: true, updatedAt: true, authorizedAt: true, capturedAt: true, failedAt: true, cancelledAt: true } satisfies Prisma.PaymentAttemptSelect;
-export type PaymentAttemptRecord = Prisma.PaymentAttemptGetPayload<{ select: typeof paymentSelect }>;
-export type PaymentAttemptWithOrderRecord = Prisma.PaymentAttemptGetPayload<{ select: typeof paymentSelect & { order: { select: { customerId: true; totalInCents: true; currency: true; status: true } } } }>;
-function whereFor(filters: PaymentAttemptReadFilters): Prisma.PaymentAttemptWhereInput { return { ...(filters.status ? { status: filters.status } : {}), ...(filters.method ? { method: filters.method } : {}), ...(filters.createdFrom || filters.createdTo ? { createdAt: { ...(filters.createdFrom ? { gte: filters.createdFrom } : {}), ...(filters.createdTo ? { lte: filters.createdTo } : {}) } } : {}) }; }
+const paymentSelect = {
+  id: true,
+  orderId: true,
+  provider: true,
+  providerReference: true,
+  method: true,
+  status: true,
+  amountInCents: true,
+  currency: true,
+  failureCode: true,
+  failureMessage: true,
+  createdAt: true,
+  updatedAt: true,
+  authorizedAt: true,
+  capturedAt: true,
+  failedAt: true,
+  cancelledAt: true,
+} satisfies Prisma.PaymentAttemptSelect;
+export type PaymentAttemptRecord = Prisma.PaymentAttemptGetPayload<{
+  select: typeof paymentSelect;
+}>;
+export type PaymentAttemptWithOrderRecord = Prisma.PaymentAttemptGetPayload<{
+  select: typeof paymentSelect & {
+    order: {
+      select: {
+        customerId: true;
+        totalInCents: true;
+        currency: true;
+        status: true;
+      };
+    };
+  };
+}>;
+function whereFor(
+  filters: PaymentAttemptReadFilters,
+): Prisma.PaymentAttemptWhereInput {
+  return {
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.method ? { method: filters.method } : {}),
+    ...(filters.createdFrom || filters.createdTo
+      ? {
+          createdAt: {
+            ...(filters.createdFrom ? { gte: filters.createdFrom } : {}),
+            ...(filters.createdTo ? { lte: filters.createdTo } : {}),
+          },
+        }
+      : {}),
+  };
+}
 
 export class PaymentAttemptRepository {
-  constructor(private readonly testHooks: { beforeOrderConfirmation?: () => Promise<void> | void } = {}) {}
-  async findById(id: string): Promise<PaymentAttemptRecord | null> { return prisma.paymentAttempt.findUnique({ where: { id }, select: paymentSelect }); }
-  async findByCustomerAndId(customerId: string, id: string): Promise<PaymentAttemptWithOrderRecord | null> { return prisma.paymentAttempt.findFirst({ where: { id, order: { customerId } }, select: { ...paymentSelect, order: { select: { customerId: true, totalInCents: true, currency: true, status: true } } } }); }
-  async countForCustomer(customerId: string, orderId: string, filters: PaymentAttemptReadFilters) { return prisma.paymentAttempt.count({ where: { ...whereFor(filters), order: { customerId, id: orderId } } }); }
-  async findForCustomer(customerId: string, orderId: string, filters: PaymentAttemptReadFilters, skip: number, take: number): Promise<PaymentAttemptRecord[]> { return prisma.paymentAttempt.findMany({ where: { ...whereFor(filters), order: { customerId, id: orderId } }, select: paymentSelect, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip, take }); }
-  async countAll(orderId: string, filters: PaymentAttemptReadFilters) { return prisma.paymentAttempt.count({ where: { ...whereFor(filters), orderId } }); }
-  async findAll(orderId: string, filters: PaymentAttemptReadFilters, skip: number, take: number): Promise<PaymentAttemptRecord[]> { return prisma.paymentAttempt.findMany({ where: { ...whereFor(filters), orderId }, select: paymentSelect, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip, take }); }
+  constructor(
+    private readonly testHooks: {
+      beforeOrderConfirmation?: () => Promise<void> | void;
+    } = {},
+  ) {}
+  async findById(id: string): Promise<PaymentAttemptRecord | null> {
+    return prisma.paymentAttempt.findUnique({
+      where: { id },
+      select: paymentSelect,
+    });
+  }
+  async findByCustomerAndId(
+    customerId: string,
+    id: string,
+  ): Promise<PaymentAttemptWithOrderRecord | null> {
+    return prisma.paymentAttempt.findFirst({
+      where: { id, order: { customerId } },
+      select: {
+        ...paymentSelect,
+        order: {
+          select: {
+            customerId: true,
+            totalInCents: true,
+            currency: true,
+            status: true,
+          },
+        },
+      },
+    });
+  }
+  async countForCustomer(
+    customerId: string,
+    orderId: string,
+    filters: PaymentAttemptReadFilters,
+  ) {
+    return prisma.paymentAttempt.count({
+      where: { ...whereFor(filters), order: { customerId, id: orderId } },
+    });
+  }
+  async findForCustomer(
+    customerId: string,
+    orderId: string,
+    filters: PaymentAttemptReadFilters,
+    skip: number,
+    take: number,
+  ): Promise<PaymentAttemptRecord[]> {
+    return prisma.paymentAttempt.findMany({
+      where: { ...whereFor(filters), order: { customerId, id: orderId } },
+      select: paymentSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip,
+      take,
+    });
+  }
+  async countAll(orderId: string, filters: PaymentAttemptReadFilters) {
+    return prisma.paymentAttempt.count({
+      where: { ...whereFor(filters), orderId },
+    });
+  }
+  async findAll(
+    orderId: string,
+    filters: PaymentAttemptReadFilters,
+    skip: number,
+    take: number,
+  ): Promise<PaymentAttemptRecord[]> {
+    return prisma.paymentAttempt.findMany({
+      where: { ...whereFor(filters), orderId },
+      select: paymentSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip,
+      take,
+    });
+  }
 
-  async createLocalForCustomer(customerId: string, orderId: string, input: CreatePaymentAttemptInput): Promise<PaymentAttemptRecord> { return prisma.$transaction(async (tx: Prisma.TransactionClient) => { const rows = await tx.$queryRaw<{ id: string; status: OrderStatus; totalInCents: number; currency: "BRL" }[]>`SELECT "id", "status", "totalInCents", "currency" FROM "order" WHERE "id" = ${orderId} AND "customerId" = ${customerId} FOR UPDATE`; const order = rows[0]; if (!order) throw new ConflictError("Order is not owned by the customer"); if (order.status !== "PENDING_PAYMENT") throw new ConflictError("Payment attempts require a pending payment order"); const existing = await tx.paymentAttempt.findFirst({ where: { orderId, status: { in: ["CREATED", "PROCESSING", "AUTHORIZED", "CAPTURED"] } }, select: { id: true, status: true } }); if (existing) throw new ConflictError("Order already has an active or captured payment attempt"); return tx.paymentAttempt.create({ data: { orderId, provider: "DEV_SIMULATOR", providerReference: null, method: input.method, amountInCents: order.totalInCents, currency: order.currency }, select: paymentSelect }); }); }
-  async setProviderReference(id: string, providerReference: string): Promise<PaymentAttemptRecord> { return prisma.$transaction(async (tx: Prisma.TransactionClient) => { const current = await tx.paymentAttempt.findUnique({ where: { id }, select: paymentSelect }); if (!current) throw new ConflictError("Payment attempt not found"); if (current.providerReference === providerReference) return current; if (current.providerReference !== null) throw new ConflictError("Payment attempt already has another provider reference"); const result = await tx.paymentAttempt.updateMany({ where: { id, providerReference: null }, data: { providerReference } }); if (result.count !== 1) throw new ConflictError("Payment attempt reference changed concurrently"); return tx.paymentAttempt.findUniqueOrThrow({ where: { id }, select: paymentSelect }); }); }
-  async failProvisioning(id: string, failureCode = "PROVIDER_ERROR", failureMessage = "Payment provider unavailable"): Promise<PaymentAttemptRecord | null> { return prisma.$transaction(async (tx: Prisma.TransactionClient) => { const result = await tx.paymentAttempt.updateMany({ where: { id, status: "CREATED" }, data: { status: "FAILED", failedAt: new Date(), failureCode, failureMessage } }); if (result.count !== 1) return tx.paymentAttempt.findUnique({ where: { id }, select: paymentSelect }); return tx.paymentAttempt.findUnique({ where: { id }, select: paymentSelect }); }); }
-  async transition(id: string, target: PaymentAttemptStatus, failureCode?: string, failureMessage?: string): Promise<PaymentAttemptRecord | null> { return prisma.$transaction(async (tx: Prisma.TransactionClient) => { const identity = await tx.paymentAttempt.findUnique({ where: { id }, select: { orderId: true } }); if (!identity) return null; await tx.$queryRaw`SELECT "id" FROM "order" WHERE "id" = ${identity.orderId} FOR UPDATE`; const attempt = await tx.paymentAttempt.findUnique({ where: { id }, select: paymentSelect }); if (!attempt) return null; if (attempt.status === target) return attempt; const allowed: Record<PaymentAttemptStatus, readonly PaymentAttemptStatus[]> = { CREATED: ["PROCESSING", "CANCELLED"], PROCESSING: ["AUTHORIZED", "FAILED", "CANCELLED"], AUTHORIZED: ["CAPTURED", "FAILED", "CANCELLED"], CAPTURED: [], FAILED: [], CANCELLED: [] }; if (!allowed[attempt.status].includes(target)) throw new ConflictError("Invalid payment attempt transition"); const data: Prisma.PaymentAttemptUpdateManyMutationInput = { status: target }; if (target === "AUTHORIZED") data.authorizedAt = attempt.authorizedAt ?? new Date(); if (target === "FAILED") { data.failedAt = attempt.failedAt ?? new Date(); data.failureCode = failureCode ?? null; data.failureMessage = failureMessage ?? null; } if (target === "CANCELLED") data.cancelledAt = attempt.cancelledAt ?? new Date(); const result = await tx.paymentAttempt.updateMany({ where: { id, status: attempt.status }, data }); if (result.count !== 1) throw new ConflictError("Payment attempt changed concurrently"); return tx.paymentAttempt.findUnique({ where: { id }, select: paymentSelect }); }); }
-  async capture(id: string): Promise<PaymentAttemptRecord | null> { return prisma.$transaction(async (tx: Prisma.TransactionClient) => { const identity = await tx.paymentAttempt.findUnique({ where: { id }, select: { orderId: true } }); if (!identity) return null; await tx.$queryRaw`SELECT "id" FROM "order" WHERE "id" = ${identity.orderId} FOR UPDATE`; const attempt = await tx.paymentAttempt.findUnique({ where: { id }, select: paymentSelect }); if (!attempt) return null; if (attempt.status === "CAPTURED") return attempt; if (attempt.status !== "AUTHORIZED") throw new ConflictError("Only authorized attempts can be captured"); const order = await tx.order.findUnique({ where: { id: attempt.orderId }, select: { status: true, totalInCents: true } }); if (!order || order.status !== "PENDING_PAYMENT") throw new ConflictError("Order is not capturable"); if (attempt.amountInCents !== order.totalInCents) throw new ConflictError("Payment attempt amount does not match order total"); const otherCaptured = await tx.paymentAttempt.count({ where: { orderId: attempt.orderId, status: "CAPTURED", id: { not: id } } }); if (otherCaptured > 0) throw new ConflictError("Order already has a captured payment attempt"); const updated = await tx.paymentAttempt.updateMany({ where: { id, status: "AUTHORIZED", amountInCents: order.totalInCents }, data: { status: "CAPTURED", capturedAt: attempt.capturedAt ?? new Date() } }); if (updated.count !== 1) throw new ConflictError("Payment attempt changed concurrently"); await this.testHooks.beforeOrderConfirmation?.(); const orderUpdated = await tx.order.updateMany({ where: { id: attempt.orderId, status: "PENDING_PAYMENT" }, data: { status: "CONFIRMED", confirmedAt: new Date() } }); if (orderUpdated.count !== 1) throw new ConflictError("Order changed concurrently"); await tx.orderStatusHistory.create({ data: { orderId: attempt.orderId, fromStatus: "PENDING_PAYMENT", toStatus: "CONFIRMED", reason: "Payment captured in full" } }); return tx.paymentAttempt.findUnique({ where: { id }, select: paymentSelect }); }); }
+  async createLocalForCustomer(
+    customerId: string,
+    orderId: string,
+    input: CreatePaymentAttemptInput,
+  ): Promise<PaymentAttemptRecord> {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const rows = await tx.$queryRaw<
+        {
+          id: string;
+          status: OrderStatus;
+          totalInCents: number;
+          currency: "BRL";
+        }[]
+      >`SELECT "id", "status", "totalInCents", "currency" FROM "order" WHERE "id" = ${orderId} AND "customerId" = ${customerId} FOR UPDATE`;
+      const order = rows[0];
+      if (!order) throw new ConflictError("Order is not owned by the customer");
+      if (order.status !== "PENDING_PAYMENT")
+        throw new ConflictError(
+          "Payment attempts require a pending payment order",
+        );
+      const existing = await tx.paymentAttempt.findFirst({
+        where: {
+          orderId,
+          status: { in: ["CREATED", "PROCESSING", "AUTHORIZED", "CAPTURED"] },
+        },
+        select: { id: true, status: true },
+      });
+      if (existing)
+        throw new ConflictError(
+          "Order already has an active or captured payment attempt",
+        );
+      return tx.paymentAttempt.create({
+        data: {
+          orderId,
+          provider: "DEV_SIMULATOR",
+          providerReference: null,
+          method: input.method,
+          amountInCents: order.totalInCents,
+          currency: order.currency,
+        },
+        select: paymentSelect,
+      });
+    });
+  }
+  async setProviderReference(
+    id: string,
+    providerReference: string,
+  ): Promise<PaymentAttemptRecord> {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const current = await tx.paymentAttempt.findUnique({
+        where: { id },
+        select: paymentSelect,
+      });
+      if (!current) throw new ConflictError("Payment attempt not found");
+      if (current.providerReference === providerReference) return current;
+      if (current.providerReference !== null)
+        throw new ConflictError(
+          "Payment attempt already has another provider reference",
+        );
+      const result = await tx.paymentAttempt.updateMany({
+        where: { id, providerReference: null },
+        data: { providerReference },
+      });
+      if (result.count !== 1)
+        throw new ConflictError(
+          "Payment attempt reference changed concurrently",
+        );
+      return tx.paymentAttempt.findUniqueOrThrow({
+        where: { id },
+        select: paymentSelect,
+      });
+    });
+  }
+  async failProvisioning(
+    id: string,
+    failureCode = "PROVIDER_ERROR",
+    failureMessage = "Payment provider unavailable",
+  ): Promise<PaymentAttemptRecord | null> {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const result = await tx.paymentAttempt.updateMany({
+        where: { id, status: "CREATED" },
+        data: {
+          status: "FAILED",
+          failedAt: new Date(),
+          failureCode,
+          failureMessage,
+        },
+      });
+      if (result.count !== 1)
+        return tx.paymentAttempt.findUnique({
+          where: { id },
+          select: paymentSelect,
+        });
+      return tx.paymentAttempt.findUnique({
+        where: { id },
+        select: paymentSelect,
+      });
+    });
+  }
+  async transition(
+    id: string,
+    target: PaymentAttemptStatus,
+    failureCode?: string,
+    failureMessage?: string,
+  ): Promise<PaymentAttemptRecord | null> {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const identity = await tx.paymentAttempt.findUnique({
+        where: { id },
+        select: { orderId: true },
+      });
+      if (!identity) return null;
+      await tx.$queryRaw`SELECT "id" FROM "order" WHERE "id" = ${identity.orderId} FOR UPDATE`;
+      const attempt = await tx.paymentAttempt.findUnique({
+        where: { id },
+        select: paymentSelect,
+      });
+      if (!attempt) return null;
+      if (attempt.status === target) return attempt;
+      const allowed: Record<
+        PaymentAttemptStatus,
+        readonly PaymentAttemptStatus[]
+      > = {
+        CREATED: ["PROCESSING", "CANCELLED"],
+        PROCESSING: ["AUTHORIZED", "FAILED", "CANCELLED"],
+        AUTHORIZED: ["CAPTURED", "FAILED", "CANCELLED"],
+        CAPTURED: [],
+        FAILED: [],
+        CANCELLED: [],
+      };
+      if (!allowed[attempt.status].includes(target))
+        throw new ConflictError("Invalid payment attempt transition");
+      const data: Prisma.PaymentAttemptUpdateManyMutationInput = {
+        status: target,
+      };
+      if (target === "AUTHORIZED")
+        data.authorizedAt = attempt.authorizedAt ?? new Date();
+      if (target === "FAILED") {
+        data.failedAt = attempt.failedAt ?? new Date();
+        data.failureCode = failureCode ?? null;
+        data.failureMessage = failureMessage ?? null;
+      }
+      if (target === "CANCELLED")
+        data.cancelledAt = attempt.cancelledAt ?? new Date();
+      const result = await tx.paymentAttempt.updateMany({
+        where: { id, status: attempt.status },
+        data,
+      });
+      if (result.count !== 1)
+        throw new ConflictError("Payment attempt changed concurrently");
+      return tx.paymentAttempt.findUnique({
+        where: { id },
+        select: paymentSelect,
+      });
+    });
+  }
+  async capture(id: string): Promise<PaymentAttemptRecord | null> {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const identity = await tx.paymentAttempt.findUnique({
+        where: { id },
+        select: { orderId: true },
+      });
+      if (!identity) return null;
+      await tx.$queryRaw`SELECT "id" FROM "order" WHERE "id" = ${identity.orderId} FOR UPDATE`;
+      const attempt = await tx.paymentAttempt.findUnique({
+        where: { id },
+        select: paymentSelect,
+      });
+      if (!attempt) return null;
+      if (attempt.status === "CAPTURED") return attempt;
+      if (attempt.status !== "AUTHORIZED")
+        throw new ConflictError("Only authorized attempts can be captured");
+      const order = await tx.order.findUnique({
+        where: { id: attempt.orderId },
+        select: { status: true, totalInCents: true },
+      });
+      if (!order || order.status !== "PENDING_PAYMENT")
+        throw new ConflictError("Order is not capturable");
+      if (attempt.amountInCents !== order.totalInCents)
+        throw new ConflictError(
+          "Payment attempt amount does not match order total",
+        );
+      const otherCaptured = await tx.paymentAttempt.count({
+        where: {
+          orderId: attempt.orderId,
+          status: "CAPTURED",
+          id: { not: id },
+        },
+      });
+      if (otherCaptured > 0)
+        throw new ConflictError("Order already has a captured payment attempt");
+      const updated = await tx.paymentAttempt.updateMany({
+        where: { id, status: "AUTHORIZED", amountInCents: order.totalInCents },
+        data: {
+          status: "CAPTURED",
+          capturedAt: attempt.capturedAt ?? new Date(),
+        },
+      });
+      if (updated.count !== 1)
+        throw new ConflictError("Payment attempt changed concurrently");
+      await this.testHooks.beforeOrderConfirmation?.();
+      const orderUpdated = await tx.order.updateMany({
+        where: { id: attempt.orderId, status: "PENDING_PAYMENT" },
+        data: { status: "CONFIRMED", confirmedAt: new Date() },
+      });
+      if (orderUpdated.count !== 1)
+        throw new ConflictError("Order changed concurrently");
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: attempt.orderId,
+          fromStatus: "PENDING_PAYMENT",
+          toStatus: "CONFIRMED",
+          reason: "Payment captured in full",
+        },
+      });
+      return tx.paymentAttempt.findUnique({
+        where: { id },
+        select: paymentSelect,
+      });
+    });
+  }
 }

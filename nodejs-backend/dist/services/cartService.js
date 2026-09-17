@@ -48,11 +48,18 @@ function toDto(cart) {
             image: item.product.image,
             availableQuantity: available,
             hasSufficientStock,
-            isAvailable: item.product.isActive && item.product.seller.isActive && hasSufficientStock,
+            isAvailable: item.product.isActive &&
+                item.product.seller.isActive &&
+                hasSufficientStock,
             lineTotalInCents: item.quantity * item.product.priceInCents,
         };
     });
-    return { id: cart.id, status: "ACTIVE", items, totalInCents: items.reduce((total, item) => total + item.lineTotalInCents, 0) };
+    return {
+        id: cart.id,
+        status: "ACTIVE",
+        items,
+        totalInCents: items.reduce((total, item) => total + item.lineTotalInCents, 0),
+    };
 }
 class CartService {
     customerIdFor(userId) {

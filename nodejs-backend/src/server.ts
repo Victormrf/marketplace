@@ -16,6 +16,7 @@ import { deliveryRoutes } from "./controllers/deliveryController";
 import { inventoryRoutes } from "./controllers/inventoryController";
 import { customerAddressRoutes } from "./controllers/customerAddressController";
 import { checkoutRoutes } from "./controllers/checkoutController";
+import { refundRoutes } from "./controllers/refundController";
 import cron from "node-cron";
 import { updateDeliveryStatuses } from "./jobs/deliveryStatusUpdater";
 
@@ -51,6 +52,7 @@ app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
 app.use("/seller-orders", sellerOrderRoutes);
 app.use("/", paymentRoutes);
+app.use("/", refundRoutes);
 app.use("/review", reviewRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/delivery", deliveryRoutes);

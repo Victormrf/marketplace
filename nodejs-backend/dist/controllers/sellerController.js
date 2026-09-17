@@ -49,7 +49,9 @@ exports.sellerRoutes.get("/all", authMiddleware_1.authMiddleware, (0, roleMiddle
 }));
 exports.sellerRoutes.get("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json({ profile: yield sellerService_1.sellerService.getSellerProfile(req.user.id) });
+        res
+            .status(200)
+            .json({ profile: yield sellerService_1.sellerService.getSellerProfile(req.user.id) });
     }
     catch (error) {
         sendError(error, res);

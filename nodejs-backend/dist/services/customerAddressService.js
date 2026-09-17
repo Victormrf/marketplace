@@ -19,12 +19,29 @@ function toDto(address) {
     return Object.assign(Object.assign({}, address), { countryCode: "BR" });
 }
 const ADDRESS_FIELDS = new Set([
-    "recipientName", "postalCode", "street", "number", "complement", "neighborhood",
-    "city", "state", "countryCode", "phone", "isDefault",
+    "recipientName",
+    "postalCode",
+    "street",
+    "number",
+    "complement",
+    "neighborhood",
+    "city",
+    "state",
+    "countryCode",
+    "phone",
+    "isDefault",
 ]);
 const UPDATE_FIELDS = new Set([
-    "recipientName", "postalCode", "street", "number", "complement", "neighborhood",
-    "city", "state", "countryCode", "phone",
+    "recipientName",
+    "postalCode",
+    "street",
+    "number",
+    "complement",
+    "neighborhood",
+    "city",
+    "state",
+    "countryCode",
+    "phone",
 ]);
 function rejectUnknown(input, allowed) {
     const unknown = Object.keys(input).find((field) => !allowed.has(field));
@@ -130,7 +147,12 @@ class CustomerAddressService {
             ]);
             return {
                 data: data.map(toDto),
-                pagination: { page: pagination.page, limit: pagination.limit, total, totalPages: Math.ceil(total / pagination.limit) },
+                pagination: {
+                    page: pagination.page,
+                    limit: pagination.limit,
+                    total,
+                    totalPages: Math.ceil(total / pagination.limit),
+                },
             };
         });
     }

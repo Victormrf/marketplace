@@ -28,7 +28,10 @@ const SELLER_DEACTIVATION_SELECT = Object.assign(Object.assign({}, SELLER_SELECT
 class SellerRepository {
     findByUserId(userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.seller.findUnique({ where: { userId }, select: SELLER_SELECT });
+            return db_1.default.seller.findUnique({
+                where: { userId },
+                select: SELLER_SELECT,
+            });
         });
     }
     findAll() {
@@ -46,12 +49,19 @@ class SellerRepository {
     }
     update(userId, data) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.seller.update({ where: { userId }, data, select: SELLER_SELECT });
+            return db_1.default.seller.update({
+                where: { userId },
+                data,
+                select: SELLER_SELECT,
+            });
         });
     }
     findForDeactivation(userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.seller.findUnique({ where: { userId }, select: SELLER_DEACTIVATION_SELECT });
+            return db_1.default.seller.findUnique({
+                where: { userId },
+                select: SELLER_DEACTIVATION_SELECT,
+            });
         });
     }
     deactivate(record, deactivationTime) {
@@ -60,7 +70,10 @@ class SellerRepository {
                 where: { id: record.id, isActive: true },
                 data: { isActive: false, deactivatedAt: deactivationTime },
             });
-            return db_1.default.seller.findUniqueOrThrow({ where: { id: record.id }, select: SELLER_SELECT });
+            return db_1.default.seller.findUniqueOrThrow({
+                where: { id: record.id },
+                select: SELLER_SELECT,
+            });
         });
     }
 }

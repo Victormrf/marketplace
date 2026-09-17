@@ -10,7 +10,7 @@ import {
 export class ReviewService {
   async createProductReview(
     userId: string,
-    reviewData: { productId: string; rating: number; comment?: string }
+    reviewData: { productId: string; rating: number; comment?: string },
   ) {
     const { productId, rating, comment } = reviewData;
     if (!productId || rating === undefined) {
@@ -30,7 +30,7 @@ export class ReviewService {
         error.code === "P2002"
       ) {
         throw new ConflictError(
-          "This product has already received a review from you."
+          "This product has already received a review from you.",
         );
       }
     }
@@ -38,7 +38,7 @@ export class ReviewService {
 
   async createSellerReview(
     userId: string,
-    reviewData: { sellerId: string; rating: number; comment?: string }
+    reviewData: { sellerId: string; rating: number; comment?: string },
   ) {
     const { sellerId, rating, comment } = reviewData;
     if (!sellerId || rating === undefined) {
@@ -58,7 +58,7 @@ export class ReviewService {
         error.code === "P2002"
       ) {
         throw new ConflictError(
-          "This seller has already received a review from you."
+          "This seller has already received a review from you.",
         );
       }
     }

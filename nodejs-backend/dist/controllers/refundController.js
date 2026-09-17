@@ -10,84 +10,91 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.refundRoutes = void 0;
+const client_1 = require("@prisma/client");
 const express_1 = require("express");
-const refundService_1 = require("../services/refundService");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
+const refundService_1 = require("../services/refundService");
 const customErrors_1 = require("../utils/customErrors");
-const roleMiddleware_1 = require("../middlewares/roleMiddleware");
 exports.refundRoutes = (0, express_1.Router)();
-const refundService = new refundService_1.RefundService();
-exports.refundRoutes.post("/", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { paymentId, reason, amount } = req.body;
+const service = new refundService_1.RefundService();
+function pagination(q) {
+    const page = q.page === undefined ? 1 : Number(q.page);
+    const limit = q.limit === undefined ? 20 : Number(q.limit);
+    if (!Number.isInteger(page) ||
+        page < 1 ||
+        !Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > 100)
+        throw new customErrors_1.ValidationError("Invalid pagination");
+    return { page, limit };
+}
+function filters(q) {
+    const result = {};
+    if (q.status !== undefined) {
+        if (typeof q.status !== "string" ||
+            !Object.values(client_1.RefundStatus).includes(q.status))
+            throw new customErrors_1.ValidationError("Invalid status");
+        result.status = q.status;
+    }
+    for (const key of ["createdFrom", "createdTo"])
+        if (q[key] !== undefined) {
+            if (typeof q[key] !== "string" || Number.isNaN(Date.parse(q[key])))
+                throw new customErrors_1.ValidationError(`Invalid ${key}`);
+            result[key] = new Date(q[key]);
+        }
+    if (result.createdFrom &&
+        result.createdTo &&
+        result.createdFrom > result.createdTo)
+        throw new customErrors_1.ValidationError("Invalid date range");
+    return result;
+}
+function handle(error, res) {
+    if (error instanceof customErrors_1.ValidationError)
+        return res.status(400).json({ error: error.message });
+    if (error instanceof customErrors_1.ForbiddenError)
+        return res.status(403).json({ error: error.message });
+    if (error instanceof customErrors_1.ObjectNotFoundError)
+        return res.status(404).json({ error: error.message });
+    if (error instanceof customErrors_1.ConflictError)
+        return res.status(409).json({ error: error.message });
+    return res.status(500).json({ error: "Internal Server Error" });
+}
+exports.refundRoutes.post("/payment-attempts/:paymentAttemptId/refunds", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const refund = yield refundService.requestRefund(paymentId, reason, amount);
-        res.status(201).json(refund);
+        const body = (req.body || {});
+        const keys = Object.keys(body);
+        if (keys.some((key) => key !== "amountInCents" && key !== "reason") ||
+            !Object.prototype.hasOwnProperty.call(body, "amountInCents"))
+            throw new customErrors_1.ValidationError("Only amountInCents and reason are accepted");
+        if (typeof body.amountInCents !== "number")
+            throw new customErrors_1.ValidationError("amountInCents must be a number");
+        res
+            .status(201)
+            .json(yield service.requestRefund(req.user, req.params.paymentAttemptId, {
+            amountInCents: body.amountInCents,
+            reason: body.reason,
+        }));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ValidationError) {
-            res.status(400).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error });
-        }
+        handle(error, res);
     }
 }));
-exports.refundRoutes.get("/:refundId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { refundId } = req.params;
+exports.refundRoutes.get("/payment-attempts/:paymentAttemptId/refunds", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const refund = yield refundService.getRefundById(refundId);
-        res.status(200).json(refund);
+        const p = pagination(req.query);
+        res
+            .status(200)
+            .json(yield service.list(req.user, req.params.paymentAttemptId, filters(req.query), p.page, p.limit));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error });
-        }
+        handle(error, res);
     }
 }));
-// refundRoutes.get("/customer/:customerId", authMiddleware, async (req, res) => {
-//   const { customerId } = req.params;
-//   try {
-//     const refunds = await refundService.getRefundsByCustomer(customerId);
-//     res.status(200).json(refunds);
-//   } catch (error) {
-//     if (error instanceof ObjectsNotFoundError) {
-//       res.status(404).json({ error: error.message });
-//     } else {
-//       res.status(500).json({ error });
-//     }
-//   }
-// });
-exports.refundRoutes.put("/:refundId/status", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { refundId } = req.params;
-    const { status } = req.body;
+exports.refundRoutes.get("/refunds/:refundId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const updatedRefund = yield refundService.updateRefundStatus(refundId, status);
-        res.status(200).json(updatedRefund);
+        res.status(200).json(yield service.get(req.user, req.params.refundId));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error });
-        }
-    }
-}));
-exports.refundRoutes.delete("/:refundId", authMiddleware_1.authMiddleware, (0, roleMiddleware_1.roleMiddleware)("ADMIN"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { refundId } = req.params;
-    try {
-        yield refundService.deleteRefund(refundId);
-        res.status(204).send();
-    }
-    catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error });
-        }
+        handle(error, res);
     }
 }));

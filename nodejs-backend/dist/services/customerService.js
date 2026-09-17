@@ -19,17 +19,28 @@ function profileData(input) {
     const unknown = Object.keys(input).find((field) => field !== "phone");
     if (unknown)
         throw new customErrors_1.ValidationError(`Unsupported customer field: ${unknown}`);
-    if (input.phone !== undefined && input.phone !== null && typeof input.phone !== "string") {
+    if (input.phone !== undefined &&
+        input.phone !== null &&
+        typeof input.phone !== "string") {
         throw new customErrors_1.ValidationError("phone must be a string");
     }
-    return { phone: input.phone === undefined || input.phone === null ? null : input.phone.trim() || null };
+    return {
+        phone: input.phone === undefined || input.phone === null
+            ? null
+            : input.phone.trim() || null,
+    };
 }
 class CustomerService {
     toDto(record) {
         return { id: record.id, userId: record.userId, phone: record.phone };
     }
     toWithUserDto(record) {
-        return { id: record.id, userId: record.userId, phone: record.phone, user: record.user };
+        return {
+            id: record.id,
+            userId: record.userId,
+            phone: record.phone,
+            user: record.user,
+        };
     }
     createCustomerProfile(userId, input) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -38,7 +49,8 @@ class CustomerService {
                 throw new customErrors_1.ObjectNotFoundError("User");
             if (user.role !== client_1.UserRole.CUSTOMER)
                 throw new customErrors_1.ForbiddenError("Only CUSTOMER users can create a customer profile");
-            if ((yield customerRepository_1.customerRepository.findByUserId(userId)) || (yield sellerRepository_1.sellerRepository.findByUserId(userId)))
+            if ((yield customerRepository_1.customerRepository.findByUserId(userId)) ||
+                (yield sellerRepository_1.sellerRepository.findByUserId(userId)))
                 throw new customErrors_1.ExistingProfileError();
             try {
                 return this.toDto(yield customerRepository_1.customerRepository.create(Object.assign({ userId }, profileData(input))));

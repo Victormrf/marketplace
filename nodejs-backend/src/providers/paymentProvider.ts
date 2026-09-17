@@ -11,7 +11,6 @@ export class PaymentProviderDefinitiveError extends Error {
     if (cause !== undefined) (this as Error & { cause?: unknown }).cause = cause;
   }
 }
-
 export class PaymentProviderUnknownResultError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message);

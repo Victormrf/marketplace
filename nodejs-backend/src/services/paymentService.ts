@@ -1,28 +1,213 @@
 import { PaymentAttemptStatus, PaymentMethod, UserRole } from "@prisma/client";
-import { PaymentAttemptRepository, type PaymentAttemptRecord } from "../repositories/paymentAttemptRepository";
-import { DevPaymentProvider, PaymentProviderDefinitiveError, type PaymentProvider } from "../providers/paymentProvider";
+import {
+  PaymentAttemptRepository,
+  type PaymentAttemptRecord,
+} from "../repositories/paymentAttemptRepository";
+import {
+  DevPaymentProvider,
+  PaymentProviderDefinitiveError,
+  type PaymentProvider,
+} from "../providers/paymentProvider";
 import { customerRepository } from "../repositories/customerRepository";
 import type { AuthenticatedUserDto } from "../types/auth";
-import type { CreatePaymentAttemptInput, PaymentAttemptCollectionDto, PaymentAttemptDto, PaymentAttemptReadFilters, PaymentFailureInput } from "../types/payment";
-import { ConflictError, ForbiddenError, ObjectNotFoundError, ValidationError } from "../utils/customErrors";
+import type {
+  CreatePaymentAttemptInput,
+  PaymentAttemptCollectionDto,
+  PaymentAttemptDto,
+  PaymentAttemptReadFilters,
+  PaymentFailureInput,
+} from "../types/payment";
+import {
+  ConflictError,
+  ForbiddenError,
+  ObjectNotFoundError,
+  ValidationError,
+} from "../utils/customErrors";
 
-function dto(record: PaymentAttemptRecord): PaymentAttemptDto { return { id: record.id, orderId: record.orderId, provider: record.provider, providerReference: record.providerReference, method: record.method, status: record.status, amountInCents: record.amountInCents, currency: record.currency, failureCode: record.failureCode, failureMessage: record.failureMessage, createdAt: record.createdAt, updatedAt: record.updatedAt, authorizedAt: record.authorizedAt, capturedAt: record.capturedAt, failedAt: record.failedAt, cancelledAt: record.cancelledAt }; }
-function page(total: number, current: number, limit: number) { return { page: current, limit, total, totalPages: Math.ceil(total / limit) }; }
-function failureText(value: unknown, field: string): string | undefined { if (value === undefined) return undefined; if (typeof value !== "string") throw new ValidationError(`${field} must be a string`); const normalized = value.trim(); if (normalized.length > 500) throw new ValidationError(`${field} is too long`); return normalized || undefined; }
+function dto(record: PaymentAttemptRecord): PaymentAttemptDto {
+  return {
+    id: record.id,
+    orderId: record.orderId,
+    provider: record.provider,
+    providerReference: record.providerReference,
+    method: record.method,
+    status: record.status,
+    amountInCents: record.amountInCents,
+    currency: record.currency,
+    failureCode: record.failureCode,
+    failureMessage: record.failureMessage,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    authorizedAt: record.authorizedAt,
+    capturedAt: record.capturedAt,
+    failedAt: record.failedAt,
+    cancelledAt: record.cancelledAt,
+  };
+}
+function page(total: number, current: number, limit: number) {
+  return { page: current, limit, total, totalPages: Math.ceil(total / limit) };
+}
+function failureText(value: unknown, field: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string")
+    throw new ValidationError(`${field} must be a string`);
+  const normalized = value.trim();
+  if (normalized.length > 500)
+    throw new ValidationError(`${field} is too long`);
+  return normalized || undefined;
+}
 
 export class PaymentService {
-  constructor(private readonly repository = new PaymentAttemptRepository(), private readonly provider: PaymentProvider = new DevPaymentProvider()) {}
-  private async customerId(userId: string) { const profile = await customerRepository.findByUserId(userId); if (!profile) throw new ForbiddenError("Only customers can access payments"); return profile.id; }
-  async createAttempt(user: AuthenticatedUserDto, orderId: string, input: CreatePaymentAttemptInput): Promise<PaymentAttemptDto> { if (user.role !== UserRole.CUSTOMER) throw new ForbiddenError(); const customerId = await this.customerId(user.id); if (!Object.values(PaymentMethod).includes(input.method)) throw new ValidationError("Invalid payment method"); const local = await this.repository.createLocalForCustomer(customerId, orderId, input); return this.provisionAttempt(local.id); }
+  constructor(
+    private readonly repository = new PaymentAttemptRepository(),
+    private readonly provider: PaymentProvider = new DevPaymentProvider(),
+  ) {}
+  private async customerId(userId: string) {
+    const profile = await customerRepository.findByUserId(userId);
+    if (!profile)
+      throw new ForbiddenError("Only customers can access payments");
+    return profile.id;
+  }
+  async createAttempt(
+    user: AuthenticatedUserDto,
+    orderId: string,
+    input: CreatePaymentAttemptInput,
+  ): Promise<PaymentAttemptDto> {
+    if (user.role !== UserRole.CUSTOMER) throw new ForbiddenError();
+    const customerId = await this.customerId(user.id);
+    if (!Object.values(PaymentMethod).includes(input.method))
+      throw new ValidationError("Invalid payment method");
+    const local = await this.repository.createLocalForCustomer(
+      customerId,
+      orderId,
+      input,
+    );
+    return this.provisionAttempt(local.id);
+  }
   /** Reconciles the same locally-created attempt; it is intentionally not an HTTP operation. */
-  async provisionAttempt(id: string): Promise<PaymentAttemptDto> { const local = await this.repository.findById(id); if (!local) throw new ObjectNotFoundError("PaymentAttempt"); if (local.status !== PaymentAttemptStatus.CREATED) throw new ConflictError("Only CREATED attempts can be provisioned"); let external: Awaited<ReturnType<PaymentProvider["createAttempt"]>>; try { external = await this.provider.createAttempt({ paymentAttemptId: local.id, orderId: local.orderId, method: local.method, amountInCents: local.amountInCents }); } catch (error) { if (error instanceof PaymentProviderDefinitiveError) await this.repository.failProvisioning(local.id, error.failureCode, "Payment provider rejected the payment").catch(() => undefined); throw error; } return dto(await this.repository.setProviderReference(local.id, external.providerReference)); }
-  async listAttempts(user: AuthenticatedUserDto, orderId: string, filters: PaymentAttemptReadFilters, current: number, limit: number): Promise<PaymentAttemptCollectionDto> { const customerId = user.role === UserRole.CUSTOMER ? await this.customerId(user.id) : null; if (user.role !== UserRole.CUSTOMER && user.role !== UserRole.ADMIN) throw new ForbiddenError(); const [total, records] = customerId ? await Promise.all([this.repository.countForCustomer(customerId, orderId, filters), this.repository.findForCustomer(customerId, orderId, filters, (current - 1) * limit, limit)]) : await Promise.all([this.repository.countAll(orderId, filters), this.repository.findAll(orderId, filters, (current - 1) * limit, limit)]); return { data: records.map(dto), pagination: page(total, current, limit) }; }
-  async getAttempt(user: AuthenticatedUserDto, id: string): Promise<PaymentAttemptDto> { if (user.role === UserRole.SELLER) throw new ForbiddenError(); const record = user.role === UserRole.ADMIN ? await this.repository.findById(id) : await this.repository.findByCustomerAndId(await this.customerId(user.id), id); if (!record) throw new ObjectNotFoundError("PaymentAttempt"); return dto(record); }
-  async startProcessing(id: string) { return dto(await this.requireTransition(id, PaymentAttemptStatus.PROCESSING)); }
-  async authorize(id: string, providerReference: string) { const record = await this.repository.findById(id); if (!record || record.providerReference !== providerReference) throw new ObjectNotFoundError("PaymentAttempt"); return dto(await this.requireTransition(id, PaymentAttemptStatus.AUTHORIZED)); }
-  async capture(id: string) { return dto(await this.requireCapture(id)); }
-  async fail(id: string, failure: PaymentFailureInput) { return dto(await this.requireTransition(id, PaymentAttemptStatus.FAILED, failureText(failure.failureCode, "failureCode"), failureText(failure.failureMessage, "failureMessage"))); }
-  async cancel(id: string) { return dto(await this.requireTransition(id, PaymentAttemptStatus.CANCELLED)); }
-  private async requireTransition(id: string, target: PaymentAttemptStatus, code?: string, message?: string) { const result = await this.repository.transition(id, target, code, message); if (!result) throw new ObjectNotFoundError("PaymentAttempt"); return result; }
-  private async requireCapture(id: string) { const result = await this.repository.capture(id); if (!result) throw new ObjectNotFoundError("PaymentAttempt"); return result; }
+  async provisionAttempt(id: string): Promise<PaymentAttemptDto> {
+    const local = await this.repository.findById(id);
+    if (!local) throw new ObjectNotFoundError("PaymentAttempt");
+    if (local.status !== PaymentAttemptStatus.CREATED)
+      throw new ConflictError("Only CREATED attempts can be provisioned");
+    let external: Awaited<ReturnType<PaymentProvider["createAttempt"]>>;
+    try {
+      external = await this.provider.createAttempt({
+        paymentAttemptId: local.id,
+        orderId: local.orderId,
+        method: local.method,
+        amountInCents: local.amountInCents,
+      });
+    } catch (error) {
+      if (error instanceof PaymentProviderDefinitiveError)
+        await this.repository
+          .failProvisioning(
+            local.id,
+            error.failureCode,
+            "Payment provider rejected the payment",
+          )
+          .catch(() => undefined);
+      throw error;
+    }
+    return dto(
+      await this.repository.setProviderReference(
+        local.id,
+        external.providerReference,
+      ),
+    );
+  }
+  async listAttempts(
+    user: AuthenticatedUserDto,
+    orderId: string,
+    filters: PaymentAttemptReadFilters,
+    current: number,
+    limit: number,
+  ): Promise<PaymentAttemptCollectionDto> {
+    const customerId =
+      user.role === UserRole.CUSTOMER ? await this.customerId(user.id) : null;
+    if (user.role !== UserRole.CUSTOMER && user.role !== UserRole.ADMIN)
+      throw new ForbiddenError();
+    const [total, records] = customerId
+      ? await Promise.all([
+          this.repository.countForCustomer(customerId, orderId, filters),
+          this.repository.findForCustomer(
+            customerId,
+            orderId,
+            filters,
+            (current - 1) * limit,
+            limit,
+          ),
+        ])
+      : await Promise.all([
+          this.repository.countAll(orderId, filters),
+          this.repository.findAll(
+            orderId,
+            filters,
+            (current - 1) * limit,
+            limit,
+          ),
+        ]);
+    return { data: records.map(dto), pagination: page(total, current, limit) };
+  }
+  async getAttempt(
+    user: AuthenticatedUserDto,
+    id: string,
+  ): Promise<PaymentAttemptDto> {
+    if (user.role === UserRole.SELLER) throw new ForbiddenError();
+    const record =
+      user.role === UserRole.ADMIN
+        ? await this.repository.findById(id)
+        : await this.repository.findByCustomerAndId(
+            await this.customerId(user.id),
+            id,
+          );
+    if (!record) throw new ObjectNotFoundError("PaymentAttempt");
+    return dto(record);
+  }
+  async startProcessing(id: string) {
+    return dto(
+      await this.requireTransition(id, PaymentAttemptStatus.PROCESSING),
+    );
+  }
+  async authorize(id: string, providerReference: string) {
+    const record = await this.repository.findById(id);
+    if (!record || record.providerReference !== providerReference)
+      throw new ObjectNotFoundError("PaymentAttempt");
+    return dto(
+      await this.requireTransition(id, PaymentAttemptStatus.AUTHORIZED),
+    );
+  }
+  async capture(id: string) {
+    return dto(await this.requireCapture(id));
+  }
+  async fail(id: string, failure: PaymentFailureInput) {
+    return dto(
+      await this.requireTransition(
+        id,
+        PaymentAttemptStatus.FAILED,
+        failureText(failure.failureCode, "failureCode"),
+        failureText(failure.failureMessage, "failureMessage"),
+      ),
+    );
+  }
+  async cancel(id: string) {
+    return dto(
+      await this.requireTransition(id, PaymentAttemptStatus.CANCELLED),
+    );
+  }
+  private async requireTransition(
+    id: string,
+    target: PaymentAttemptStatus,
+    code?: string,
+    message?: string,
+  ) {
+    const result = await this.repository.transition(id, target, code, message);
+    if (!result) throw new ObjectNotFoundError("PaymentAttempt");
+    return result;
+  }
+  private async requireCapture(id: string) {
+    const result = await this.repository.capture(id);
+    if (!result) throw new ObjectNotFoundError("PaymentAttempt");
+    return result;
+  }
 }

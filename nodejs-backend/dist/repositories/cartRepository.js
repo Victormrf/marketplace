@@ -33,7 +33,9 @@ const CART_SELECT = {
                     currency: true,
                     image: true,
                     seller: { select: { isActive: true } },
-                    inventory: { select: { onHandQuantity: true, reservedQuantity: true } },
+                    inventory: {
+                        select: { onHandQuantity: true, reservedQuantity: true },
+                    },
                 },
             },
         },
@@ -137,7 +139,7 @@ class CartRepository {
             return db_1.default.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
                 var _a;
                 yield lockCustomer(tx, customerId);
-                const rows = yield tx.$queryRaw(client_1.Prisma.sql `
+                const rows = (yield tx.$queryRaw(client_1.Prisma.sql `
       UPDATE "cart_item" ci
       SET "quantity" = ${quantity}, "updatedAt" = CURRENT_TIMESTAMP
       FROM "cart" c, "product" p, "seller" s, "inventory" i
@@ -152,7 +154,7 @@ class CartRepository {
         AND s."isActive" = true
         AND i."onHandQuantity" - i."reservedQuantity" >= ${quantity}
       RETURNING ci."id", ci."productId", ci."quantity"
-    `);
+    `));
                 return (_a = rows[0]) !== null && _a !== void 0 ? _a : null;
             }));
         });

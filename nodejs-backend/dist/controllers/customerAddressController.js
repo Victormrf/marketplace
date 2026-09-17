@@ -36,7 +36,9 @@ function sendError(error, res) {
 exports.customerAddressRoutes.use(authMiddleware_1.authMiddleware);
 exports.customerAddressRoutes.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(201).json(yield customerAddressService_1.customerAddressService.create(req.user.id, req.body || {}));
+        res
+            .status(201)
+            .json(yield customerAddressService_1.customerAddressService.create(req.user.id, req.body || {}));
     }
     catch (error) {
         sendError(error, res);
@@ -44,7 +46,9 @@ exports.customerAddressRoutes.post("/", (req, res) => __awaiter(void 0, void 0, 
 }));
 exports.customerAddressRoutes.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield customerAddressService_1.customerAddressService.list(req.user.id, pagination(req.query)));
+        res
+            .status(200)
+            .json(yield customerAddressService_1.customerAddressService.list(req.user.id, pagination(req.query)));
     }
     catch (error) {
         sendError(error, res);
@@ -52,7 +56,9 @@ exports.customerAddressRoutes.get("/", (req, res) => __awaiter(void 0, void 0, v
 }));
 exports.customerAddressRoutes.get("/:addressId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield customerAddressService_1.customerAddressService.get(req.user.id, req.params.addressId));
+        res
+            .status(200)
+            .json(yield customerAddressService_1.customerAddressService.get(req.user.id, req.params.addressId));
     }
     catch (error) {
         sendError(error, res);
@@ -60,7 +66,9 @@ exports.customerAddressRoutes.get("/:addressId", (req, res) => __awaiter(void 0,
 }));
 exports.customerAddressRoutes.put("/:addressId/default", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield customerAddressService_1.customerAddressService.setDefault(req.user.id, req.params.addressId));
+        res
+            .status(200)
+            .json(yield customerAddressService_1.customerAddressService.setDefault(req.user.id, req.params.addressId));
     }
     catch (error) {
         sendError(error, res);
@@ -68,7 +76,9 @@ exports.customerAddressRoutes.put("/:addressId/default", (req, res) => __awaiter
 }));
 exports.customerAddressRoutes.put("/:addressId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        res.status(200).json(yield customerAddressService_1.customerAddressService.update(req.user.id, req.params.addressId, req.body || {}));
+        res
+            .status(200)
+            .json(yield customerAddressService_1.customerAddressService.update(req.user.id, req.params.addressId, req.body || {}));
     }
     catch (error) {
         sendError(error, res);

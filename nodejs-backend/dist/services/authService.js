@@ -28,7 +28,9 @@ class AuthService {
             if (!normalizedEmail || !password)
                 throw new customErrors_1.InvalidCredentialsError();
             const user = yield userRepository_1.userRepository.findForAuthentication(normalizedEmail);
-            if (!user || !user.isActive || !(yield bcrypt_1.default.compare(password, user.password))) {
+            if (!user ||
+                !user.isActive ||
+                !(yield bcrypt_1.default.compare(password, user.password))) {
                 throw new customErrors_1.InvalidCredentialsError();
             }
             return jsonwebtoken_1.default.sign({ sub: user.id }, (0, jwt_1.requireJwtSecret)(), { expiresIn: "1h" });

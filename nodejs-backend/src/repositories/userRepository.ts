@@ -21,8 +21,12 @@ const USER_DEACTIVATION_SELECT = {
   seller: { select: { id: true, isActive: true } },
 } satisfies Prisma.UserSelect;
 
-export type UserSafeRecord = Prisma.UserGetPayload<{ select: typeof USER_SAFE_SELECT }>;
-export type UserAuthRecord = Prisma.UserGetPayload<{ select: typeof USER_AUTH_SELECT }>;
+export type UserSafeRecord = Prisma.UserGetPayload<{
+  select: typeof USER_SAFE_SELECT;
+}>;
+export type UserAuthRecord = Prisma.UserGetPayload<{
+  select: typeof USER_AUTH_SELECT;
+}>;
 export type UserDeactivationRecord = Prisma.UserGetPayload<{
   select: typeof USER_DEACTIVATION_SELECT;
 }>;
@@ -47,8 +51,13 @@ export class UserRepository {
     return prisma.user.findUnique({ where: { id }, select: USER_SAFE_SELECT });
   }
 
-  async findForAuthentication(normalizedEmail: string): Promise<UserAuthRecord | null> {
-    return prisma.user.findUnique({ where: { normalizedEmail }, select: USER_AUTH_SELECT });
+  async findForAuthentication(
+    normalizedEmail: string,
+  ): Promise<UserAuthRecord | null> {
+    return prisma.user.findUnique({
+      where: { normalizedEmail },
+      select: USER_AUTH_SELECT,
+    });
   }
 
   async findIdentity(id: string): Promise<UserSafeRecord | null> {
@@ -60,14 +69,26 @@ export class UserRepository {
   }
 
   async update(id: string, data: UserUpdateData): Promise<UserSafeRecord> {
-    return prisma.user.update({ where: { id }, data, select: USER_SAFE_SELECT });
+    return prisma.user.update({
+      where: { id },
+      data,
+      select: USER_SAFE_SELECT,
+    });
   }
 
-  async findForDeactivation(id: string): Promise<UserDeactivationRecord | null> {
-    return prisma.user.findUnique({ where: { id }, select: USER_DEACTIVATION_SELECT });
+  async findForDeactivation(
+    id: string,
+  ): Promise<UserDeactivationRecord | null> {
+    return prisma.user.findUnique({
+      where: { id },
+      select: USER_DEACTIVATION_SELECT,
+    });
   }
 
-  async deactivateWithSeller(record: UserDeactivationRecord, deactivationTime: Date): Promise<UserSafeRecord> {
+  async deactivateWithSeller(
+    record: UserDeactivationRecord,
+    deactivationTime: Date,
+  ): Promise<UserSafeRecord> {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (record.isActive) {
         await tx.user.updateMany({
@@ -81,7 +102,10 @@ export class UserRepository {
           data: { isActive: false, deactivatedAt: deactivationTime },
         });
       }
-      return tx.user.findUniqueOrThrow({ where: { id: record.id }, select: USER_SAFE_SELECT });
+      return tx.user.findUniqueOrThrow({
+        where: { id: record.id },
+        select: USER_SAFE_SELECT,
+      });
     });
   }
 }
