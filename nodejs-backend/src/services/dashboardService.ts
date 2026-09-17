@@ -1,6 +1,6 @@
 import { OrderRepository } from "../repositories/orderRepository";
 import { productRepository } from "../repositories/productRepository";
-import { ReviewModel } from "../models/reviewModel";
+import { reviewRepository } from "../repositories/reviewRepository";
 import { format } from "date-fns";
 
 export class DashboardService {
@@ -155,6 +155,6 @@ export class DashboardService {
   }
 
   async getRatingDistributionOfSeller(sellerId: string) {
-    return await ReviewModel.getRatingDistributionBySeller(sellerId);
+    return await reviewRepository.ratingDistributionBySeller(sellerId);
   }
 }

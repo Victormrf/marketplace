@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardService = void 0;
 const orderRepository_1 = require("../repositories/orderRepository");
 const productRepository_1 = require("../repositories/productRepository");
-const reviewModel_1 = require("../models/reviewModel");
+const reviewRepository_1 = require("../repositories/reviewRepository");
 const date_fns_1 = require("date-fns");
 class DashboardService {
     constructor() {
@@ -141,7 +141,7 @@ class DashboardService {
     }
     getRatingDistributionOfSeller(sellerId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield reviewModel_1.ReviewModel.getRatingDistributionBySeller(sellerId);
+            return yield reviewRepository_1.reviewRepository.ratingDistributionBySeller(sellerId);
         });
     }
 }

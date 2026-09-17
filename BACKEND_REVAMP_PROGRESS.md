@@ -1,6 +1,6 @@
 # Backend Revamp — Controle de Progresso
 
-Última atualização: 15/09/2026 — Etapa 9 liberada
+Última atualização: 17/09/2026 — Etapa 12 concluída; Etapa 13 liberada
 
 ## Objetivo
 
@@ -117,36 +117,45 @@ Observação futura: se desativação de produto/seller e movimentação de esto
 
 ### Etapa 9 — Consultas e estados de pedidos
 
-- [~] Etapa atual
-- [ ] visão consolidada do customer
-- [ ] visão do SellerOrder
-- [ ] históricos
-- [ ] máquinas de estado
-- [ ] ownership
+- [x] visão consolidada do customer
+- [x] visão do SellerOrder
+- [x] históricos
+- [x] máquinas de estado
+- [x] ownership
 
 ### Etapa 10 — Pagamentos e reembolsos
 
-- [ ] múltiplos PaymentAttempts
-- [ ] valores em centavos
-- [ ] captura total/parcial
-- [ ] múltiplos refunds
-- [ ] limites acumulados
+- [x] múltiplos PaymentAttempts com somente um ativo ou capturado por Order
+- [x] valores em centavos
+- [x] cobrança e captura integral da Order
+- [x] provider simulado, idempotência e reconciliação
+- [x] múltiplos refunds financeiros parciais
+- [x] limites acumulados e concorrência de refunds
+- [x] máquinas de estado de PaymentAttempt e Refund
+
+Observação de escopo: refunds permanecem relacionados ao `PaymentAttempt`, sem vínculo estruturado por produto, `OrderItem`, `SellerOrder` ou seller.
 
 ### Etapa 11 — Entregas
 
-- [ ] Delivery por SellerOrder
-- [ ] histórico e máquina de estados
-- [ ] remover cron do servidor HTTP
+- [x] Delivery por SellerOrder
+- [x] ownership separado para leitura e escrita
+- [x] histórico e máquina de estados
+- [x] tracking com whitelist
+- [x] concorrência e rollback transacional
+- [x] cron removido do servidor HTTP
+- [x] job independente e paginado
+- [x] progressão temporal baseada em `DeliveryStatusHistory.changedAt`
 
 ### Etapa 12 — Reviews e reputação
 
-- [ ] alvo exclusivo produto ou seller
-- [ ] unicidade e ownership
-- [ ] autorização por compra concluída
-- [ ] rating calculado
+- [x] alvo exclusivo produto ou seller
+- [x] unicidade e ownership
+- [x] autorização por compra entregue
+- [x] rating calculado
 
 ### Etapa 13 — Dashboards e relatórios
 
+- [~] Etapa atual
 - [ ] agregações por SellerOrder
 - [ ] valores e status do schema-v2
 - [ ] paginação e filtros temporais
@@ -161,7 +170,7 @@ Observação futura: se desativação de produto/seller e movimentação de esto
 
 ## Próxima ação
 
-Executar a Etapa 9 — consultas e estados de pedidos — por meio de um handoff específico.
+Executar a Etapa 13 — dashboards e relatórios — por meio de um handoff específico.
 
 ## Protocolo de atualização
 
@@ -172,3 +181,4 @@ Ao concluir uma etapa:
 3. trocar sua marcação para `[x]`;
 4. mover `[~]` para a próxima etapa;
 5. atualizar a data no topo deste arquivo.
+6. criar um arquivo `STEP_<N>_<DOMINIO>_SUMMARY.md` na raiz, seguindo o padrão dos resumos anteriores e registrando objetivo, fluxo, regras, validação e limites de escopo.

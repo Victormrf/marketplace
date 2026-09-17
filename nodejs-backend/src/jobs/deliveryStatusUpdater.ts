@@ -1,57 +1,56 @@
-// src/utils/deliveryStatusUpdater.ts
 import prisma from "../config/db";
+import { DeliveryRepository } from "../repositories/deliveryRepository";
+import { DeliveryService } from "../services/deliveryService";
+import { ConflictError } from "../utils/customErrors";
 
-enum delivery_status {
-  SEPARATED = "SEPARATED",
-  PROCESSING = "PROCESSING",
-  SHIPPED = "SHIPPED",
-  COLLECTED = "COLLECTED",
-  ARRIVED_AT_CENTER = "ARRIVED_AT_CENTER",
-  DELIVERED = "DELIVERED",
-  FAILED = "FAILED",
-  RETURNED = "RETURNED",
-}
+const BATCH_SIZE = 100;
 
 export async function updateDeliveryStatuses(): Promise<void> {
-  const deliveries = await prisma.delivery.findMany();
+  const repository = new DeliveryRepository();
+  const service = new DeliveryService(repository);
+  let afterId: string | null = null;
 
-  const statusFlow: Record<delivery_status, delivery_status | null> = {
-    SEPARATED: delivery_status.PROCESSING,
-    PROCESSING: delivery_status.SHIPPED,
-    SHIPPED: delivery_status.COLLECTED,
-    COLLECTED: delivery_status.ARRIVED_AT_CENTER,
-    ARRIVED_AT_CENTER: delivery_status.DELIVERED,
-    DELIVERED: null,
-    FAILED: null,
-    RETURNED: null,
-  };
+  while (true) {
+    const deliveries = await repository.findForJob(afterId, BATCH_SIZE);
+    if (!deliveries.length) break;
 
-  for (const delivery of deliveries) {
-    const nextStatus = statusFlow[delivery.status as delivery_status];
-    if (!nextStatus) continue;
+    for (const delivery of deliveries) {
+      afterId = delivery.id;
+      const latestHistory = delivery.statusHistory[0];
+      if (!latestHistory || latestHistory.toStatus !== delivery.status) {
+        continue;
+      }
 
-    const hoursSinceUpdate =
-      (Date.now() - new Date(delivery.updatedAt).getTime()) / (1000 * 60 * 60);
+      const thresholdHours = delivery.status === "SEPARATED" ? 4 : 24;
+      const eligibleBefore = new Date(
+        Date.now() - thresholdHours * 60 * 60 * 1000,
+      );
+      if (latestHistory.changedAt > eligibleBefore) continue;
 
-    const shouldUpdate =
-      (delivery.status === "SEPARATED" && hoursSinceUpdate >= 4) ||
-      (delivery.status !== "SEPARATED" && hoursSinceUpdate >= 24);
-
-    if (shouldUpdate) {
-      await prisma.delivery.update({
-        where: { id: delivery.id },
-        data: {
-          status: nextStatus,
-        },
-      });
-
-      await prisma.deliveryStatusLog.create({
-        data: {
-          deliveryId: delivery.id,
-          status: nextStatus,
-        },
-      });
-      console.log(`🚚 Entrega ${delivery.id} atualizada para ${nextStatus}`);
+      await service
+        .advanceForJob(
+          delivery.id,
+          delivery.status,
+          eligibleBefore,
+          latestHistory.id,
+        )
+        .catch((error: unknown) => {
+          if (error instanceof ConflictError) return;
+          throw error;
+        });
     }
+
+    if (deliveries.length < BATCH_SIZE) break;
   }
+}
+
+if (require.main === module) {
+  updateDeliveryStatuses()
+    .catch((error: unknown) => {
+      console.error("Delivery status job failed", error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
 }

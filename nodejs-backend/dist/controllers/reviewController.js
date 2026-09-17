@@ -11,118 +11,129 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reviewRoutes = void 0;
 const express_1 = require("express");
-const reviewService_1 = require("../services/reviewService");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
+const reviewService_1 = require("../services/reviewService");
 const customErrors_1 = require("../utils/customErrors");
 exports.reviewRoutes = (0, express_1.Router)();
 const reviewService = new reviewService_1.ReviewService();
-exports.reviewRoutes.post("/product", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.user.id;
-    const requestorRole = req.user.role;
-    const { productId, rating, comment } = req.body;
-    if (requestorRole !== "CUSTOMER") {
-        res.status(403).json({ error: "Only customers can send reviews." });
+function parseBody(body) {
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+        throw new customErrors_1.ValidationError("Invalid request body");
+    }
+    return body;
+}
+function reviewInput(body) {
+    const data = parseBody(body);
+    const allowed = new Set(["rating", "comment"]);
+    const unknown = Object.keys(data).find((key) => !allowed.has(key));
+    if (unknown)
+        throw new customErrors_1.ValidationError(`Unsupported review field: ${unknown}`);
+    if (!("rating" in data))
+        throw new customErrors_1.ValidationError("rating is required");
+    return {
+        rating: data.rating,
+        comment: data.comment,
+    };
+}
+function reviewUpdateInput(body) {
+    const data = parseBody(body);
+    const allowed = new Set(["rating", "comment"]);
+    const unknown = Object.keys(data).find((key) => !allowed.has(key));
+    if (unknown)
+        throw new customErrors_1.ValidationError(`Unsupported review field: ${unknown}`);
+    if (!Object.keys(data).length)
+        throw new customErrors_1.ValidationError("Empty review update");
+    return Object.assign(Object.assign({}, (Object.prototype.hasOwnProperty.call(data, "rating")
+        ? { rating: data.rating }
+        : {})), (Object.prototype.hasOwnProperty.call(data, "comment")
+        ? { comment: data.comment }
+        : {}));
+}
+function pagination(query) {
+    const page = query.page === undefined ? 1 : Number(query.page);
+    const limit = query.limit === undefined ? 20 : Number(query.limit);
+    if (!Number.isSafeInteger(page) ||
+        page < 1 ||
+        !Number.isSafeInteger(limit) ||
+        limit < 1 ||
+        limit > 100) {
+        throw new customErrors_1.ValidationError("Invalid pagination");
+    }
+    return { page, limit };
+}
+function filters(query) {
+    if (query.rating === undefined)
+        return {};
+    const rating = Number(query.rating);
+    if (!Number.isSafeInteger(rating) || rating < 1 || rating > 5) {
+        throw new customErrors_1.ValidationError("Invalid rating filter");
+    }
+    return { rating };
+}
+function handleError(error, res) {
+    if (error instanceof customErrors_1.ValidationError) {
+        res.status(400).json({ error: error.message });
         return;
     }
-    try {
-        const review = yield reviewService.createProductReview(userId, {
-            productId,
-            rating,
-            comment,
-        });
-        res.status(201).json(review);
-    }
-    catch (error) {
-        if (error instanceof customErrors_1.ValidationError) {
-            res.status(400).json({ error: error.message });
-        }
-        else if (error instanceof customErrors_1.ConflictError) {
-            res.status(409).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error: "Internal Server Error" });
-        }
-    }
-}));
-// Criar avaliação de um vendedor
-exports.reviewRoutes.post("/seller", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.user.id;
-    const requestorRole = req.user.role;
-    const { sellerId, rating, comment } = req.body;
-    if (requestorRole !== "CUSTOMER") {
-        res.status(403).json({ error: "Only customers can send reviews." });
+    if (error instanceof customErrors_1.ForbiddenError) {
+        res.status(403).json({ error: error.message });
         return;
     }
+    if (error instanceof customErrors_1.ObjectNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+    }
+    if (error instanceof customErrors_1.ConflictError) {
+        res.status(409).json({ error: error.message });
+        return;
+    }
+    res.status(500).json({ error: "Internal Server Error" });
+}
+exports.reviewRoutes.post("/products/:productId/reviews", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const review = yield reviewService.createSellerReview(userId, {
-            sellerId,
-            rating,
-            comment,
-        });
-        res.status(201).json(review);
+        res.status(201).json(yield reviewService.createProductReview(req.user, req.params.productId, reviewInput(req.body)));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ValidationError) {
-            res.status(400).json({ error: error.message });
-        }
-        else if (error instanceof customErrors_1.ConflictError) {
-            res.status(409).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error: "Internal Server Error" });
-        }
+        handleError(error, res);
     }
 }));
-exports.reviewRoutes.get("/product/:productId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+exports.reviewRoutes.get("/products/:productId/reviews", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const reviews = yield reviewService.getProductReviews(req.params.productId);
-        res.status(200).json(reviews);
+        res.status(200).json(yield reviewService.list("product", req.params.productId, filters(req.query), pagination(req.query)));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error: "Internal Server Error" });
-        }
+        handleError(error, res);
     }
 }));
-exports.reviewRoutes.get("/seller/:sellerId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+exports.reviewRoutes.post("/sellers/:sellerId/reviews", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const reviews = yield reviewService.getSellerReviews(req.params.sellerId);
-        res.status(200).json(reviews);
+        res.status(201).json(yield reviewService.createSellerReview(req.user, req.params.sellerId, reviewInput(req.body)));
     }
     catch (error) {
-        res.status(500).json({ error: "Internal Server Error" });
+        handleError(error, res);
     }
 }));
-exports.reviewRoutes.put("/:reviewId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { reviewId } = req.params;
-    const { rating, comment } = req.body;
+exports.reviewRoutes.get("/sellers/:sellerId/reviews", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const updated = yield reviewService.updateReview(reviewId, rating, comment);
-        res.status(200).json(updated);
+        res.status(200).json(yield reviewService.list("seller", req.params.sellerId, filters(req.query), pagination(req.query)));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error: "Internal Server Error" });
-        }
+        handleError(error, res);
     }
 }));
-exports.reviewRoutes.delete("/:reviewId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+exports.reviewRoutes.get("/reviews/:reviewId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        yield reviewService.deleteReview(req.params.reviewId);
-        res.status(204).send();
+        res.status(200).json(yield reviewService.get(req.params.reviewId));
     }
     catch (error) {
-        if (error instanceof customErrors_1.ObjectNotFoundError) {
-            res.status(404).json({ error: error.message });
-        }
-        else {
-            res.status(500).json({ error: "Internal Server Error" });
-        }
+        handleError(error, res);
+    }
+}));
+exports.reviewRoutes.patch("/reviews/:reviewId", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        res.status(200).json(yield reviewService.update(req.user, req.params.reviewId, reviewUpdateInput(req.body)));
+    }
+    catch (error) {
+        handleError(error, res);
     }
 }));

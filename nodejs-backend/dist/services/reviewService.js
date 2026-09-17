@@ -10,85 +10,151 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReviewService = void 0;
+const client_1 = require("@prisma/client");
 const library_1 = require("@prisma/client/runtime/library");
-const reviewModel_1 = require("../models/reviewModel");
+const customerRepository_1 = require("../repositories/customerRepository");
+const reviewRepository_1 = require("../repositories/reviewRepository");
 const customErrors_1 = require("../utils/customErrors");
+const MAX_COMMENT_LENGTH = 2000;
+function toDto(record) {
+    return {
+        id: record.id,
+        productId: record.productId,
+        sellerId: record.sellerId,
+        rating: record.rating,
+        comment: record.comment,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+    };
+}
+function normalizeInput(input, requireRating = true) {
+    if (input.rating === undefined) {
+        if (requireRating) {
+            throw new customErrors_1.ValidationError("rating is required");
+        }
+    }
+    else if (!Number.isSafeInteger(input.rating) ||
+        input.rating < 1 ||
+        input.rating > 5) {
+        throw new customErrors_1.ValidationError("rating must be an integer between 1 and 5");
+    }
+    if (!Object.prototype.hasOwnProperty.call(input, "comment")) {
+        return input;
+    }
+    if (input.comment === null) {
+        return Object.assign(Object.assign({}, input), { comment: null });
+    }
+    if (typeof input.comment !== "string") {
+        throw new customErrors_1.ValidationError("comment must be a string");
+    }
+    const comment = input.comment.trim();
+    if (comment.length > MAX_COMMENT_LENGTH) {
+        throw new customErrors_1.ValidationError("comment is too long");
+    }
+    return Object.assign(Object.assign({}, input), { comment: comment || null });
+}
+function duplicateReviewError(target) {
+    return new customErrors_1.ConflictError(target === "product"
+        ? "This product has already received a review from you."
+        : "This seller has already received a review from you.");
+}
 class ReviewService {
-    createProductReview(userId, reviewData) {
+    constructor(repository = reviewRepository_1.reviewRepository) {
+        this.repository = repository;
+    }
+    requireCustomer(user) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { productId, rating, comment } = reviewData;
-            if (!productId || rating === undefined) {
-                throw new customErrors_1.ValidationError("Missing required fields for product review.");
+            if (user.role !== client_1.UserRole.CUSTOMER)
+                throw new customErrors_1.ForbiddenError();
+            const customer = yield customerRepository_1.customerRepository.findByUserId(user.id);
+            if (!customer)
+                throw new customErrors_1.ForbiddenError();
+            return customer.id;
+        });
+    }
+    create(user, target, targetId, input) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const customerId = yield this.requireCustomer(user);
+            const normalized = normalizeInput(input);
+            const exists = target === "product"
+                ? yield this.repository.productExists(targetId)
+                : yield this.repository.sellerExists(targetId);
+            if (!exists) {
+                throw new customErrors_1.ObjectNotFoundError(target === "product" ? "Product" : "Seller");
+            }
+            const purchased = target === "product"
+                ? yield this.repository.hasDeliveredProductPurchase(customerId, targetId)
+                : yield this.repository.hasDeliveredSellerPurchase(customerId, targetId);
+            if (!purchased) {
+                throw new customErrors_1.ForbiddenError("A delivered purchase is required");
             }
             try {
-                return yield reviewModel_1.ReviewModel.create({
-                    userId,
-                    productId,
-                    rating,
-                    comment,
-                });
+                const record = yield this.repository.create(Object.assign(Object.assign({ userId: user.id }, (target === "product"
+                    ? { productId: targetId }
+                    : { sellerId: targetId })), { rating: normalized.rating, comment: (_a = normalized.comment) !== null && _a !== void 0 ? _a : null }));
+                return toDto(record);
             }
             catch (error) {
                 if (error instanceof library_1.PrismaClientKnownRequestError &&
                     error.code === "P2002") {
-                    throw new customErrors_1.ConflictError("This product has already received a review from you.");
+                    throw duplicateReviewError(target);
                 }
+                throw error;
             }
         });
     }
-    createSellerReview(userId, reviewData) {
+    createProductReview(user, productId, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { sellerId, rating, comment } = reviewData;
-            if (!sellerId || rating === undefined) {
-                throw new customErrors_1.ValidationError("Missing required fields for seller review.");
-            }
-            try {
-                return yield reviewModel_1.ReviewModel.create({
-                    userId,
-                    sellerId,
-                    rating,
-                    comment,
-                });
-            }
-            catch (error) {
-                if (error instanceof library_1.PrismaClientKnownRequestError &&
-                    error.code === "P2002") {
-                    throw new customErrors_1.ConflictError("This seller has already received a review from you.");
-                }
-            }
+            return this.create(user, "product", productId, input);
         });
     }
-    getProductReviews(productId) {
+    createSellerReview(user, sellerId, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            const data = yield reviewModel_1.ReviewModel.getByProduct(productId);
-            if (!data.reviews.length) {
-                throw new customErrors_1.ObjectsNotFoundError("reviews");
-            }
-            return data;
+            return this.create(user, "seller", sellerId, input);
         });
     }
-    getSellerReviews(sellerId) {
+    list(target, targetId, filters, pagination) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield reviewModel_1.ReviewModel.getBySeller(sellerId);
+            const total = yield this.repository.count(target, targetId, filters);
+            const records = yield this.repository.findMany(target, targetId, filters, (pagination.page - 1) * pagination.limit, pagination.limit);
+            const reputation = yield this.repository.reputation(target, targetId);
+            return {
+                data: records.map(toDto),
+                pagination: {
+                    page: pagination.page,
+                    limit: pagination.limit,
+                    total,
+                    totalPages: Math.ceil(total / pagination.limit),
+                },
+                reputation,
+            };
         });
     }
-    updateReview(reviewId, rating, comment) {
+    get(reviewId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const updateData = {};
-            if (rating !== undefined)
-                updateData.rating = rating;
-            if (comment !== undefined)
-                updateData.comment = comment;
-            return yield reviewModel_1.ReviewModel.updateReview(reviewId, updateData);
+            const record = yield this.repository.findById(reviewId);
+            if (!record)
+                throw new customErrors_1.ObjectNotFoundError("Review");
+            return toDto(record);
         });
     }
-    deleteReview(id) {
+    update(user, reviewId, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            const review = yield reviewModel_1.ReviewModel.getById(id);
-            if (!review) {
-                throw new customErrors_1.ObjectNotFoundError("review");
-            }
-            return yield reviewModel_1.ReviewModel.deleteReview(id);
+            const existing = yield this.repository.findById(reviewId);
+            if (!existing)
+                throw new customErrors_1.ObjectNotFoundError("Review");
+            if (existing.userId !== user.id)
+                throw new customErrors_1.ForbiddenError();
+            const normalized = normalizeInput(input, false);
+            const updated = yield this.repository.update(reviewId, user.id, Object.assign(Object.assign({}, (normalized.rating === undefined
+                ? {}
+                : { rating: normalized.rating })), (normalized.comment === undefined
+                ? {}
+                : { comment: normalized.comment })));
+            if (!updated)
+                throw new customErrors_1.ObjectNotFoundError("Review");
+            return toDto(updated);
         });
     }
 }

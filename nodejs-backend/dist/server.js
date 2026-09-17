@@ -32,8 +32,6 @@ const inventoryController_1 = require("./controllers/inventoryController");
 const customerAddressController_1 = require("./controllers/customerAddressController");
 const checkoutController_1 = require("./controllers/checkoutController");
 const refundController_1 = require("./controllers/refundController");
-const node_cron_1 = __importDefault(require("node-cron"));
-const deliveryStatusUpdater_1 = require("./jobs/deliveryStatusUpdater");
 const app = (0, express_1.default)();
 exports.app = app;
 app.use(express_1.default.json());
@@ -60,9 +58,9 @@ app.use("/orders", orderController_1.orderRoutes);
 app.use("/seller-orders", orderController_1.sellerOrderRoutes);
 app.use("/", paymentController_1.paymentRoutes);
 app.use("/", refundController_1.refundRoutes);
-app.use("/review", reviewController_1.reviewRoutes);
+app.use("/", reviewController_1.reviewRoutes);
 app.use("/dashboard", dashboardController_1.dashboardRoutes);
-app.use("/delivery", deliveryController_1.deliveryRoutes);
+app.use("/", deliveryController_1.deliveryRoutes);
 app.use("/inventory", inventoryController_1.inventoryRoutes);
 app.use("/checkout", checkoutController_1.checkoutRoutes);
 // Encerrar conexão do Prisma quando o servidor for interrompido
@@ -75,9 +73,4 @@ if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`Server running at http://localhost:${PORT}`);
     });
-    // Scheduled jobs belong to the executable server, not to imported test app instances.
-    node_cron_1.default.schedule("0 * * * *", () => __awaiter(void 0, void 0, void 0, function* () {
-        console.log("Starting automatic status update...");
-        yield (0, deliveryStatusUpdater_1.updateDeliveryStatuses)();
-    }));
 }

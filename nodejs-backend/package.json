@@ -20,7 +20,10 @@
     "test:checkout": "npm run build && node --test tests/checkout.integration.test.js",
     "test:orders": "npm run build && node --test tests/orders.integration.test.js",
     "test:payments": "npm run build && node --test tests/payments.integration.test.js",
-    "test:refunds": "npm run build && node --test tests/refunds.integration.test.js"
+    "test:refunds": "npm run build && node --test tests/refunds.integration.test.js",
+    "job:deliveries": "npm run build && node dist/jobs/deliveryStatusUpdater.js",
+    "test:deliveries": "npm run build && node --test tests/deliveries.integration.test.js",
+    "test:reviews": "npm run build && node --test tests/reviews.integration.test.js"
   },
   "keywords": [],
   "author": "",
@@ -50,7 +53,6 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.2",
     "multer-storage-cloudinary": "^4.0.0",
-    "node-cron": "^4.0.7",
     "prisma": "^6.11.1"
   }
 }

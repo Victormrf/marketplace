@@ -13,54 +13,50 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateDeliveryStatuses = updateDeliveryStatuses;
-// src/utils/deliveryStatusUpdater.ts
 const db_1 = __importDefault(require("../config/db"));
-var delivery_status;
-(function (delivery_status) {
-    delivery_status["SEPARATED"] = "SEPARATED";
-    delivery_status["PROCESSING"] = "PROCESSING";
-    delivery_status["SHIPPED"] = "SHIPPED";
-    delivery_status["COLLECTED"] = "COLLECTED";
-    delivery_status["ARRIVED_AT_CENTER"] = "ARRIVED_AT_CENTER";
-    delivery_status["DELIVERED"] = "DELIVERED";
-    delivery_status["FAILED"] = "FAILED";
-    delivery_status["RETURNED"] = "RETURNED";
-})(delivery_status || (delivery_status = {}));
+const deliveryRepository_1 = require("../repositories/deliveryRepository");
+const deliveryService_1 = require("../services/deliveryService");
+const customErrors_1 = require("../utils/customErrors");
+const BATCH_SIZE = 100;
 function updateDeliveryStatuses() {
     return __awaiter(this, void 0, void 0, function* () {
-        const deliveries = yield db_1.default.delivery.findMany();
-        const statusFlow = {
-            SEPARATED: delivery_status.PROCESSING,
-            PROCESSING: delivery_status.SHIPPED,
-            SHIPPED: delivery_status.COLLECTED,
-            COLLECTED: delivery_status.ARRIVED_AT_CENTER,
-            ARRIVED_AT_CENTER: delivery_status.DELIVERED,
-            DELIVERED: null,
-            FAILED: null,
-            RETURNED: null,
-        };
-        for (const delivery of deliveries) {
-            const nextStatus = statusFlow[delivery.status];
-            if (!nextStatus)
-                continue;
-            const hoursSinceUpdate = (Date.now() - new Date(delivery.updatedAt).getTime()) / (1000 * 60 * 60);
-            const shouldUpdate = (delivery.status === "SEPARATED" && hoursSinceUpdate >= 4) ||
-                (delivery.status !== "SEPARATED" && hoursSinceUpdate >= 24);
-            if (shouldUpdate) {
-                yield db_1.default.delivery.update({
-                    where: { id: delivery.id },
-                    data: {
-                        status: nextStatus,
-                    },
+        const repository = new deliveryRepository_1.DeliveryRepository();
+        const service = new deliveryService_1.DeliveryService(repository);
+        let afterId = null;
+        while (true) {
+            const deliveries = yield repository.findForJob(afterId, BATCH_SIZE);
+            if (!deliveries.length)
+                break;
+            for (const delivery of deliveries) {
+                afterId = delivery.id;
+                const latestHistory = delivery.statusHistory[0];
+                if (!latestHistory || latestHistory.toStatus !== delivery.status) {
+                    continue;
+                }
+                const thresholdHours = delivery.status === "SEPARATED" ? 4 : 24;
+                const eligibleBefore = new Date(Date.now() - thresholdHours * 60 * 60 * 1000);
+                if (latestHistory.changedAt > eligibleBefore)
+                    continue;
+                yield service
+                    .advanceForJob(delivery.id, delivery.status, eligibleBefore, latestHistory.id)
+                    .catch((error) => {
+                    if (error instanceof customErrors_1.ConflictError)
+                        return;
+                    throw error;
                 });
-                yield db_1.default.deliveryStatusLog.create({
-                    data: {
-                        deliveryId: delivery.id,
-                        status: nextStatus,
-                    },
-                });
-                console.log(`🚚 Entrega ${delivery.id} atualizada para ${nextStatus}`);
             }
+            if (deliveries.length < BATCH_SIZE)
+                break;
         }
     });
+}
+if (require.main === module) {
+    updateDeliveryStatuses()
+        .catch((error) => {
+        console.error("Delivery status job failed", error);
+        process.exitCode = 1;
+    })
+        .finally(() => __awaiter(void 0, void 0, void 0, function* () {
+        yield db_1.default.$disconnect();
+    }));
 }

@@ -17,8 +17,6 @@ import { inventoryRoutes } from "./controllers/inventoryController";
 import { customerAddressRoutes } from "./controllers/customerAddressController";
 import { checkoutRoutes } from "./controllers/checkoutController";
 import { refundRoutes } from "./controllers/refundController";
-import cron from "node-cron";
-import { updateDeliveryStatuses } from "./jobs/deliveryStatusUpdater";
 
 const app = express();
 app.use(express.json());
@@ -53,9 +51,9 @@ app.use("/orders", orderRoutes);
 app.use("/seller-orders", sellerOrderRoutes);
 app.use("/", paymentRoutes);
 app.use("/", refundRoutes);
-app.use("/review", reviewRoutes);
+app.use("/", reviewRoutes);
 app.use("/dashboard", dashboardRoutes);
-app.use("/delivery", deliveryRoutes);
+app.use("/", deliveryRoutes);
 app.use("/inventory", inventoryRoutes);
 app.use("/checkout", checkoutRoutes);
 
@@ -69,12 +67,6 @@ process.on("SIGINT", async () => {
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
-  });
-
-  // Scheduled jobs belong to the executable server, not to imported test app instances.
-  cron.schedule("0 * * * *", async () => {
-    console.log("Starting automatic status update...");
-    await updateDeliveryStatuses();
   });
 }
 
