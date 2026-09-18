@@ -67,12 +67,3 @@ exports.customerRoutes.put("/", authMiddleware_1.authMiddleware, (req, res) => _
         sendError(error, res);
     }
 }));
-exports.customerRoutes.delete("/:userId", authMiddleware_1.authMiddleware, (0, roleMiddleware_1.roleMiddleware)("ADMIN"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        yield customerService_1.customerService.deleteCustomerProfile();
-        res.status(204).send();
-    }
-    catch (error) {
-        sendError(error, res);
-    }
-}));

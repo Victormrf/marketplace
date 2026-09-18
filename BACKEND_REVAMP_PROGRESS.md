@@ -1,6 +1,6 @@
 # Backend Revamp — Controle de Progresso
 
-Última atualização: 18/09/2026 — Etapa 13 concluída; Etapa 14 liberada
+Última atualização: 18/09/2026 — Baseline funcional do backend concluída
 
 ## Objetivo
 
@@ -162,15 +162,14 @@ Observação de escopo: refunds permanecem relacionados ao `PaymentAttempt`, sem
 
 ### Etapa 14 — Limpeza e fechamento
 
-- [~] Etapa atual
-- [ ] remover contratos e campos legados
-- [ ] remover scripts incompatíveis
-- [ ] revisar artefatos `dist/`
-- [ ] executar suíte completa e smoke tests
+- [x] remover contratos e campos legados
+- [x] remover scripts incompatíveis
+- [x] revisar artefatos `dist/`
+- [x] executar suíte completa e smoke tests
 
 ## Próxima ação
 
-Executar a Etapa 14 — limpeza e fechamento — por meio de um handoff específico.
+A baseline funcional do backend schema-v2 está concluída. A próxima fase deve ser definida separadamente antes da introdução gradual de dados sintéticos e mecanismos de system design.
 
 ## Protocolo de atualização
 

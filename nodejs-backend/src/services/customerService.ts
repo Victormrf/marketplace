@@ -101,9 +101,6 @@ export class CustomerService {
     );
   }
 
-  async deleteCustomerProfile(): Promise<void> {
-    throw new ValidationError("Customer profiles are not physically deleted");
-  }
 }
 
 export const customerService = new CustomerService();

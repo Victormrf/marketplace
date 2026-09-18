@@ -82,11 +82,6 @@ class CustomerService {
             return this.toDto(yield customerRepository_1.customerRepository.update(userId, profileData(input)));
         });
     }
-    deleteCustomerProfile() {
-        return __awaiter(this, void 0, void 0, function* () {
-            throw new customErrors_1.ValidationError("Customer profiles are not physically deleted");
-        });
-    }
 }
 exports.CustomerService = CustomerService;
 exports.customerService = new CustomerService();

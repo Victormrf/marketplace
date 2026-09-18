@@ -1,152 +1,895 @@
-###
-# @name createdUser
-POST http://localhost:8000/users/register
-Content-Type: application/json
+@baseUrl = http://localhost:8000
+@contentType = application/json
+@page = 1
+@limit = 20
+@from = 2026-01-01
+@to = 2026-12-31
+@idempotencyKey = api-http-checkout-001
 
-{
-    "name": "Manuel",
-    "email": "vmrf2001@hotmail.com",
-    "password": "test1234",
-    "role": "seller"
-}
+# PrÃƒÂ©-requisitos: PostgreSQL local disponÃƒÂ­vel, seed executado e backend rodando.
+# VariÃƒÂ¡veis dinÃƒÂ¢micas sÃƒÂ³ existem depois da requisiÃƒÂ§ÃƒÂ£o que as produz ser executada.
+# As variÃƒÂ¡veis seed_* sÃƒÂ£o determinÃƒÂ­sticas e servem como fallback para consultas.
 
-###
-@userId = {{createdUser.response.body.id}}
+###############################################################################
+# SEEDED ACCOUNTS AND IDS
+###############################################################################
 
+@seedAdminUserId = 00000000-0000-0000-0000-000000000001
+@seedCustomerUserId = 00000000-0000-0000-0000-000000000002
+@seedSellerUserId = 00000000-0000-0000-0000-000000000003
+@seedSecondSellerUserId = 00000000-0000-0000-0000-000000000004
+@seedCustomerProfileId = 00000000-0000-0000-0000-000000000101
+@seedAddressId = 00000000-0000-0000-0000-000000000201
+@seedSellerId = 00000000-0000-0000-0000-000000000301
+@seedSecondSellerId = 00000000-0000-0000-0000-000000000302
+@seedProductId = 00000000-0000-0000-0000-000000000401
+@seedSecondProductId = 00000000-0000-0000-0000-000000000402
+@seedOrderId = 00000000-0000-0000-0000-000000000601
+@seedSellerOrderId = 00000000-0000-0000-0000-000000000611
+@seedOrderItemId = 00000000-0000-0000-0000-000000000621
+@seedPaymentAttemptId = 00000000-0000-0000-0000-000000000701
+@seedDeliveryId = 00000000-0000-0000-0000-000000000801
+@seedProductReviewId = 00000000-0000-0000-0000-000000001001
+@seedSellerReviewId = 00000000-0000-0000-0000-000000001002
 
-###
-# @name loginUser
-POST http://localhost:8000/users/login
-Content-Type: application/json
-
-{
-    "email": "admin.seed@local.invalid",
-    "password": "dev-seed-password"
-}
-###
-@token = {{loginUser.response.body.token}}
-
-###
-GET http://localhost:8000/users/057fd440-3a11-4e48-8152-1c7dbbfdef55
-Authorization: Bearer {{token}}
-
-###
-PUT http://localhost:8000/users/057fd440-3a11-4e48-8152-1c7dbbfdef55
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-    "name": "Pablo Vegetti",
-    "email": "pablo.vegetti@vasco.com"
-}
-
-###
-DELETE http://localhost:8000/users/{{userId}}
-Authorization: Bearer {{token}}
-
-#### CUSTOMER
-
-###
-POST http://localhost:8000/users/register
-Content-Type: application/json
-
-{
-    "name": "Nuno Moreira",
-    "email": "nuno.moreira@vasco.com",
-    "password": "test1234",
-    "role": "customer"
-}
-
-###
-# @name customerLogin
-POST http://localhost:8000/users/login
-Content-Type: application/json
-
-{
-    "email": "nuno.moreira@vasco.com",
-    "password": "test1234"
-}
-
-###
-@customerToken = {{customerLogin.response.body.token}}
-
-### 
-POST http://localhost:8000/customers/profile
-Authorization: Bearer {{customerToken}}
-Content-Type: application/json
-
-{
-    "address": "São Januário, RJ",
-    "phone": "+55 11 98765-4321"
-}
-
-#### SELLER
-
-###
-POST http://localhost:8000/users/register
-Content-Type: application/json
-
-{
-    "name": "Dimitry Payet",
-    "email": "dimitry.payet@vasco.com",
-    "password": "teste1234",
-    "role": "seller"
-}
-
-###
-# @name sellerLogin
-POST http://localhost:8000/users/login
-Content-Type: application/json
-
-{
-    "email": "dimitry.payet@vasco.com",
-    "password": "teste1234"
-}
-
-###
-@sellerToken = {{sellerLogin.response.body.token}}
-
-###
-POST http://localhost:8000/sellers/profile
-Authorization: Bearer {{sellerToken}}
-Content-Type: application/json
-
-{
-    "storeName": "Loja do gigante",
-    "description": "Um lugar onde você encontrará todos os produtos oficiais do gigante da colina nos melhores preços"
-}
-
-#### ADMIN 
+###############################################################################
+# AUTHENTICATION
+############################################################################### Login independente do administrador; salva o JWT do cookie em cookie da resposta.
 ###
 # @name adminLogin
-POST http://localhost:8000/users/login
-Content-Type: application/json
+POST {{baseUrl}}/users/login
+Content-Type: {{contentType}}
 
 {
-    "email": "vmrf2000@hotmail.com",
-    "password": "test1234"
+  "email": "admin.seed@local.invalid",
+  "password": "dev-seed-password"
+}
+
+### Login independente do seller principal; salva o JWT do cookie em cookie da resposta.
+###
+# @name sellerLogin
+POST {{baseUrl}}/users/login
+Content-Type: {{contentType}}
+
+{
+  "email": "seller.one.seed@local.invalid",
+  "password": "dev-seed-password"
+}
+
+### Login independente do customer; salva o JWT do cookie em cookie da resposta.
+###
+# @name customerLogin
+POST {{baseUrl}}/users/login
+Content-Type: {{contentType}}
+
+{
+  "email": "customer.seed@local.invalid",
+  "password": "dev-seed-password"
+}
+
+### Logout limpa o cookie HTTP-only, mas nÃƒÂ£o remove as variÃƒÂ¡veis globais salvas.
+###
+# @name adminLogout
+# Logout do admin limpa o cookie no servidor; a response variable continua salva.
+POST {{baseUrl}}/users/logout
+Cookie: {{adminCookie}}
+
+###
+# @name sellerLogout
+# Logout do seller limpa o cookie no servidor; a response variable continua salva.
+POST {{baseUrl}}/users/logout
+Cookie: {{sellerCookie}}
+
+###
+# @name customerLogout
+# Logout do customer limpa o cookie no servidor; a response variable continua salva.
+POST {{baseUrl}}/users/logout
+Cookie: {{customerCookie}}
+
+###
+# Response variables de cookies. Execute o login correspondente antes dos endpoints da role.
+###
+
+@adminCookie = {{adminLogin.response.headers.Set-Cookie}}
+@sellerCookie = {{sellerLogin.response.headers.Set-Cookie}}
+@customerCookie = {{customerLogin.response.headers.Set-Cookie}}
+
+###
+###############################################################################
+# ROOT
+###############################################################################
+###
+# @name root
+GET {{baseUrl}}/
+
+###############################################################################
+# USERS
+############################################################################### Registro pÃƒÂºblico aceita somente CUSTOMER ou SELLER, nunca ADMIN.
+###
+# @name registerCustomer
+POST {{baseUrl}}/users/register
+Content-Type: {{contentType}}
+
+{
+  "name": "API HTTP Customer",
+  "email": "api-http-customer-001@local.invalid",
+  "password": "dev-api-password",
+  "role": "CUSTOMER"
+}
+
+### ID dinÃƒÂ¢mico do usuÃƒÂ¡rio criado; a conta fica disponÃƒÂ­vel para fluxo manual.
+###
+
+@createdUserId = {{registerCustomer.response.body.$.id}}
+
+### Identidade atual do administrador.
+###
+# @name adminMe
+GET {{baseUrl}}/users/me
+Cookie: {{adminCookie}}
+
+### Identidade atual do seller.
+###
+# @name sellerMe
+GET {{baseUrl}}/users/me
+Cookie: {{sellerCookie}}
+
+### Identidade atual do customer.
+###
+# @name customerMe
+GET {{baseUrl}}/users/me
+Cookie: {{customerCookie}}
+
+### AtualizaÃƒÂ§ÃƒÂ£o whitelist do usuÃƒÂ¡rio autenticado.
+###
+# @name updateCurrentUser
+PUT {{baseUrl}}/users
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Seed Customer Updated Locally"
+}
+
+### DesativaÃƒÂ§ÃƒÂ£o administrativa de um usuÃƒÂ¡rio; deixar para execuÃƒÂ§ÃƒÂ£o manual.
+###
+# @name deactivateUser
+DELETE {{baseUrl}}/users/{{createdUserId}}
+Cookie: {{adminCookie}}
+
+###############################################################################
+# CUSTOMER PROFILE
+############################################################################### O customer seed jÃƒÂ¡ possui perfil; esta criaÃƒÂ§ÃƒÂ£o ÃƒÂ© ÃƒÂºtil para um novo customer.
+###
+# @name createCustomerProfile
+POST {{baseUrl}}/customers
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "phone": "+5511987654321"
+}
+
+### Perfil do customer autenticado.
+###
+# @name getCustomerProfile
+GET {{baseUrl}}/customers
+Cookie: {{customerCookie}}
+
+### Listagem administrativa de perfis de customer.
+###
+# @name listCustomers
+GET {{baseUrl}}/customers/all
+Cookie: {{adminCookie}}
+
+### AtualizaÃƒÂ§ÃƒÂ£o do prÃƒÂ³prio perfil; CustomerProfile nÃƒÂ£o possui endereÃƒÂ§o textual.
+###
+# @name updateCustomerProfile
+PUT {{baseUrl}}/customers
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "phone": "+5511999990001"
+}
+
+###############################################################################
+# SELLER PROFILE
+############################################################################### O seller seed jÃƒÂ¡ possui perfil; esta criaÃƒÂ§ÃƒÂ£o pode retornar conflito.
+###
+# @name createSellerProfile
+POST {{baseUrl}}/sellers
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "storeName": "API HTTP Store",
+  "description": "Store created during manual local API exploration"
+}
+
+### Perfil do seller autenticado.
+###
+# @name getSellerProfile
+GET {{baseUrl}}/sellers
+Cookie: {{sellerCookie}}
+
+### Listagem administrativa de sellers.
+###
+# @name listSellers
+GET {{baseUrl}}/sellers/all
+Cookie: {{adminCookie}}
+
+### AtualizaÃƒÂ§ÃƒÂ£o whitelist do seller autenticado.
+###
+# @name updateSellerProfile
+PUT {{baseUrl}}/sellers
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "description": "Updated only during local API exploration"
+}
+
+###############################################################################
+# CUSTOMER ADDRESSES
+############################################################################### Cria endereÃƒÂ§o completo para o customer autenticado.
+###
+# @name createAddress
+POST {{baseUrl}}/customers/addresses
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "recipientName": "API HTTP Customer",
+  "postalCode": "01310-100",
+  "street": "Avenida Paulista",
+  "number": "1000",
+  "complement": "Apto 10",
+  "neighborhood": "Bela Vista",
+  "city": "SÃƒÂ£o Paulo",
+  "state": "SP",
+  "countryCode": "BR",
+  "phone": "+5511999990001",
+  "isDefault": false
 }
 
 ###
-@adminToken = {{adminLogin.response.body.token}}
 
-###
-GET http://localhost:8000/customers/
-Authorization: Bearer {{adminToken}}
+@addressId = {{createAddress.response.body.$.id}}
 
+### Lista somente endereÃƒÂ§os ativos do customer autenticado.
 ###
-GET http://localhost:8000/sellers/
-Authorization: Bearer {{adminToken}}
+# @name listAddresses
+GET {{baseUrl}}/customers/addresses?page={{page}}&limit={{limit}}
+Cookie: {{customerCookie}}
 
+### Consulta individual do endereÃƒÂ§o criado.
 ###
-PUT http://localhost:8000/customers/profile/0f2bc54d-5b6d-424f-b3da-
-Authorization: Bearer {{adminToken}}
-Content-Type: application/json
+# @name getAddress
+GET {{baseUrl}}/customers/addresses/{{addressId}}
+Cookie: {{customerCookie}}
+
+### Atualiza somente campos comerciais permitidos.
+###
+# @name updateAddress
+PUT {{baseUrl}}/customers/addresses/{{addressId}}
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
 
 {
-    "phone": "+55 11 12345-6789"
+  "street": "Rua Augusta",
+  "number": "200"
+}
+
+### Define o endereÃƒÂ§o criado como default de modo transacional.
+###
+# @name setDefaultAddress
+PUT {{baseUrl}}/customers/addresses/{{addressId}}/default
+Cookie: {{customerCookie}}
+
+###############################################################################
+# PUBLIC CATALOG
+############################################################################### Listagem paginada com filtros combinÃƒÂ¡veis.
+###
+# @name listProducts
+GET {{baseUrl}}/products?page={{page}}&limit={{limit}}&search=product&category=OFFICE&sellerId={{seedSellerId}}&inStock=true
+
+###
+
+@listedProductId = {{listProducts.response.body.$.data[0].id}}
+@listedSellerId = {{listProducts.response.body.$.data[0].sellerId}}
+
+### Busca case-insensitive por nome.
+###
+# @name searchProducts
+GET {{baseUrl}}/products/search?q=office&page={{page}}&limit={{limit}}
+
+### CatÃƒÂ¡logo filtrado por seller; sellerId ÃƒÂ© filtro pÃƒÂºblico de catÃƒÂ¡logo, nÃƒÂ£o ownership.
+###
+# @name productsBySeller
+GET {{baseUrl}}/products/seller/{{seedSellerId}}?page={{page}}&limit={{limit}}
+
+### CatÃƒÂ¡logo filtrado por enum uppercase.
+###
+# @name productsByCategory
+GET {{baseUrl}}/products/category/OFFICE?page={{page}}&limit={{limit}}&inStock=true
+
+### Detalhe de produto ativo.
+###
+# @name getProduct
+GET {{baseUrl}}/products/{{seedProductId}}
+
+### Consulta por mÃƒÂºltiplos IDs, retornando coleÃƒÂ§ÃƒÂ£o paginada.
+###
+# @name getMultipleProducts
+GET {{baseUrl}}/products/{{seedProductId}},{{seedSecondProductId}}?page={{page}}&limit={{limit}}
+
+###############################################################################
+# CATALOG WRITE
+############################################################################### Cria produto e Inventory vazio para o seller autenticado.
+###
+# @name createProduct
+POST {{baseUrl}}/products
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "name": "API HTTP Development Product",
+  "reference": "API-HTTP-PRODUCT-001",
+  "description": "Product created for the local manual workflow",
+  "priceInCents": 1999,
+  "currency": "BRL",
+  "category": "ELECTRONICS"
 }
 
 ###
-DELETE http://localhost:8000/customers/profile/12123312314
-Authorization: Bearer {{customerToken}}
+
+@productId = {{createProduct.response.body.$.id}}
+
+### Atualiza campos comerciais permitidos do produto criado.
+###
+# @name updateProduct
+PUT {{baseUrl}}/products/{{productId}}
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "name": "API HTTP Development Product Updated",
+  "priceInCents": 2099,
+  "currency": "BRL",
+  "category": "ELECTRONICS"
+}
+
+###############################################################################
+# INVENTORY
+############################################################################### Consulta o inventÃƒÂ¡rio do produto recÃƒÂ©m-criado.
+###
+# @name getInventory
+GET {{baseUrl}}/inventory/products/{{productId}}
+Cookie: {{sellerCookie}}
+
+### Consulta histÃƒÂ³rica paginada de movimentaÃƒÂ§ÃƒÂµes.
+###
+# @name listInventoryMovements
+GET {{baseUrl}}/inventory/products/{{productId}}/movements?page={{page}}&limit={{limit}}
+Cookie: {{sellerCookie}}
+
+### Entrada de estoque em unidades inteiras.
+###
+# @name restockProduct
+POST {{baseUrl}}/inventory/products/{{productId}}/restock
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "quantity": 10,
+  "reason": "Manual api.http restock"
+}
+
+### Ajuste atÃƒÂ´mico por delta, nunca por estoque absoluto.
+###
+# @name adjustInventory
+POST {{baseUrl}}/inventory/products/{{productId}}/adjustments
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "onHandDelta": -1,
+  "reason": "Manual api.http correction"
+}
+
+###############################################################################
+# CART
+############################################################################### Consulta o carrinho ACTIVE do customer autenticado.
+###
+# @name getCartBeforeCheckout
+GET {{baseUrl}}/cart
+Cookie: {{customerCookie}}
+
+### Adiciona o produto abastecido; disponibilidade ÃƒÂ© validada, mas nÃƒÂ£o reservada.
+###
+# @name addCartItem
+POST {{baseUrl}}/cart/items
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "productId": "{{productId}}",
+  "quantity": 2
+}
+
+### Consulta o carrinho depois da adiÃƒÂ§ÃƒÂ£o.
+###
+# @name getCart
+GET {{baseUrl}}/cart
+Cookie: {{customerCookie}}
+
+###
+
+@cartId = {{getCart.response.body.$.id}}
+@cartItemId = {{getCart.response.body.$.items[0].id}}
+
+###############################################################################
+# CHECKOUT
+############################################################################### Fluxo principal: use addressId criado acima ou substitua por seedAddressId.
+### Itens, preÃƒÂ§os e totais sÃƒÂ£o obtidos do carrinho e do banco.
+###
+# @name checkout
+POST {{baseUrl}}/checkout
+Cookie: {{customerCookie}}
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: {{contentType}}
+
+{
+  "addressId": "{{addressId}}"
+}
+
+###
+
+@orderId = {{checkout.response.body.$.id}}
+@sellerOrderId = {{checkout.response.body.$.sellerOrders[0].id}}
+@orderItemId = {{checkout.response.body.$.sellerOrders[0].items[0].id}}
+
+###
+# Em um checkout bem-sucedido a reserva ÃƒÂ© criada; a referÃƒÂªncia fica nula apenas
+# se o DTO de um fluxo futuro permitir item sem reserva.
+###
+
+@reservationId = {{checkout.response.body.$.sellerOrders[0].items[0].reservation.id}}
+
+### Replay da mesma chave; deve retornar o mesmo DTO sem novo pedido ou reserva.
+###
+# @name checkoutReplay
+POST {{baseUrl}}/checkout
+Cookie: {{customerCookie}}
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: {{contentType}}
+
+{
+  "addressId": "{{addressId}}"
+}
+
+###############################################################################
+# CUSTOMER ORDERS
+############################################################################### Lista pedidos do customer autenticado.
+###
+# @name listCustomerOrders
+GET {{baseUrl}}/orders?page={{page}}&limit={{limit}}&createdFrom={{from}}&createdTo={{to}}
+Cookie: {{customerCookie}}
+
+### Detalhe consolidado com SellerOrders, itens, snapshots e endereÃƒÂ§o.
+###
+# @name getCustomerOrder
+GET {{baseUrl}}/orders/{{orderId}}
+Cookie: {{customerCookie}}
+
+###############################################################################
+# SELLER ORDERS
+############################################################################### Lista somente SellerOrders do seller autenticado.
+###
+# @name listSellerOrders
+GET {{baseUrl}}/seller-orders?page={{page}}&limit={{limit}}&createdFrom={{from}}&createdTo={{to}}
+Cookie: {{sellerCookie}}
+
+### Detalhe do SellerOrder obtido no checkout.
+###
+# @name getSellerOrder
+GET {{baseUrl}}/seller-orders/{{sellerOrderId}}
+Cookie: {{sellerCookie}}
+
+### TransiÃƒÂ§ÃƒÂ£o vÃƒÂ¡lida PENDING -> CONFIRMED; execute antes de avanÃƒÂ§ar novamente.
+###
+# @name confirmSellerOrder
+PATCH {{baseUrl}}/seller-orders/{{sellerOrderId}}/status
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "status": "CONFIRMED",
+  "reason": "Confirmed through api.http"
+}
+
+###############################################################################
+# PAYMENTS
+############################################################################### Cria tentativa de cobranÃƒÂ§a integral; o cliente envia somente method.
+###
+# @name createPaymentAttempt
+POST {{baseUrl}}/orders/{{orderId}}/payment-attempts
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "method": "PIX"
+}
+
+###
+
+@paymentAttemptId = {{createPaymentAttempt.response.body.$.id}}
+
+### Lista tentativas da Order com filtros reais.
+###
+# @name listPaymentAttempts
+GET {{baseUrl}}/orders/{{orderId}}/payment-attempts?page={{page}}&limit={{limit}}&method=PIX
+Cookie: {{customerCookie}}
+
+### Consulta tentativa individual.
+###
+# @name getPaymentAttempt
+GET {{baseUrl}}/payment-attempts/{{paymentAttemptId}}
+Cookie: {{customerCookie}}
+
+###############################################################################
+# REFUNDS
+############################################################################### Requer PaymentAttempt CAPTURED; o seedPaymentAttemptId ÃƒÂ© um fallback vÃƒÂ¡lido.
+###
+# @name createRefund
+POST {{baseUrl}}/payment-attempts/{{seedPaymentAttemptId}}/refunds
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "amountInCents": 100,
+  "reason": "Manual local refund example"
+}
+
+###
+
+@refundId = {{createRefund.response.body.$.id}}
+
+### Lista refunds paginados e filtrÃƒÂ¡veis.
+###
+# @name listRefunds
+GET {{baseUrl}}/payment-attempts/{{seedPaymentAttemptId}}/refunds?page={{page}}&limit={{limit}}&status=REQUESTED
+Cookie: {{customerCookie}}
+
+### Consulta refund criado.
+###
+# @name getRefund
+GET {{baseUrl}}/refunds/{{refundId}}
+Cookie: {{customerCookie}}
+
+###############################################################################
+# DELIVERIES
+############################################################################### CriaÃƒÂ§ÃƒÂ£o exige SellerOrder em estado compatÃƒÂ­vel, como CONFIRMED.
+###
+# @name createDelivery
+POST {{baseUrl}}/seller-orders/{{sellerOrderId}}/delivery
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "trackingCode": "API-HTTP-TRACK-001",
+  "carrier": "Local Carrier",
+  "estimatedDelivery": "2026-12-20T12:00:00.000Z"
+}
+
+###
+
+@deliveryId = {{createDelivery.response.body.$.id}}
+
+### Consulta por SellerOrder.
+###
+# @name getDeliveryBySellerOrder
+GET {{baseUrl}}/seller-orders/{{sellerOrderId}}/delivery
+Cookie: {{sellerCookie}}
+
+### Consulta delivery individual.
+###
+# @name getDelivery
+GET {{baseUrl}}/deliveries/{{deliveryId}}
+Cookie: {{sellerCookie}}
+
+### HistÃƒÂ³rico ordenado da delivery.
+###
+# @name getDeliveryHistory
+GET {{baseUrl}}/deliveries/{{deliveryId}}/history
+Cookie: {{sellerCookie}}
+
+### AtualizaÃƒÂ§ÃƒÂ£o de tracking sem criar histÃƒÂ³rico de status.
+###
+# @name updateDeliveryTracking
+PATCH {{baseUrl}}/deliveries/{{deliveryId}}/tracking
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "trackingCode": "API-HTTP-TRACK-002",
+  "carrier": "Local Carrier",
+  "estimatedDelivery": "2026-12-21T12:00:00.000Z"
+}
+
+### SequÃƒÂªncia opcional de estados; execute cada request na ordem, manualmente.
+### SEPARATED -> PROCESSING -> SHIPPED -> COLLECTED -> ARRIVED_AT_CENTER -> DELIVERED.
+###
+# @name deliveryProcessing
+PATCH {{baseUrl}}/deliveries/{{deliveryId}}/status
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "status": "PROCESSING",
+  "reason": "Processing through api.http"
+}
+
+###
+# @name deliveryShipped
+PATCH {{baseUrl}}/deliveries/{{deliveryId}}/status
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "status": "SHIPPED",
+  "reason": "Handed to carrier"
+}
+
+###
+# @name deliveryCollected
+PATCH {{baseUrl}}/deliveries/{{deliveryId}}/status
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "status": "COLLECTED",
+  "reason": "Collected by carrier"
+}
+
+###
+# @name deliveryArrivedAtCenter
+PATCH {{baseUrl}}/deliveries/{{deliveryId}}/status
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "status": "ARRIVED_AT_CENTER",
+  "reason": "Arrived at distribution center"
+}
+
+###
+# @name deliveryDelivered
+PATCH {{baseUrl}}/deliveries/{{deliveryId}}/status
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "status": "DELIVERED",
+  "reason": "Delivered to customer"
+}
+
+###############################################################################
+# REVIEWS
+############################################################################### A criaÃƒÂ§ÃƒÂ£o exige compra entregue; seedProductReviewId jÃƒÂ¡ pode produzir 409.
+###
+# @name createProductReview
+POST {{baseUrl}}/products/{{seedProductId}}/reviews
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "rating": 5,
+  "comment": "Manual product review from api.http"
+}
+
+###
+
+@productReviewId = {{createProductReview.response.body.$.id}}
+
+### Lista reviews do produto com paginaÃƒÂ§ÃƒÂ£o e filtro de rating.
+###
+# @name listProductReviews
+GET {{baseUrl}}/products/{{seedProductId}}/reviews?page={{page}}&limit={{limit}}&rating=5
+
+### Review direta do seller; nÃƒÂ£o inclui reviews de produtos no rating do seller.
+###
+# @name createSellerReview
+POST {{baseUrl}}/sellers/{{seedSecondSellerId}}/reviews
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "rating": 4,
+  "comment": "Manual seller review from api.http"
+}
+
+###
+
+@sellerReviewId = {{createSellerReview.response.body.$.id}}
+
+### Lista reviews diretas do seller.
+###
+# @name listSellerReviews
+GET {{baseUrl}}/sellers/{{seedSecondSellerId}}/reviews?page={{page}}&limit={{limit}}&rating=4
+
+### Consulta review de produto criada dinamicamente.
+###
+# @name getProductReview
+GET {{baseUrl}}/reviews/{{productReviewId}}
+
+### Atualiza somente rating/comment e exige ser o autor.
+###
+# @name updateProductReview
+PATCH {{baseUrl}}/reviews/{{productReviewId}}
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "rating": 4,
+  "comment": "Updated manual product review"
+}
+
+###############################################################################
+# SELLER DASHBOARD
+############################################################################### Resumo por SellerOrder DELIVERED e completedAt.
+###
+# @name sellerDashboardSummary
+GET {{baseUrl}}/dashboard/seller/summary?from={{from}}&to={{to}}
+Cookie: {{sellerCookie}}
+
+### SellerOrders paginados; nÃƒÂ£o envia sellerId.
+###
+# @name sellerDashboardOrders
+GET {{baseUrl}}/dashboard/seller/orders?page={{page}}&limit={{limit}}&status=DELIVERED&from={{from}}&to={{to}}
+Cookie: {{sellerCookie}}
+
+### Contagem de todos os estados SellerOrder, inclusive zeros.
+###
+# @name sellerDashboardOrdersByStatus
+GET {{baseUrl}}/dashboard/seller/orders/by-status?from={{from}}&to={{to}}
+Cookie: {{sellerCookie}}
+
+### SÃƒÂ©rie diÃƒÂ¡ria com preenchimento de lacunas.
+###
+# @name sellerDashboardDailySales
+GET {{baseUrl}}/dashboard/seller/sales/timeseries?from={{from}}&to={{to}}&interval=day
+Cookie: {{sellerCookie}}
+
+### SÃƒÂ©rie mensal com preenchimento de lacunas.
+###
+# @name sellerDashboardMonthlySales
+GET {{baseUrl}}/dashboard/seller/sales/timeseries?from={{from}}&to={{to}}&interval=month
+Cookie: {{sellerCookie}}
+
+### Receita bruta e unidades por categoria.
+###
+# @name sellerDashboardCategories
+GET {{baseUrl}}/dashboard/seller/sales/by-category?from={{from}}&to={{to}}
+Cookie: {{sellerCookie}}
+
+### Produtos mais vendidos por snapshot histÃƒÂ³rico.
+###
+# @name sellerDashboardTopProducts
+GET {{baseUrl}}/dashboard/seller/products/top?from={{from}}&to={{to}}&limit=5
+Cookie: {{sellerCookie}}
+
+### Customers novos pela primeira SellerOrder daquele seller.
+###
+# @name sellerDashboardNewCustomers
+GET {{baseUrl}}/dashboard/seller/customers/new?from={{from}}&to={{to}}
+Cookie: {{sellerCookie}}
+
+### ReputaÃƒÂ§ÃƒÂ£o somente por reviews diretamente destinadas ao seller.
+###
+# @name sellerDashboardRatings
+GET {{baseUrl}}/dashboard/seller/ratings
+Cookie: {{sellerCookie}}
+
+###############################################################################
+# USEFUL ERROR AND AUTHORIZATION EXAMPLES
+############################################################################### 401: rota protegida sem Bearer token.
+###
+# @name unauthorizedCart
+GET {{baseUrl}}/cart
+
+### 403: customer tentando operar inventÃƒÂ¡rio de seller.
+###
+# @name forbiddenInventory
+GET {{baseUrl}}/inventory/products/{{seedProductId}}
+Cookie: {{customerCookie}}
+
+### 400: campos monetÃƒÂ¡rios legados nÃƒÂ£o sÃƒÂ£o aceitos na criaÃƒÂ§ÃƒÂ£o de produto.
+###
+# @name legacyProductPayload
+POST {{baseUrl}}/products
+Cookie: {{sellerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Invalid Legacy Product",
+  "price": 10,
+  "stock": 5,
+  "category": "OFFICE"
+}
+
+### 409: mesma Idempotency-Key com addressId diferente.
+###
+# @name conflictingCheckoutReplay
+POST {{baseUrl}}/checkout
+Cookie: {{customerCookie}}
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: {{contentType}}
+
+{
+  "addressId": "{{seedAddressId}}"
+}
+
+### 409: review duplicada para o mesmo customer e alvo, quando o seed jÃƒÂ¡ a possui.
+###
+# @name duplicateSeedReview
+POST {{baseUrl}}/products/{{seedProductId}}/reviews
+Cookie: {{customerCookie}}
+Content-Type: {{contentType}}
+
+{
+  "rating": 5
+}
+
+### 400: paginaÃƒÂ§ÃƒÂ£o invÃƒÂ¡lida.
+###
+# @name invalidPagination
+GET {{baseUrl}}/products?page=0&limit=101
+
+###############################################################################
+# DESTRUCTIVE / STATE-CHANGING CLEANUP REQUESTS
+# Execute manually and with care. These requests are intentionally not part
+# of any required flow and may change local development state.
+############################################################################### RemoÃƒÂ§ÃƒÂ£o lÃƒÂ³gica de item do carrinho; a rota usa productId, nÃƒÂ£o cartItemId.
+###
+# @name removeCartItem
+# @note
+DELETE {{baseUrl}}/cart/items/{{productId}}
+Cookie: {{customerCookie}}
+
+### Limpeza idempotente do carrinho ACTIVE.
+###
+# @name clearCart
+# @note
+DELETE {{baseUrl}}/cart/items
+Cookie: {{customerCookie}}
+
+### DesativaÃƒÂ§ÃƒÂ£o lÃƒÂ³gica do endereÃƒÂ§o criado.
+###
+# @name deactivateAddress
+# @note
+DELETE {{baseUrl}}/customers/addresses/{{addressId}}
+Cookie: {{customerCookie}}
+
+### DesativaÃƒÂ§ÃƒÂ£o lÃƒÂ³gica do produto criado.
+###
+# @name deactivateProduct
+# @note
+DELETE {{baseUrl}}/products/{{productId}}
+Cookie: {{sellerCookie}}
+
+### DesativaÃƒÂ§ÃƒÂ£o lÃƒÂ³gica do seller alvo; requer operaÃƒÂ§ÃƒÂ£o administrativa.
+###
+# @name deactivateSeller
+# @note
+DELETE {{baseUrl}}/sellers/{{seedSellerUserId}}
+Cookie: {{adminCookie}}
+
+### DesativaÃƒÂ§ÃƒÂ£o lÃƒÂ³gica do usuÃƒÂ¡rio criado.
+###
+# @name deactivateCreatedUser
+# @note
+DELETE {{baseUrl}}/users/{{createdUserId}}
+Cookie: {{adminCookie}}
+

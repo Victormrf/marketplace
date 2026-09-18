@@ -78,17 +78,3 @@ customerRoutes.put("/", authMiddleware, async (req, res) => {
     sendError(error, res);
   }
 });
-
-customerRoutes.delete(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  async (req, res) => {
-    try {
-      await customerService.deleteCustomerProfile();
-      res.status(204).send();
-    } catch (error) {
-      sendError(error, res);
-    }
-  },
-);
