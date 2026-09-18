@@ -1,6 +1,6 @@
 # Backend Revamp — Controle de Progresso
 
-Última atualização: 17/09/2026 — Etapa 12 concluída; Etapa 13 liberada
+Última atualização: 18/09/2026 — Etapa 13 concluída; Etapa 14 liberada
 
 ## Objetivo
 
@@ -155,14 +155,14 @@ Observação de escopo: refunds permanecem relacionados ao `PaymentAttempt`, sem
 
 ### Etapa 13 — Dashboards e relatórios
 
-- [~] Etapa atual
-- [ ] agregações por SellerOrder
-- [ ] valores e status do schema-v2
-- [ ] paginação e filtros temporais
-- [ ] eliminar N+1
+- [x] agregações por SellerOrder
+- [x] valores e status do schema-v2
+- [x] paginação e filtros temporais
+- [x] eliminar N+1
 
 ### Etapa 14 — Limpeza e fechamento
 
+- [~] Etapa atual
 - [ ] remover contratos e campos legados
 - [ ] remover scripts incompatíveis
 - [ ] revisar artefatos `dist/`
@@ -170,7 +170,7 @@ Observação de escopo: refunds permanecem relacionados ao `PaymentAttempt`, sem
 
 ## Próxima ação
 
-Executar a Etapa 13 — dashboards e relatórios — por meio de um handoff específico.
+Executar a Etapa 14 — limpeza e fechamento — por meio de um handoff específico.
 
 ## Protocolo de atualização
 

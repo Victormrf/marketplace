@@ -23,7 +23,8 @@
     "test:refunds": "npm run build && node --test tests/refunds.integration.test.js",
     "job:deliveries": "npm run build && node dist/jobs/deliveryStatusUpdater.js",
     "test:deliveries": "npm run build && node --test tests/deliveries.integration.test.js",
-    "test:reviews": "npm run build && node --test tests/reviews.integration.test.js"
+    "test:reviews": "npm run build && node --test tests/reviews.integration.test.js",
+    "test:dashboard": "npm run build && node --test tests/dashboard.integration.test.js"
   },
   "keywords": [],
   "author": "",

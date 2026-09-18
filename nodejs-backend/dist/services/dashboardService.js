@@ -10,138 +10,119 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardService = void 0;
-const orderRepository_1 = require("../repositories/orderRepository");
-const productRepository_1 = require("../repositories/productRepository");
+const client_1 = require("@prisma/client");
+const dashboardRepository_1 = require("../repositories/dashboardRepository");
 const reviewRepository_1 = require("../repositories/reviewRepository");
-const date_fns_1 = require("date-fns");
+const sellerRepository_1 = require("../repositories/sellerRepository");
+const customErrors_1 = require("../utils/customErrors");
 class DashboardService {
-    constructor() {
-        this.orderRepository = new orderRepository_1.OrderRepository();
-    }
-    getSalesStats(sellerId) {
+    sellerIdFor(user) {
         return __awaiter(this, void 0, void 0, function* () {
-            const items = yield this.orderRepository.getCompletedOrderItemsBySeller(sellerId);
-            const totalSales = items.reduce((sum, item) => sum + item.quantity * item.unitPriceInCents, 0);
-            const totalItemsSold = items.reduce((sum, item) => sum + item.quantity, 0);
+            if (user.role !== client_1.UserRole.SELLER)
+                throw new customErrors_1.ForbiddenError();
+            const seller = yield sellerRepository_1.sellerRepository.findByUserId(user.id);
+            if (!seller)
+                throw new customErrors_1.ForbiddenError();
+            return seller.id;
+        });
+    }
+    range(input = {}) {
+        var _a;
+        const to = (_a = input.to) !== null && _a !== void 0 ? _a : new Date();
+        const toExclusive = new Date(to);
+        toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+        const from = input.from ? new Date(input.from) : new Date(toExclusive);
+        if (!input.from)
+            from.setUTCDate(from.getUTCDate() - 30);
+        if (Number.isNaN(from.getTime()) || Number.isNaN(toExclusive.getTime())) {
+            throw new customErrors_1.ValidationError("Invalid date range");
+        }
+        if (from >= toExclusive)
+            throw new customErrors_1.ValidationError("Invalid date range");
+        if (toExclusive.getTime() - from.getTime() > 366 * 86400000) {
+            throw new customErrors_1.ValidationError("Dashboard date range is too large");
+        }
+        return { from, toExclusive };
+    }
+    toOrderDto(record) {
+        return {
+            id: record.id,
+            status: record.status,
+            totalInCents: record.totalInCents,
+            currency: "BRL",
+            createdAt: record.createdAt,
+            completedAt: record.completedAt,
+        };
+    }
+    getSummary(user, input) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const sellerId = yield this.sellerIdFor(user);
+            const result = yield dashboardRepository_1.dashboardRepository.summary(sellerId, this.range(input));
             return {
-                totalSales,
-                totalItemsSold,
+                currency: "BRL",
+                grossRevenueInCents: result.grossRevenueInCents,
+                deliveredSellerOrders: result.deliveredSellerOrders,
+                itemsSold: result.itemsSold,
+                averageTicketInCents: result.deliveredSellerOrders === 0
+                    ? 0
+                    : Math.round(result.grossRevenueInCents / result.deliveredSellerOrders),
             };
         });
     }
-    getOrdersCountByStatus(sellerId) {
+    getOrders(user, input, pagination, status) {
         return __awaiter(this, void 0, void 0, function* () {
-            const orders = yield this.orderRepository.getOrdersByStatus(sellerId);
-            const statusTotals = {};
-            for (const order of orders) {
-                const status = order.status;
-                if (status) {
-                    statusTotals[status] = (statusTotals[status] || 0) + 1;
-                }
-            }
-            return Object.entries(statusTotals).map(([status, count]) => ({
-                status: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
-                count,
-            }));
+            const sellerId = yield this.sellerIdFor(user);
+            const range = this.range(input);
+            const total = yield dashboardRepository_1.dashboardRepository.countOrders(sellerId, range, status);
+            const records = yield dashboardRepository_1.dashboardRepository.findOrders(sellerId, range, (pagination.page - 1) * pagination.limit, pagination.limit, status);
+            return {
+                data: records.map((record) => this.toOrderDto(record)),
+                pagination: Object.assign(Object.assign({}, pagination), { total, totalPages: Math.ceil(total / pagination.limit) }),
+            };
         });
     }
-    getSalesCountByCategory(sellerId) {
+    getOrdersByStatus(user, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            const orderItems = yield this.orderRepository.getCompletedOrderItemsByCategory(sellerId);
-            const categoryTotals = {};
-            for (const item of orderItems) {
-                const category = item.product.category;
-                const totalItemValue = item.quantity * item.unitPriceInCents;
-                if (category) {
-                    categoryTotals[category] =
-                        (categoryTotals[category] || 0) + totalItemValue;
-                }
-            }
-            return Object.entries(categoryTotals).map(([category, totalSales]) => ({
-                category,
-                totalSales,
-            }));
-        });
-    }
-    getMonthlySalesStats(sellerId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const orders = yield this.orderRepository.getMonthlySalesBySeller(sellerId);
-            const monthlySalesMap = {};
-            for (const order of orders) {
-                const monthKey = (0, date_fns_1.format)(order.createdAt, "yyyy-MM"); // Ex: "2025-05"
-                if (!monthlySalesMap[monthKey]) {
-                    monthlySalesMap[monthKey] = 0;
-                }
-                monthlySalesMap[monthKey] += order.totalInCents || 0;
-            }
-            // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
-            const result = [];
-            const now = new Date();
-            for (let i = 5; i >= 0; i--) {
-                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const key = (0, date_fns_1.format)(date, "yyyy-MM");
-                result.push({
-                    date: key,
-                    revenue: monthlySalesMap[key] || 0,
-                });
-            }
-            return result;
-        });
-    }
-    getDailySalesStats(sellerId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const orders = yield this.orderRepository.getDailySalesBySeller(sellerId);
-            const dailySalesMap = {};
-            for (const order of orders) {
-                const dayKey = (0, date_fns_1.format)(order.createdAt, "yyyy-MM-dd"); // Ex: "2025-05-05"
-                if (!dailySalesMap[dayKey]) {
-                    dailySalesMap[dayKey] = 0;
-                }
-                dailySalesMap[dayKey] += order.totalInCents || 0;
-            }
-            // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
-            const result = [];
-            const now = new Date();
-            for (let i = 30; i >= 0; i--) {
-                const date = new Date(now);
-                date.setDate(now.getDate() - i);
-                const key = (0, date_fns_1.format)(date, "yyyy-MM-dd");
-                result.push({
-                    date: key,
-                    revenue: dailySalesMap[key] || 0,
-                });
-            }
-            return result;
-        });
-    }
-    getOrdersBySeller(sellerId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield this.orderRepository.getOrdersBySeller(sellerId);
-        });
-    }
-    getBestSellingProducts(sellerId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const groupedData = yield this.orderRepository.getBestSellingProductsBySeller(sellerId);
-            const productIds = groupedData
-                .map((item) => item.productId)
-                .filter((id) => typeof id === "string");
-            const products = yield productRepository_1.productRepository.getProductsByIds(productIds);
-            const result = products.map((product) => {
+            const sellerId = yield this.sellerIdFor(user);
+            const counts = yield dashboardRepository_1.dashboardRepository.countByStatus(sellerId, this.range(input));
+            const byStatus = new Map(counts.map((item) => [item.status, item.count]));
+            return Object.values(client_1.SellerOrderStatus).map((status) => {
                 var _a;
-                const quantityData = groupedData.find((item) => item.productId === product.id);
-                return Object.assign(Object.assign({}, product), { totalSold: ((_a = quantityData === null || quantityData === void 0 ? void 0 : quantityData._sum) === null || _a === void 0 ? void 0 : _a.quantity) || 0 });
+                return ({
+                    status,
+                    count: (_a = byStatus.get(status)) !== null && _a !== void 0 ? _a : 0,
+                });
             });
-            return result;
         });
     }
-    getNewCustomersPerMonth(sellerId) {
+    getTimeseries(user, input, interval) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield this.orderRepository.getNewCustomersByMonth(sellerId);
+            const sellerId = yield this.sellerIdFor(user);
+            return dashboardRepository_1.dashboardRepository.timeseries(sellerId, this.range(input), interval);
         });
     }
-    getRatingDistributionOfSeller(sellerId) {
+    getByCategory(user, input) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield reviewRepository_1.reviewRepository.ratingDistributionBySeller(sellerId);
+            const sellerId = yield this.sellerIdFor(user);
+            return dashboardRepository_1.dashboardRepository.byCategory(sellerId, this.range(input));
+        });
+    }
+    getTopProducts(user, input, limit) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const sellerId = yield this.sellerIdFor(user);
+            return dashboardRepository_1.dashboardRepository.topProducts(sellerId, this.range(input), limit);
+        });
+    }
+    getNewCustomers(user, input) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const sellerId = yield this.sellerIdFor(user);
+            return dashboardRepository_1.dashboardRepository.newCustomers(sellerId, this.range(input));
+        });
+    }
+    getRatings(user) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const sellerId = yield this.sellerIdFor(user);
+            return reviewRepository_1.reviewRepository.reputation("seller", sellerId);
         });
     }
 }

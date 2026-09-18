@@ -1,160 +1,144 @@
-import { OrderRepository } from "../repositories/orderRepository";
-import { productRepository } from "../repositories/productRepository";
+import { SellerOrderStatus, UserRole } from "@prisma/client";
+import { dashboardRepository } from "../repositories/dashboardRepository";
 import { reviewRepository } from "../repositories/reviewRepository";
-import { format } from "date-fns";
+import { sellerRepository } from "../repositories/sellerRepository";
+import type { AuthenticatedUserDto } from "../types/auth";
+import type {
+  DashboardDateRange,
+  DashboardRangeInput,
+  DashboardRatingsDto,
+  SellerDashboardOrderCollectionDto,
+  SellerDashboardSummaryDto,
+} from "../types/dashboard";
+import { ForbiddenError, ValidationError } from "../utils/customErrors";
 
 export class DashboardService {
-  private readonly orderRepository = new OrderRepository();
-  async getSalesStats(sellerId: string) {
-    const items =
-      await this.orderRepository.getCompletedOrderItemsBySeller(sellerId);
+  private async sellerIdFor(user: AuthenticatedUserDto): Promise<string> {
+    if (user.role !== UserRole.SELLER) throw new ForbiddenError();
+    const seller = await sellerRepository.findByUserId(user.id);
+    if (!seller) throw new ForbiddenError();
+    return seller.id;
+  }
 
-    const totalSales = items.reduce(
-      (sum: number, item: { quantity: number; unitPriceInCents: number }) =>
-        sum + item.quantity * item.unitPriceInCents,
-      0,
-    );
+  private range(input: DashboardRangeInput = {}): DashboardDateRange {
+    const to = input.to ?? new Date();
+    const toExclusive = new Date(to);
+    toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+    const from = input.from ? new Date(input.from) : new Date(toExclusive);
+    if (!input.from) from.setUTCDate(from.getUTCDate() - 30);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(toExclusive.getTime())) {
+      throw new ValidationError("Invalid date range");
+    }
+    if (from >= toExclusive) throw new ValidationError("Invalid date range");
+    if (toExclusive.getTime() - from.getTime() > 366 * 86400000) {
+      throw new ValidationError("Dashboard date range is too large");
+    }
+    return { from, toExclusive };
+  }
 
-    const totalItemsSold = items.reduce(
-      (sum: number, item: { quantity: number }) => sum + item.quantity,
-      0,
-    );
-
+  private toOrderDto(record: {
+    id: string;
+    status: SellerOrderStatus;
+    totalInCents: number;
+    createdAt: Date;
+    completedAt: Date | null;
+  }) {
     return {
-      totalSales,
-      totalItemsSold,
+      id: record.id,
+      status: record.status,
+      totalInCents: record.totalInCents,
+      currency: "BRL" as const,
+      createdAt: record.createdAt,
+      completedAt: record.completedAt,
     };
   }
 
-  async getOrdersCountByStatus(sellerId: string) {
-    const orders = await this.orderRepository.getOrdersByStatus(sellerId);
+  async getSummary(
+    user: AuthenticatedUserDto,
+    input: DashboardRangeInput,
+  ): Promise<SellerDashboardSummaryDto> {
+    const sellerId = await this.sellerIdFor(user);
+    const result = await dashboardRepository.summary(sellerId, this.range(input));
+    return {
+      currency: "BRL",
+      grossRevenueInCents: result.grossRevenueInCents,
+      deliveredSellerOrders: result.deliveredSellerOrders,
+      itemsSold: result.itemsSold,
+      averageTicketInCents:
+        result.deliveredSellerOrders === 0
+          ? 0
+          : Math.round(
+              result.grossRevenueInCents / result.deliveredSellerOrders,
+            ),
+    };
+  }
 
-    const statusTotals: Record<string, number> = {};
+  async getOrders(
+    user: AuthenticatedUserDto,
+    input: DashboardRangeInput,
+    pagination: { page: number; limit: number },
+    status?: SellerOrderStatus,
+  ): Promise<SellerDashboardOrderCollectionDto> {
+    const sellerId = await this.sellerIdFor(user);
+    const range = this.range(input);
+    const total = await dashboardRepository.countOrders(sellerId, range, status);
+    const records = await dashboardRepository.findOrders(
+      sellerId,
+      range,
+      (pagination.page - 1) * pagination.limit,
+      pagination.limit,
+      status,
+    );
+    return {
+      data: records.map((record) => this.toOrderDto(record)),
+      pagination: {
+        ...pagination,
+        total,
+        totalPages: Math.ceil(total / pagination.limit),
+      },
+    };
+  }
 
-    for (const order of orders) {
-      const status = order.status;
-
-      if (status) {
-        statusTotals[status] = (statusTotals[status] || 0) + 1;
-      }
-    }
-
-    return Object.entries(statusTotals).map(([status, count]) => ({
-      status: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
-      count,
+  async getOrdersByStatus(user: AuthenticatedUserDto, input: DashboardRangeInput) {
+    const sellerId = await this.sellerIdFor(user);
+    const counts = await dashboardRepository.countByStatus(sellerId, this.range(input));
+    const byStatus = new Map(counts.map((item) => [item.status, item.count]));
+    return Object.values(SellerOrderStatus).map((status) => ({
+      status,
+      count: byStatus.get(status) ?? 0,
     }));
   }
 
-  async getSalesCountByCategory(sellerId: string) {
-    const orderItems =
-      await this.orderRepository.getCompletedOrderItemsByCategory(sellerId);
-
-    const categoryTotals: Record<string, number> = {};
-
-    for (const item of orderItems) {
-      const category = item.product.category;
-      const totalItemValue = item.quantity * item.unitPriceInCents;
-      if (category) {
-        categoryTotals[category] =
-          (categoryTotals[category] || 0) + totalItemValue;
-      }
-    }
-
-    return Object.entries(categoryTotals).map(([category, totalSales]) => ({
-      category,
-      totalSales,
-    }));
+  async getTimeseries(
+    user: AuthenticatedUserDto,
+    input: DashboardRangeInput,
+    interval: "day" | "month",
+  ) {
+    const sellerId = await this.sellerIdFor(user);
+    return dashboardRepository.timeseries(sellerId, this.range(input), interval);
   }
 
-  async getMonthlySalesStats(sellerId: string) {
-    const orders = await this.orderRepository.getMonthlySalesBySeller(sellerId);
-
-    const monthlySalesMap: Record<string, number> = {};
-
-    for (const order of orders) {
-      const monthKey = format(order.createdAt, "yyyy-MM"); // Ex: "2025-05"
-      if (!monthlySalesMap[monthKey]) {
-        monthlySalesMap[monthKey] = 0;
-      }
-      monthlySalesMap[monthKey] += order.totalInCents || 0;
-    }
-
-    // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
-    const result: { date: string; revenue: number }[] = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = format(date, "yyyy-MM");
-      result.push({
-        date: key,
-        revenue: monthlySalesMap[key] || 0,
-      });
-    }
-
-    return result;
+  async getByCategory(user: AuthenticatedUserDto, input: DashboardRangeInput) {
+    const sellerId = await this.sellerIdFor(user);
+    return dashboardRepository.byCategory(sellerId, this.range(input));
   }
 
-  async getDailySalesStats(sellerId: string) {
-    const orders = await this.orderRepository.getDailySalesBySeller(sellerId);
-
-    const dailySalesMap: Record<string, number> = {};
-
-    for (const order of orders) {
-      const dayKey = format(order.createdAt, "yyyy-MM-dd"); // Ex: "2025-05-05"
-      if (!dailySalesMap[dayKey]) {
-        dailySalesMap[dayKey] = 0;
-      }
-      dailySalesMap[dayKey] += order.totalInCents || 0;
-    }
-
-    // Garante que todos os últimos 6 meses estejam no retorno, mesmo que com 0
-    const result: { date: string; revenue: number }[] = [];
-    const now = new Date();
-    for (let i = 30; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - i);
-      const key = format(date, "yyyy-MM-dd");
-      result.push({
-        date: key,
-        revenue: dailySalesMap[key] || 0,
-      });
-    }
-
-    return result;
+  async getTopProducts(
+    user: AuthenticatedUserDto,
+    input: DashboardRangeInput,
+    limit: number,
+  ) {
+    const sellerId = await this.sellerIdFor(user);
+    return dashboardRepository.topProducts(sellerId, this.range(input), limit);
   }
 
-  async getOrdersBySeller(sellerId: string) {
-    return await this.orderRepository.getOrdersBySeller(sellerId);
+  async getNewCustomers(user: AuthenticatedUserDto, input: DashboardRangeInput) {
+    const sellerId = await this.sellerIdFor(user);
+    return dashboardRepository.newCustomers(sellerId, this.range(input));
   }
 
-  async getBestSellingProducts(sellerId: string) {
-    const groupedData =
-      await this.orderRepository.getBestSellingProductsBySeller(sellerId);
-
-    const productIds = groupedData
-      .map((item: { productId: string }) => item.productId)
-      .filter((id: string): id is string => typeof id === "string");
-
-    const products = await productRepository.getProductsByIds(productIds);
-
-    const result = products.map((product) => {
-      const quantityData = groupedData.find(
-        (item: { productId: string }) => item.productId === product.id,
-      );
-      return {
-        ...product,
-        totalSold: quantityData?._sum?.quantity || 0,
-      };
-    });
-
-    return result;
-  }
-
-  async getNewCustomersPerMonth(sellerId: string) {
-    return await this.orderRepository.getNewCustomersByMonth(sellerId);
-  }
-
-  async getRatingDistributionOfSeller(sellerId: string) {
-    return await reviewRepository.ratingDistributionBySeller(sellerId);
+  async getRatings(user: AuthenticatedUserDto): Promise<DashboardRatingsDto> {
+    const sellerId = await this.sellerIdFor(user);
+    return reviewRepository.reputation("seller", sellerId);
   }
 }
