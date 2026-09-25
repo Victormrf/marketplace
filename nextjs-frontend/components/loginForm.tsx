@@ -1,5 +1,8 @@
+"use client";
+
 import type React from "react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,140 +12,74 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/authContext";
+import { ApiError } from "@/lib/http";
+import { login } from "@/services/auth";
+import { getCurrentUser } from "@/services/user";
+import { getMySellerProfile } from "@/services/seller";
 
 type LoginFormProps = {
   onRegisterClick?: () => void;
   onClose?: () => void;
   onAuthSuccess?: () => void;
+  returnTo?: string;
 };
 
 export default function LoginForm({
   onRegisterClick,
   onClose,
   onAuthSuccess,
+  returnTo,
 }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { setUser } = useAuth();
 
-  // Função para sincronizar o carrinho local com o backend
-  async function syncLocalCartWithBackend() {
-    const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    for (const item of localCart) {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart-items/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(item),
-      });
-    }
-    localStorage.removeItem("cart");
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Autenticação
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ email, password }),
-        }
-      );
-
-      if (!res.ok) {
-        setError("Usuário ou senha inválidos");
-        setLoading(false);
-        return;
-      }
-
-      // 2. Recuperação de dados do usuário
-      const userRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/me`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      if (!userRes.ok) {
-        throw new Error("Erro ao obter dados do usuário");
-      }
-
-      const user = await userRes.json();
-
-      // 3. Sincroniza o carrinho local com o backend se o usuário for customer
-      if (user.role === "CUSTOMER") {
-        await syncLocalCartWithBackend();
-      }
-
-      // 4. Redirecionamento para seller
-      if (user.role === "SELLER") {
-        const sellerRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (!sellerRes.ok) {
-          throw new Error("Erro ao obter dados do seller");
-        }
-
-        const sellerData = await sellerRes.json();
-        const sellerId = sellerData.profile.id;
-
-        // Primeiro atualizamos o header
-        onAuthSuccess?.();
-
-        // Pequeno delay para garantir que o estado foi atualizado
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // Depois fechamos o modal e navegamos
-        if (onClose) onClose();
-        await router.push(`/store/${sellerId}`);
-        return;
-      }
-
-      // 5. Fecha o modal ou redireciona
+      await login({ email, password });
+      const user = await getCurrentUser();
+      setUser(user);
       onAuthSuccess?.();
-      if (onClose) onClose();
+      onClose?.();
       router.refresh();
-    } catch (err: unknown) {
-      setError(
-        `Erro ao fazer login. Tente novamente. ${
-          err instanceof Error ? err.message : "Erro desconhecido"
-        }`
-      );
+
+      if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
+        router.push(returnTo);
+      } else if (user.role === "SELLER") {
+        const seller = await getMySellerProfile();
+        router.push(`/store/${seller.id}`);
+      }
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) {
+        setError("E-mail ou senha inválidos.");
+      } else if (cause instanceof ApiError && cause.status === 403) {
+        setError("Sua conta não tem permissão para esta operação.");
+      } else {
+        setError("Não foi possível entrar. Tente novamente.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen p-4">
-      <Card className="w-full max-w-md relative">
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <Card className="relative w-full max-w-md">
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+            className="absolute right-2 top-2 text-xl text-gray-400 hover:text-gray-600"
             aria-label="Fechar"
           >
             ×
@@ -150,21 +87,19 @@ export default function LoginForm({
         )}
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Entrar</CardTitle>
-          <CardDescription>
-            Digite suas credenciais para acessar sua conta
-          </CardDescription>
+          <CardDescription>Digite suas credenciais para acessar sua conta</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {error && <div className="text-red-500 text-sm">{error}</div>}
+            {error && <div className="text-sm text-red-500">{error}</div>}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">E-mail</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="seu@email.com"
+                autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
               />
             </div>
@@ -173,23 +108,11 @@ export default function LoginForm({
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 required
               />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-              />
-              <Label
-                htmlFor="remember"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Lembrar de mim
-              </Label>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
@@ -200,7 +123,7 @@ export default function LoginForm({
               Não possui uma conta?{" "}
               <button
                 type="button"
-                className="text-primary underline underline-offset-4 hover:text-primary/90"
+                className="text-primary underline underline-offset-4"
                 onClick={onRegisterClick}
               >
                 Registre-se

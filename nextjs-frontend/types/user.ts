@@ -1,19 +1,8 @@
-import { Customer } from "./customer";
-import { Seller } from "./seller";
+import type { Customer } from "./customer";
+import type { Seller } from "./seller";
+import type { AuthenticatedUserDto } from "./auth";
 
-export enum UserRole {
-  CUSTOMER = "CUSTOMER",
-  SELLER = "SELLER",
-}
-
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: UserRole;
-  createdAt: Date;
-};
+export type User = AuthenticatedUserDto;
 
 export type UserProfile = {
   user: User;

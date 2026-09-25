@@ -8,7 +8,7 @@ import { UserProfile } from "@/types/user";
 interface ProfileFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userProfile: UserProfile | null;
+  userProfile: UserProfile;
   onProfileUpdate: () => void;
 }
 
