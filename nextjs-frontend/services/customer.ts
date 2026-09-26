@@ -6,7 +6,8 @@ export type CustomerProfileInput = {
 };
 
 export async function getMyCustomerProfile(): Promise<Customer> {
-  return browserRequest<Customer>("/api/customers");
+  const response = await browserRequest<{ profile: Customer }>("/api/customers");
+  return response.profile;
 }
 
 export async function createMyCustomerProfile(

@@ -8,7 +8,8 @@ export type SellerProfileInput = {
 };
 
 export async function getMySellerProfile(): Promise<Seller> {
-  return browserRequest<Seller>("/api/sellers");
+  const response = await browserRequest<{ profile: Seller }>("/api/sellers");
+  return response.profile;
 }
 
 export async function createMySellerProfile(

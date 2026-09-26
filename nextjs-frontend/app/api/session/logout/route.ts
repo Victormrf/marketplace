@@ -3,7 +3,7 @@ import {
   forwardBackendUrl,
   privateJsonResponse,
   rejectCrossOrigin,
-} from "@/lib/api/bff";
+} from "@/lib/server/route-proxy";
 
 export async function POST(request: NextRequest) {
   const rejected = rejectCrossOrigin(request);
