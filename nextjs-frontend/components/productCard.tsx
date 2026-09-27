@@ -4,31 +4,22 @@ import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Product } from "@/types/product";
+import type { ProductReadDto } from "@/types/product";
 
 interface ProductCardProps {
-  product: Product;
+  product: ProductReadDto;
   onClick: () => void;
 }
 
 export function ProductCard({ product, onClick }: ProductCardProps) {
-  // Determinar o status do estoque
-  const getStockStatus = () => {
-    if (product.stock <= 0)
-      return { label: "Sem estoque", variant: "destructive" as const };
-    if (product.stock < 5)
-      return { label: "Estoque baixo", variant: "warning" as const };
-    return {
-      label: `${product.stock} em estoque`,
-      variant: "outline" as const,
-    };
-  };
-
-  const stockStatus = getStockStatus();
+  const availableQuantity = product.inventory.availableQuantity;
+  const availabilityLabel = product.isAvailable
+    ? `${availableQuantity} disponíveis`
+    : "Indisponível";
 
   return (
     <Card
-      className="overflow-hidden cursor-pointer transition-all hover:shadow-md"
+      className="cursor-pointer overflow-hidden transition-all hover:shadow-md"
       onClick={onClick}
     >
       <div className="relative aspect-square">
@@ -41,12 +32,15 @@ export function ProductCard({ product, onClick }: ProductCardProps) {
       </div>
       <CardContent className="p-4">
         <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-start">
-            <h3 className="font-medium line-clamp-2">{product.name}</h3>
-          </div>
-          <div className="flex justify-between items-center">
-            <p className="font-bold text-lg">{formatCurrency(product.price)}</p>
-            <Badge variant={stockStatus.variant}>{stockStatus.label}</Badge>
+          <h3 className="line-clamp-2 font-medium">{product.name}</h3>
+          <p className="text-sm text-muted-foreground">{product.sellerName}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-lg font-bold">
+              {formatCurrency(product.priceInCents / 100)}
+            </p>
+            <Badge variant={product.isAvailable ? "outline" : "destructive"}>
+              {availabilityLabel}
+            </Badge>
           </div>
           <p className="text-xs text-muted-foreground">{product.category}</p>
         </div>

@@ -1,10 +1,11 @@
 "use client";
 
-import type React from "react";
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
+import { ApiError } from "@/lib/http";
+import { updateProduct, type ProductCategory } from "@/services/catalog";
+import type { ProductReadDto } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,29 +24,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Edit, Save, X } from "lucide-react";
-import { Product } from "@/types/product";
 
-// Categorias de exemplo
-const CATEGORIES = [
-  "Eletrônicos",
-  "Roupas",
-  "Acessórios",
-  "Casa e Decoração",
-  "Esportes",
-  "Livros",
-  "Brinquedos",
-  "Saúde e Beleza",
-  "Alimentos",
-  "Outros",
+const CATEGORIES: ProductCategory[] = [
+  "OFFICE",
+  "SPORTS",
+  "BOOKS",
+  "BEAUTY",
+  "CLOTHING",
+  "TOYS",
+  "TV_PROJECTORS",
+  "SMARTPHONES_TABLETS",
+  "ELECTRONICS",
+  "PETS",
+  "FURNITURE",
 ];
 
 interface ProductModalProps {
-  product: Product;
+  product: ProductReadDto;
   isOpen: boolean;
   onClose: () => void;
-  onUpdate: (product: Product) => void;
+  onUpdate: (product: ProductReadDto) => void;
 }
 
 export function ProductModal({
@@ -54,278 +52,173 @@ export function ProductModal({
   onClose,
   onUpdate,
 }: ProductModalProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedProduct, setEditedProduct] = useState<Product>({ ...product });
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(product.name);
+  const [reference, setReference] = useState(product.reference ?? "");
+  const [description, setDescription] = useState(product.description ?? "");
+  const [price, setPrice] = useState((product.priceInCents / 100).toFixed(2));
+  const [category, setCategory] = useState<ProductCategory>(product.category as ProductCategory);
+  const [image, setImage] = useState<File | undefined>();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Formatar a data de criação
-  const formattedDate = product.createdAt
-    ? new Date(product.createdAt).toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-    : new Date().toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
+  useEffect(() => {
+    setName(product.name);
+    setReference(product.reference ?? "");
+    setDescription(product.description ?? "");
+    setPrice((product.priceInCents / 100).toFixed(2));
+    setCategory(product.category as ProductCategory);
+    setImage(undefined);
+    setImagePreview(null);
+    setEditing(false);
+    setError(null);
+  }, [product]);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updated = await updateProduct(product.id, {
+        name,
+        reference: reference.trim() || null,
+        description: description.trim() || null,
+        priceInCents: Math.round(Number(price) * 100),
+        currency: product.currency,
+        category,
+        ...(image ? { image } : {}),
       });
-
-  // Alternar entre modo de visualização e edição
-  const toggleEditMode = () => {
-    if (isEditing) {
-      // Cancelar edição
-      setEditedProduct({ ...product });
-      setImagePreview(null);
+      onUpdate(updated);
+      setEditing(false);
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiError
+          ? requestError.message
+          : "Não foi possível atualizar o produto.",
+      );
+    } finally {
+      setSaving(false);
     }
-    setIsEditing(!isEditing);
-  };
+  }
 
-  // Atualizar campos do produto
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setEditedProduct((prev) => ({
-      ...prev,
-      [name]: name === "price" || name === "stock" ? Number(value) : value,
-    }));
-  };
+  function selectImage(file?: File) {
+    setImage(file);
+    setImagePreview(file ? URL.createObjectURL(file) : null);
+  }
 
-  // Atualizar categoria
-  const handleCategoryChange = (value: string) => {
-    setEditedProduct((prev) => ({
-      ...prev,
-      category: value,
-    }));
-  };
-
-  // Lidar com upload de imagem
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-
-      // Criar preview da imagem
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setImagePreview(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-
-      // Em um cenário real, você faria upload da imagem para um serviço
-      // e atualizaria a URL no produto
-      // Por enquanto, apenas simulamos isso
-      setEditedProduct((prev) => ({
-        ...prev,
-        image: URL.createObjectURL(file), // Isso é temporário e só funciona para preview
-      }));
-    }
-  };
-
-  // Salvar alterações
-  const handleSave = () => {
-    onUpdate(editedProduct);
-    setIsEditing(false);
-  };
-
-  // Determinar o status do estoque
-  const getStockStatus = () => {
-    const stock = isEditing ? editedProduct.stock : product.stock;
-
-    if (stock <= 0)
-      return { label: "Sem estoque", variant: "destructive" as const };
-    if (stock < 5)
-      return { label: "Estoque baixo", variant: "warning" as const };
-    return { label: `${stock} em estoque`, variant: "outline" as const };
-  };
-
-  const stockStatus = getStockStatus();
+  const imageSource = imagePreview || product.image || "/placeholder.svg";
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[760px]">
         <DialogHeader>
-          <DialogTitle className="pt-4 flex justify-between items-center">
-            {isEditing ? "Editar Produto" : "Detalhes do Produto"}
-            <div className="relative group">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleEditMode}
-                className="h-12 w-12 rounded-full border border-solid hover:bg-gray-100"
-              >
-                {isEditing ? (
-                  <X className="h-6 w-6 scale-125" />
-                ) : (
-                  <Edit className="h-6 w-6 scale-125" />
-                )}
-              </Button>
-              <span className="absolute -bottom-8 right-0 scale-0 transition-all rounded bg-gray-800 p-2 text-xs text-white group-hover:scale-100">
-                {isEditing ? "Cancelar edição" : "Editar produto"}
-              </span>
-            </div>
-          </DialogTitle>
+          <DialogTitle>{editing ? "Editar produto" : "Detalhes do produto"}</DialogTitle>
         </DialogHeader>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Imagem do Produto */}
-          <div className="space-y-4">
-            <div className="relative aspect-square rounded-md overflow-hidden border">
-              <Image
-                src={imagePreview || editedProduct.image || "/placeholder.svg"}
-                alt={editedProduct.name}
-                fill
-                className="object-cover"
-              />
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-3">
+            <div className="relative aspect-square overflow-hidden rounded-md border">
+              <Image src={imageSource} alt={name} fill className="object-cover" />
             </div>
-
-            {isEditing && (
+            {editing && (
               <div className="space-y-2">
-                <Label htmlFor="image">Alterar Imagem</Label>
+                <Label htmlFor="product-image">Imagem</Label>
                 <Input
-                  id="image"
+                  id="product-image"
                   type="file"
                   accept="image/*"
-                  onChange={handleImageChange}
-                  className="cursor-pointer"
+                  onChange={(event) => selectImage(event.target.files?.[0])}
                 />
               </div>
             )}
           </div>
-
-          {/* Detalhes do Produto */}
-          <div className="flex flex-col h-full">
-            <div className="flex-grow space-y-4">
-              {isEditing ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome do Produto</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={editedProduct.name}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      value={editedProduct.description || ""}
-                      onChange={handleChange}
-                      rows={4}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="price">Preço (R$)</Label>
-                      <Input
-                        id="price"
-                        name="price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={editedProduct.price}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="stock">Estoque</Label>
-                      <Input
-                        id="stock"
-                        name="stock"
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={editedProduct.stock}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Categoria</Label>
-                    <Select
-                      value={editedProduct.category}
-                      onValueChange={handleCategoryChange}
-                    >
-                      <SelectTrigger id="category">
-                        <SelectValue placeholder="Selecione uma categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <h2 className="text-2xl font-bold">{product.name}</h2>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge>{product.category}</Badge>
-                      <Badge variant={stockStatus.variant}>
-                        {stockStatus.label}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="text-3xl font-bold">
-                    {formatCurrency(product.price)}
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                      Descrição
-                    </h3>
-                    <p className="text-sm">
-                      {product.description || "Sem descrição disponível."}
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-            {/* Product details at bottom */}
-            {isEditing || (
-              <div className="grid grid-cols-2 gap-4 text-sm mt-auto pt-4 ">
-                <div>
-                  <h3 className="font-medium text-muted-foreground mb-1">
-                    ID do Produto
-                  </h3>
-                  <p className="font-mono">{product.id}</p>
+          <div className="space-y-4">
+            {editing ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="product-name">Nome</Label>
+                  <Input id="product-name" value={name} onChange={(event) => setName(event.target.value)} required />
                 </div>
-                <div>
-                  <h3 className="font-medium text-muted-foreground mb-1">
-                    Data de Criação
-                  </h3>
-                  <p>{formattedDate}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="product-reference">Referência</Label>
+                  <Input
+                    id="product-reference"
+                    value={reference}
+                    onChange={(event) => setReference(event.target.value)}
+                  />
                 </div>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-description">Descrição</Label>
+                  <Textarea
+                    id="product-description"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-price">Preço (R$)</Label>
+                  <Input
+                    id="product-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={price}
+                    onChange={(event) => setPrice(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-category">Categoria</Label>
+                  <Select value={category} onValueChange={(value) => setCategory(value as ProductCategory)}>
+                    <SelectTrigger id="product-category">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((value) => (
+                        <SelectItem key={value} value={value}>{value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h2 className="text-2xl font-bold">{product.name}</h2>
+                  <p className="text-sm text-muted-foreground">{product.sellerName} · {product.category}</p>
+                </div>
+                <p className="text-3xl font-bold">{formatCurrency(product.priceInCents / 100)}</p>
+                <p className={product.isAvailable ? "text-green-700" : "text-red-700"}>
+                  {product.isAvailable ? "Disponível" : "Indisponível"}
+                </p>
+                <dl className="grid grid-cols-2 gap-2 text-sm">
+                  <dt>Estoque físico</dt><dd>{product.inventory.onHandQuantity}</dd>
+                  <dt>Reservado</dt><dd>{product.inventory.reservedQuantity}</dd>
+                  <dt>Disponível para venda</dt><dd>{product.inventory.availableQuantity}</dd>
+                  <dt>Referência</dt><dd>{product.reference || "—"}</dd>
+                </dl>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Descrição</h3>
+                  <p className="text-sm">{product.description || "Sem descrição."}</p>
+                </div>
+              </>
             )}
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           </div>
         </div>
-
         <DialogFooter>
-          {isEditing ? (
-            <Button onClick={handleSave}>
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Alterações
-            </Button>
+          {editing ? (
+            <>
+              <Button type="button" variant="outline" onClick={() => setEditing(false)}>Cancelar</Button>
+              <Button type="button" onClick={() => void save()} disabled={saving}>
+                {saving ? "Salvando…" : "Salvar alterações"}
+              </Button>
+            </>
           ) : (
-            <Button variant="outline" onClick={onClose}>
-              Fechar
-            </Button>
+            <>
+              <Button type="button" variant="outline" onClick={onClose}>Fechar</Button>
+              <Button type="button" onClick={() => setEditing(true)}>Editar</Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>

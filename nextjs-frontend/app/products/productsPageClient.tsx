@@ -1,378 +1,254 @@
 "use client";
 
-import { Search, ChevronLeft, ArrowUpDown, Heart } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ProductOverview from "@/components/productOverview";
-import SuccessPopup from "@/components/popups/successPopup";
+import { ProductCard } from "@/components/productCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Product } from "@/types/product";
+import { ApiError } from "@/lib/http";
+import { getProduct } from "@/services/catalog";
+import { addCartItem } from "@/services/cart";
+import { useProducts } from "@/hooks/useProducts";
+import type { ProductReadDto } from "@/types/product";
 
-type SortOption = "name" | "price-asc" | "price-desc" | "rating";
+const CATEGORIES = [
+  "OFFICE",
+  "SPORTS",
+  "BOOKS",
+  "BEAUTY",
+  "CLOTHING",
+  "TOYS",
+  "TV_PROJECTORS",
+  "SMARTPHONES_TABLETS",
+  "ELECTRONICS",
+  "PETS",
+  "FURNITURE",
+];
 
-export default function ProductsPage() {
+export default function ProductsPageClient() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const searchInput = searchParams.get("search");
-  const category = searchParams.get("category");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [successPosition, setSuccessPosition] = useState<{
-    top: number;
-    left: number;
+  const queryKey = searchParams.toString();
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [category, setCategory] = useState(searchParams.get("category") ?? "");
+  const [sellerId, setSellerId] = useState(searchParams.get("sellerId") ?? "");
+  const [inStock, setInStock] = useState(searchParams.get("inStock") ?? "");
+  const [selectedProduct, setSelectedProduct] = useState<ProductReadDto | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartMessage, setCartMessage] = useState<{
+    text: string;
+    error: boolean;
   } | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [sortBy, setSortBy] = useState<SortOption>("name");
 
-  // Função para adicionar ao carrinho
-  async function handleAddToCart(
-    productId: string,
-    btnElement: HTMLButtonElement
-  ) {
-    try {
-      // Verifica se existe um usuário logado usando a rota /me
-      const userRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/me`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      if (userRes.ok) {
-        // Usuário está logado, adiciona no backend
-        const addToCartRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart-items`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-            body: JSON.stringify({
-              productId,
-              quantity: 1,
-            }),
-          }
-        );
-
-        if (!addToCartRes.ok) {
-          throw new Error("Erro ao adicionar ao carrinho");
-        }
-      } else {
-        // Usuário não está logado, salva no localStorage
-        const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-        const existing = cart.find(
-          (item: { productId: string; quantity: number }) =>
-            item.productId === productId
-        );
-
-        if (existing) {
-          existing.quantity += 1;
-        } else {
-          cart.push({ productId, quantity: 1 });
-        }
-
-        localStorage.setItem("cart", JSON.stringify(cart));
-      }
-
-      // Mostra popup de sucesso
-      const rect = btnElement.getBoundingClientRect();
-      setSuccessPosition({
-        top: rect.top + window.scrollY - 40,
-        left: rect.left + window.scrollX + rect.width / 2,
-      });
-      setShowSuccess(true);
-    } catch (error) {
-      console.error("Erro ao adicionar ao carrinho:", error);
-      alert("Erro ao adicionar ao carrinho.");
-    }
-  }
-
-  const handleSearch = () => {
-    if (!products) return;
-
-    const filtered = products.filter(
-      (product) =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    setFilteredProducts(filtered);
-  };
+  const activeQuery = useMemo(() => new URLSearchParams(queryKey), [queryKey]);
+  const { collection, loading, error } = useProducts(activeQuery);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        let url = `${process.env.NEXT_PUBLIC_API_URL}/products`;
+    setSearch(activeQuery.get("search") ?? "");
+    setCategory(activeQuery.get("category") ?? "");
+    setSellerId(activeQuery.get("sellerId") ?? "");
+    setInStock(activeQuery.get("inStock") ?? "");
+    setDetailError(null);
+  }, [activeQuery]);
 
-        // Se tiver categoria, busca por categoria
-        if (category) {
-          url = `${process.env.NEXT_PUBLIC_API_URL}/products/category/${category}`;
-        }
-        // Se tiver termo de busca, usa o endpoint de busca
-        else if (searchInput) {
-          url = `${
-            process.env.NEXT_PUBLIC_API_URL
-          }/products/search?q=${encodeURIComponent(searchInput)}`;
-        }
+  function applyFilters(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const next = new URLSearchParams();
+    const normalizedSearch = search.trim();
+    const normalizedSellerId = sellerId.trim();
 
-        const res = await fetch(url);
-        const data = await res.json();
-        const productsList = Array.isArray(data.products) ? data.products : [];
-        setProducts(productsList);
-        setFilteredProducts(productsList);
-      } catch (error) {
-        console.error("Erro ao buscar produtos:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (normalizedSearch) next.set("search", normalizedSearch);
+    if (category) next.set("category", category);
+    if (normalizedSellerId) next.set("sellerId", normalizedSellerId);
+    if (inStock) next.set("inStock", inStock);
+    next.set("page", "1");
+    next.set("limit", searchParams.get("limit") ?? "12");
 
-    fetchProducts();
-  }, [category, searchInput]);
-
-  const sortProducts = (products: Product[], sortBy: SortOption) => {
-    const sorted = [...products];
-    switch (sortBy) {
-      case "name":
-        return sorted.sort((a, b) => a.name.localeCompare(b.name));
-      case "price-asc":
-        return sorted.sort((a, b) => a.price - b.price);
-      case "price-desc":
-        return sorted.sort((a, b) => b.price - a.price);
-      case "rating":
-        return sorted.sort(
-          (a, b) => (b.averageRating || 0) - (a.averageRating || 0)
-        );
-      default:
-        return sorted;
-    }
-  };
-
-  function handleProductClick(product: Product) {
-    setSelectedProduct(product);
-    setModalOpen(true);
+    router.push(`${pathname}?${next.toString()}`);
   }
 
-  function closeModal() {
-    setModalOpen(false);
+  function goToPage(page: number) {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("page", String(page));
+    router.push(`${pathname}?${next.toString()}`);
+  }
+
+  async function openProduct(productId: string) {
+    setDetailLoading(true);
+    setDetailError(null);
+    setCartMessage(null);
     setSelectedProduct(null);
+    try {
+      setSelectedProduct(await getProduct(productId));
+    } catch (requestError) {
+      setDetailError(
+        requestError instanceof ApiError
+          ? requestError.message
+          : "Não foi possível carregar os detalhes do produto.",
+      );
+    } finally {
+      setDetailLoading(false);
+    }
   }
+
+  async function addSelectedProductToCart() {
+    if (!selectedProduct) return;
+
+    setAddingToCart(true);
+    setCartMessage(null);
+    try {
+      await addCartItem({ productId: selectedProduct.id, quantity: 1 });
+      setCartMessage({ text: "Produto adicionado ao carrinho.", error: false });
+    } catch (requestError) {
+      const message = requestError instanceof ApiError
+        ? requestError.status === 401
+          ? "Entre como customer para adicionar ao carrinho."
+          : requestError.status === 403
+            ? "Somente customers podem operar o carrinho."
+            : requestError.status === 409
+              ? "O produto ficou indisponível ou o estoque mudou."
+              : requestError.message
+        : "Não foi possível adicionar o produto ao carrinho.";
+      setCartMessage({ text: message, error: true });
+    } finally {
+      setAddingToCart(false);
+    }
+  }
+
+  const pagination = collection?.pagination;
 
   return (
-    <div>
-      {/* Breadcrumb Navigation */}
-      <div className="bg-gray-100 px-4 py-2 flex items-center text-sm text-gray-600">
-        <Link
-          href="/"
-          className="flex items-center hover:text-gray-900 hover:underline"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Home
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-gray-900 hover:underline hover:cursor-pointer">
-          {category
-            ? `${category} Products`
-            : `Search results for "${searchInput}"`}
-        </span>
+    <main className="mx-auto w-full max-w-7xl px-4 py-8">
+      <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/" className="hover:underline">Início</Link>
+        <span>/</span>
+        <span>Produtos</span>
       </div>
+      <h1 className="mb-5 text-3xl font-bold">Catálogo de produtos</h1>
 
-      {/* Header Section */}
-      <div className="bg-white border-b shadow-sm">
-        <div className="px-4 py-4">
-          <h1 className="text-2xl font-bold mb-2">
-            {category
-              ? `${category} Products`
-              : `Search results for "${searchInput}"`}
-          </h1>
-
-          <div className="mt-4 flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search products..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-              />
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center gap-2">
-                  <ArrowUpDown className="h-4 w-4" />
-                  Sort
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => setSortBy("name")}>
-                  Name (A-Z)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("price-asc")}>
-                  Price (Low to High)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("price-desc")}>
-                  Price (High to Low)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("rating")}>
-                  Best Rated
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <p>Carregando produtos...</p>
-      ) : filteredProducts.length === 0 ? (
-        <p>Nenhum produto encontrado.</p>
-      ) : (
-        <div className="px-4 sm:px-8 md:px-16 lg:px-24 xl:px-32 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 pt-12">
-          {sortProducts(filteredProducts, sortBy).map((product) => (
-            <div
-              key={product.id}
-              className="w-full bg-background border border-gray-200 rounded-lg shadow-sm flex flex-col cursor-pointer"
-              onClick={() => handleProductClick(product)}
-            >
-              <div className="h-[250px] flex items-center justify-center p-4">
-                <Image
-                  className="rounded-lg object-contain max-h-full w-auto"
-                  width={160}
-                  height={200}
-                  src={product.image || "/placeholder.svg"}
-                  alt="Imagem do produto"
-                />
-              </div>
-              <div className="px-5 pb-5 flex-1 flex flex-col">
-                <div className="flex-1">
-                  <h5 className="text-gray-800 text-xl font-semibold tracking-tight hover:text-slate-600">
-                    {product.name}
-                  </h5>
-                  <div className="flex items-center mt-2.5 mb-3">
-                    <div className="flex items-center space-x-1">
-                      {[...Array(5)].map((_, i) => (
-                        <svg
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < Math.round(product.averageRating || 0)
-                              ? "text-yellow-400"
-                              : "text-gray-500"
-                          }`}
-                          fill="currentColor"
-                          viewBox="0 0 22 20"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path d="M10 15l-5.878 3.09L5.5 12.5 1 8.91l6.061-.882L10 2.5l2.939 5.528L19 8.91l-4.5 3.59 1.378 5.59z" />
-                        </svg>
-                      ))}
-                    </div>
-                    <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-sm ms-3">
-                      {product.averageRating?.toFixed(1) || "N/A"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">
-                    {product?.seller?.storeName}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    Stock: {product.stock}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-800 text-2xl font-bold">
-                    $ {product.price.toFixed(2)}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      className="flex items-center justify-center text-white bg-slate-700 hover:bg-slate-900 font-medium rounded-lg text-sm px-4 py-2"
-                      onClick={(e) =>
-                        handleAddToCart(product.id, e.currentTarget)
-                      }
-                    >
-                      <svg
-                        className="w-5 h-5 -ms-2 me-2"
-                        aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M4 4h1.5L8 16m0 0h8m-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm.75-3H7.5M11 7H6.312M17 4v6m-3-3h6"
-                        />
-                      </svg>
-                      Add to cart
-                    </button>
-                    <button className="text-slate-500 bg-white border border-slate-500 hover:border-slate-900 hover:text-slate-900 font-medium rounded-lg text-sm px-4 py-2">
-                      <Heart />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {modalOpen && selectedProduct && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              closeModal();
-            }
-          }}
-        >
-          <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full relative p-6">
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-red-600 text-2xl"
-              onClick={closeModal}
-              aria-label="Fechar"
-            >
-              &times;
-            </button>
-            <ProductOverview {...selectedProduct} />
-          </div>
-        </div>
-      )}
-      {showSuccess && successPosition && (
-        <SuccessPopup
-          message="Product added to cart!"
-          onClose={() => setShowSuccess(false)}
-          style={{
-            position: "fixed",
-            top: successPosition.top,
-            left: successPosition.left,
-            transform: "translate(-50%, -50%)", // centraliza acima do botão
-            zIndex: 9999,
-          }}
+      <form
+        className="mb-6 grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2 lg:grid-cols-5"
+        onSubmit={applyFilters}
+      >
+        <Input
+          aria-label="Buscar produtos"
+          placeholder="Buscar produtos"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
         />
+        <select
+          aria-label="Categoria"
+          className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+        >
+          <option value="">Todas as categorias</option>
+          {CATEGORIES.map((value) => (
+            <option key={value} value={value}>{value}</option>
+          ))}
+        </select>
+        <Input
+          aria-label="ID do seller"
+          placeholder="Filtrar por seller ID"
+          value={sellerId}
+          onChange={(event) => setSellerId(event.target.value)}
+        />
+        <select
+          aria-label="Disponibilidade"
+          className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          value={inStock}
+          onChange={(event) => setInStock(event.target.value)}
+        >
+          <option value="">Disponíveis e indisponíveis</option>
+          <option value="true">Somente disponíveis</option>
+          <option value="false">Somente indisponíveis</option>
+        </select>
+        <Button type="submit">Aplicar filtros</Button>
+      </form>
+
+      {pagination && (
+        <p className="mb-4 text-sm text-muted-foreground" aria-live="polite">
+          {pagination.total} produto(s) correspondente(s) · página {pagination.page} de {pagination.totalPages || 1}
+        </p>
       )}
-    </div>
+      {loading ? (
+        <p role="status">Carregando produtos…</p>
+      ) : error || detailError ? (
+        <p role="alert" className="text-destructive">{detailError ?? error}</p>
+      ) : collection?.data.length ? (
+        <>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+            {collection.data.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onClick={() => void openProduct(product.id)}
+              />
+            ))}
+          </div>
+          <div className="mt-8 flex items-center justify-center gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!pagination || pagination.page <= 1}
+              onClick={() => pagination && goToPage(pagination.page - 1)}
+            >
+              Anterior
+            </Button>
+            <span>Página {pagination?.page ?? 1} / {pagination?.totalPages ?? 0}</span>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!pagination || pagination.page >= pagination.totalPages}
+              onClick={() => pagination && goToPage(pagination.page + 1)}
+            >
+              Próxima
+            </Button>
+          </div>
+        </>
+      ) : (
+        <p>Nenhum produto encontrado para esses filtros.</p>
+      )}
+
+      {(detailLoading || selectedProduct) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => {
+            if (!detailLoading) setSelectedProduct(null);
+          }}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {detailLoading ? (
+              <p role="status">Carregando detalhes…</p>
+            ) : selectedProduct ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mb-4"
+                  onClick={() => setSelectedProduct(null)}
+                >
+                  Fechar
+                </Button>
+                <ProductOverview
+                  product={selectedProduct}
+                  onAddToCart={() => void addSelectedProductToCart()}
+                  addingToCart={addingToCart}
+                  cartMessage={cartMessage}
+                />
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </main>
   );
 }

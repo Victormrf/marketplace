@@ -9,7 +9,7 @@ export class ApiError extends Error {
   }
 }
 
-type JsonRequestOptions = Omit<RequestInit, "body"> & {
+type JsonRequestOptions = RequestInit & {
   json?: unknown;
 };
 
@@ -18,7 +18,7 @@ export async function requestJson<T>(
   options: JsonRequestOptions = {},
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  let body: BodyInit | undefined;
+  let body: BodyInit | null | undefined = options.body;
 
   if (options.json !== undefined) {
     headers.set("Content-Type", "application/json");

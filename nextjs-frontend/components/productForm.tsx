@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -23,21 +22,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
+import { ApiError } from "@/lib/http";
+import { createProduct, type ProductCategory } from "@/services/catalog";
 
-
-const CATEGORIES = [
-  "Office",
-  "Sports",
-  "Books",
-  "Beauty",
-  "Clothing",
-  "Toys",
-  "TvProjectors",
-  "SmartphonesTablets",
-  "Eletronics",
-  "Pets",
-  "Furniture",
+const CATEGORIES: ProductCategory[] = [
+  "OFFICE",
+  "SPORTS",
+  "BOOKS",
+  "BEAUTY",
+  "CLOTHING",
+  "TOYS",
+  "TV_PROJECTORS",
+  "SMARTPHONES_TABLETS",
+  "ELECTRONICS",
+  "PETS",
+  "FURNITURE",
 ];
 
 interface ProductFormProps {
@@ -47,255 +46,121 @@ interface ProductFormProps {
 export default function ProductForm({ onSuccess }: ProductFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [reference, setReference] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [category, setCategory] = useState<ProductCategory | "">("");
+  const [image, setImage] = useState<File | undefined>();
+  const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    stock: "",
-    category: "",
-    image: "",
-  });
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, category: value }));
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-
-      // Criar preview da imagem
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setImagePreview(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setIsLoading(true);
+    setError(null);
 
-    if (
-      !formData.name ||
-      !formData.price ||
-      !formData.stock ||
-      !formData.category
-    ) {
-      toast({
-        title: "Erro de validação",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
+    const priceValue = Number(price);
+    if (!Number.isFinite(priceValue) || priceValue < 0 || !category) {
+      setError("Informe um preço válido e uma categoria.");
       setIsLoading(false);
       return;
     }
 
     try {
-      const sellerDataRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      const seller = await sellerDataRes.json();
-      const sellerId = seller.profile.id;
-
-      const data = new FormData();
-      data.append("sellerId", sellerId);
-      data.append("name", formData.name);
-      data.append("description", formData.description);
-      data.append("price", formData.price);
-      data.append("stock", formData.stock);
-      data.append("category", formData.category);
-
-      console.log(data);
-
-      if (imageFile) {
-        data.append("image", imageFile);
-      }
-
-      const productRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/products/`,
-        {
-          method: "POST",
-          body: data,
-          credentials: "include",
-        }
-      );
-
-      if (!productRes.ok) {
-        throw new Error("Falha ao criar produto");
-      }
-
-      toast({
-        title: "Produto criado com sucesso!",
-        description: "Seu produto foi adicionado ao marketplace.",
+      await createProduct({
+        name,
+        reference: reference.trim() || null,
+        description: description.trim() || null,
+        priceInCents: Math.round(priceValue * 100),
+        currency: "BRL",
+        category,
+        image,
       });
-
-      // Reset
-      setFormData({
-        name: "",
-        description: "",
-        price: "",
-        stock: "",
-        category: "",
-        image: "",
-      });
-      setImageFile(null);
-      setImagePreview(null);
+      router.refresh();
       onSuccess?.();
-    } catch (error) {
-      console.error("Erro ao criar produto:", error);
-      toast({
-        title: "Erro ao criar produto",
-        description:
-          "Ocorreu um erro ao tentar criar o produto. Tente novamente.",
-        variant: "destructive",
-      });
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiError
+          ? requestError.message
+          : "Não foi possível criar o produto.",
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="flex justify-center items-center">
-      <Card className="">
+    <div className="flex items-center justify-center">
+      <Card className="w-full max-w-3xl">
         <CardHeader>
-          <CardTitle>Cadastrar Novo Produto</CardTitle>
+          <CardTitle>Cadastrar produto</CardTitle>
           <CardDescription>
-            Preencha os detalhes do produto que você deseja vender no
-            marketplace.
+            O estoque inicial é zero. Use a tela de inventário para registrar entradas e ajustes.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome *</Label>
+              <Input id="name" value={name} onChange={(event) => setName(event.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reference">Referência</Label>
+              <Input id="reference" value={reference} onChange={(event) => setReference(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome do Produto *</Label>
+                <Label htmlFor="price">Preço (R$) *</Label>
                 <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Digite o nome do produto"
+                  id="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={price}
+                  onChange={(event) => setPrice(event.target.value)}
                   required
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Descreva seu produto em detalhes"
-                  rows={4}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price">Preço (R$) *</Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price}
-                    onChange={handleChange}
-                    placeholder="0,00"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="stock">Estoque *</Label>
-                  <Input
-                    id="stock"
-                    name="stock"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={formData.stock}
-                    onChange={handleChange}
-                    placeholder="0"
-                    required
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={handleCategoryChange}
-                  required
-                >
+                <Select value={category} onValueChange={(value) => setCategory(value as ProductCategory)}>
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
+                    {CATEGORIES.map((value) => (
+                      <SelectItem key={value} value={value}>{value}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="image">Imagem do Produto</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                  <Input
-                    id="image"
-                    name="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="cursor-pointer"
-                  />
-                  {imagePreview && (
-                    <div className="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-md border">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imagePreview || "/placeholder.svg"}
-                        alt="Preview"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="image">Imagem do produto</Label>
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={(event) => setImage(event.target.files?.[0])}
+              />
+            </div>
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => router.back()}
-            >
+          <CardFooter className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : "Cadastrar Produto"}
+              {isLoading ? "Salvando…" : "Cadastrar produto"}
             </Button>
           </CardFooter>
         </form>

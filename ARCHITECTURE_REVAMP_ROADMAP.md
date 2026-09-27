@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 25/09/2026  
-Estado atual: **Fase 2.2 — autenticação, sessão e perfis**
+Última atualização: 26/09/2026
+Estado atual: **Fase 2.5 — checkout e pedidos**
 
 ## Objetivo
 
@@ -39,12 +39,14 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 **Objetivo:** migrar a experiência existente em fatias verticais, com frontend e backend falando o mesmo contrato.
 
 - [x] 2.1 Mapear telas, chamadas `fetch`, tipos e payloads legados; definir cliente HTTP e services por domínio, hooks apenas para estado e interações de componentes client, e acesso direto via service nas páginas/server components quando apropriado. Padronizar autenticação por cookie, erros e DTOs.
-- [!] 2.2 Migrar autenticação, sessão e perfis de customer/seller usando o BFF de mesma origem no navegador. Validar em navegador real login, cookie HttpOnly, `/users/me`, perfil após refresh, logout, acesso protegido e respostas 401/403; confirmar configuração de produção e proteção/cache das rotas BFF.
+- [x] 2.2 Migrar autenticação, sessão e perfis de customer/seller usando a ponte de mesma origem no navegador. Validar em navegador real login, cookie HttpOnly, `/users/me`, perfil após refresh, logout, acesso protegido e respostas 401/403; validar proteção/cache das rotas intermediárias localmente.
 - Revisão da decisão 2.1: adotar o fluxo principal `Componente → hook opcional → service → lib/http.ts → app/api → backend`. Perfil autenticado nesta fatia é carregado pelo navegador; SSR autenticado fica adiado até uma tela justificar. Ver a seção “Revisão da decisão arquitetural” em `FRONTEND_PHASE_2_1_MIGRATION_MAP.md`.
-- Validação local em navegador real (26/09/2026): login CUSTOMER e SELLER, cookie de sessão não legível por `document.cookie`, `/users/me`, perfil após refresh, edição de user/perfil, logout, acesso direto a `/profile` sem sessão (redireciona para login), credenciais inválidas e resposta 403 para ação de CUSTOMER sem permissão. Foi corrigida uma incompatibilidade comprovada: GET `/customers` e `/sellers` responde `{ profile: DTO }`; os services agora extraem `profile`, e os dados de telefone/nome da loja/descrição aparecem corretamente. `npx tsc --noEmit`, `next build` e `test:auth` (18/18) passaram; smokes HTTP locais também passaram. A 2.2 permanece `[!]` somente pela pendência de produção: `BACKEND_API_URL` é lida por `process.env` nos Route Handlers em runtime (não é `NEXT_PUBLIC_*` nem está fixada no build), mas o hostname de backend e a conectividade a partir do processo Next de produção (DNS, rota/egress e TLS) ainda não foram fornecidos ou verificados.
-- [ ] 2.3 Migrar catálogo, filtros paginados, detalhes e disponibilidade; migrar criação/edição de produtos e inventário do seller.
-- [ ] 2.4 Migrar endereços e carrinho, preservando ownership e mensagens de indisponibilidade.
-- [ ] 2.5 Migrar checkout para a operação transacional e idempotente do backend; atualizar pedidos, SellerOrders e seus estados.
+- Validação local em navegador real (26/09/2026): login CUSTOMER e SELLER, cookie de sessão não legível por `document.cookie`, `/users/me`, perfil após refresh, edição de user/perfil, logout, acesso direto a `/profile` sem sessão (redireciona para login), credenciais inválidas e resposta 403 para ação de CUSTOMER sem permissão. Foi corrigida uma incompatibilidade comprovada: GET `/customers` e `/sellers` responde `{ profile: DTO }`; os services agora extraem `profile`, e os dados de telefone/nome da loja/descrição aparecem corretamente. `npx tsc --noEmit`, `next build` e `test:auth` (18/18) passaram; smokes HTTP locais também passaram. Limite conhecido, não bloqueante para a migração local: o hostname e a conectividade de `BACKEND_API_URL` no runtime Next de produção (DNS, rota/egress e TLS) ainda não foram verificados; validar na preparação do deploy (fase 11).
+- [x] 2.3 Migrar catálogo, filtros paginados, detalhes e disponibilidade; migrar criação/edição de produtos e inventário do seller.
+- [x] 2.4 Migrar endereços e carrinho, preservando ownership e mensagens de indisponibilidade.
+- Validação local em navegador real (26/09/2026): CUSTOMER criou dois endereços, trocou o default, editou e desativou endereço; tentativa de outro customer em endereço alheio recebeu 404. Carrinho v2 validado com inclusão pelo catálogo, alteração de quantidade, persistência após navegação/refresh, remoção e limpeza; insuficiência de estoque foi exibida após ajuste de inventário. SELLER recebeu 403 ao consultar carrinho e manteve sua sessão; sem sessão, a tela pede login e a API responde 401. Fixtures locais foram removidos e verificados. `npx tsc --noEmit`, `npm run build`, `test:addresses` (12/12) e `test:cart` (5/5) passaram.
+- Limites mantidos: carrinho anônimo legado não é importado; botão de checkout não chama API. Migração do checkout permanece na 2.5.
+- [~] 2.5 Migrar checkout para a operação transacional e idempotente do backend; atualizar pedidos, SellerOrders e seus estados.
 - [ ] 2.6 Migrar pagamento, refund, delivery, reviews e dashboard de seller conforme os contratos v2 existentes.
 - [ ] 2.7 Remover tipos e fluxos legados; revisar build e jornadas manuais completas nos três papéis.
 
@@ -147,4 +149,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 2.2: jornada de login, sessão, perfil e erros validada no navegador local; resta obter e testar o hostname e a conectividade de `BACKEND_API_URL` a partir do runtime Next de produção. SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 2.5: integrar checkout e consultas/estados de pedidos com os contratos v2, sem enviar preços, itens ou identidade de ownership pelo cliente. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.

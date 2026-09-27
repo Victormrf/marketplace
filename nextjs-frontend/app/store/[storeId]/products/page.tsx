@@ -1,212 +1,212 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ProductCard } from "@/components/productCard";
 import { ProductModal } from "@/components/editProductModal";
-import { toast } from "@/hooks/use-toast";
 import { NewProductModal } from "@/components/newProductModal";
-import { Product } from "@/types/product";
+import { ApiError } from "@/lib/http";
+import { getMySellerProfile } from "@/services/seller";
+import { listSellerProducts } from "@/services/catalog";
+import type { ProductCollectionDto, ProductReadDto } from "@/types/product";
+import { useAuth } from "@/context/authContext";
 
 const CATEGORIES = [
-  "All",
-  "Office",
-  "Sports",
-  "Books",
-  "Beauty",
-  "Clothing",
-  "Toys",
-  "TvProjectors",
-  "SmartphonesTablets",
-  "Eletronics",
-  "Pets",
-  "Furniture",
-  "Others",
+  "OFFICE",
+  "SPORTS",
+  "BOOKS",
+  "BEAUTY",
+  "CLOTHING",
+  "TOYS",
+  "TV_PROJECTORS",
+  "SMARTPHONES_TABLETS",
+  "ELECTRONICS",
+  "PETS",
+  "FURNITURE",
 ];
 
-export default function ProductsPage() {
-  const [storeId, setStoreId] = useState<string | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
+export default function SellerProductsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const queryKey = searchParams.toString();
+  const query = useMemo(() => new URLSearchParams(queryKey), [queryKey]);
+  const [sellerId, setSellerId] = useState<string | null>(null);
+  const [collection, setCollection] = useState<ProductCollectionDto | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductReadDto | null>(null);
+  const [newProductOpen, setNewProductOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch dos produtos do seller
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const storeRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/sellers/`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (!storeRes.ok) {
-          throw new Error("Error fetching store data");
-        }
-
-        const store = await storeRes.json();
-        setStoreId(store.profile.id);
-
-        if (storeId) {
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/products/seller/${storeId}`,
-            {
-              method: "GET",
-              credentials: "include",
-            }
+    if (authLoading || !user || user.role !== "SELLER") return;
+    let active = true;
+    getMySellerProfile()
+      .then((profile) => {
+        if (active) setSellerId(profile.id);
+      })
+      .catch((requestError: unknown) => {
+        if (active) {
+          setError(
+            requestError instanceof ApiError
+              ? requestError.message
+              : "Não foi possível carregar o perfil da loja.",
           );
-
-          const data = await res.json();
-          setProducts(data.products);
         }
-      } catch (error) {
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar os produtos do vendedor.",
-          variant: "destructive",
-        });
-        console.error(error);
-      }
+      });
+    return () => {
+      active = false;
     };
+  }, [authLoading, user]);
 
-    fetchProducts();
-  }, [storeId]);
-
-  // Filtragem dinâmica
   useEffect(() => {
-    let filtered = [...products];
+    if (!sellerId) return;
+    let active = true;
+    setLoading(true);
+    setError(null);
+    listSellerProducts(sellerId, query)
+      .then((result) => {
+        if (active) setCollection(result);
+      })
+      .catch((requestError: unknown) => {
+        if (active) {
+          setError(
+            requestError instanceof ApiError
+              ? requestError.message
+              : "Não foi possível carregar seus produtos.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [sellerId, query, refreshKey]);
 
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
+  function navigateWithQuery(next: URLSearchParams) {
+    router.push(`${pathname}?${next.toString()}`);
+  }
 
-    if (selectedCategory !== "All") {
-      filtered = filtered.filter(
-        (product) => product.category === selectedCategory
-      );
-    }
+  function changePage(page: number) {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("page", String(page));
+    navigateWithQuery(next);
+  }
 
-    setFilteredProducts(filtered);
-  }, [searchQuery, selectedCategory, products]);
-
-  const handleProductClick = (product: Product) => {
-    setSelectedProduct(product);
-    setIsModalOpen(true);
-  };
-
-  const handleUpdateProduct = (updatedProduct: Product) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
-    );
-
-    toast({
-      title: "Produto atualizado",
-      description: "As informações do produto foram atualizadas com sucesso.",
-    });
-
-    setIsModalOpen(false);
-  };
+  if (authLoading) return <main className="p-8">Carregando sessão…</main>;
+  if (!user || user.role !== "SELLER") {
+    return <main className="p-8" role="alert">Acesso permitido somente a vendedores autenticados.</main>;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-10 bg-white border-b shadow-sm">
-        <div className="px-4 py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h1 className="text-3xl font-bold">Your Products</h1>
-            <Button onClick={() => setIsNewProductModalOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Product
-            </Button>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_200px] gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search products..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <main className="mx-auto min-h-screen max-w-7xl bg-gray-50 px-4 py-8">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Produtos da loja</h1>
+          <p className="text-sm text-muted-foreground">O estoque é gerenciado separadamente no inventário.</p>
         </div>
-      </div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href={sellerId ? `/store/${sellerId}/inventory` : "#"}>Inventário</Link>
+          </Button>
+          <Button onClick={() => setNewProductOpen(true)}>
+            <Plus className="h-4 w-4" /> Novo produto
+          </Button>
+        </div>
+      </header>
 
-      <div className="px-8 py-8">
-        {filteredProducts.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-10">
-              <p className="text-muted-foreground mb-4">No products found.</p>
-              <Button
-                onClick={() => setIsNewProductModalOpen(true)}
-                variant="outline"
-              >
-                List your first product
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onClick={() => handleProductClick(product)}
-              />
+      <form
+        className="mb-5 flex gap-2"
+        action=""
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const next = new URLSearchParams(searchParams.toString());
+          const value = String(form.get("search") ?? "").trim();
+          const category = String(form.get("category") ?? "");
+          if (value) next.set("search", value);
+          else next.delete("search");
+          if (category) next.set("category", category);
+          else next.delete("category");
+          next.set("page", "1");
+          navigateWithQuery(next);
+        }}
+      >
+        <Input name="search" defaultValue={query.get("search") ?? ""} placeholder="Buscar seus produtos" />
+        <select
+          name="category"
+          aria-label="Filtrar categoria"
+          className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          defaultValue={query.get("category") ?? ""}
+        >
+          <option value="">Todas as categorias</option>
+          {CATEGORIES.map((category) => (
+            <option key={category} value={category}>{category}</option>
+          ))}
+        </select>
+        <Button type="submit" variant="outline" aria-label="Buscar">
+          <Search className="h-4 w-4" />
+        </Button>
+      </form>
+
+      {error && <p role="alert" className="mb-4 text-destructive">{error}</p>}
+      {loading ? (
+        <p role="status">Carregando produtos…</p>
+      ) : collection?.data.length ? (
+        <>
+          <p className="mb-3 text-sm text-muted-foreground">
+            {collection.pagination.total} produto(s) · página {" "}
+            {collection.pagination.page} de {collection.pagination.totalPages || 1}
+          </p>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {collection.data.map((product) => (
+              <ProductCard key={product.id} product={product} onClick={() => setSelectedProduct(product)} />
             ))}
           </div>
-        )}
-      </div>
+          <div className="mt-6 flex justify-center gap-4">
+            <Button
+              variant="outline"
+              disabled={collection.pagination.page <= 1}
+              onClick={() => changePage(collection.pagination.page - 1)}
+            >Anterior</Button>
+            <Button
+              variant="outline"
+              disabled={collection.pagination.page >= collection.pagination.totalPages}
+              onClick={() => changePage(collection.pagination.page + 1)}
+            >Próxima</Button>
+          </div>
+        </>
+      ) : (
+        <Card><CardContent className="py-10 text-center">Nenhum produto encontrado.</CardContent></Card>
+      )}
 
       {selectedProduct && (
         <ProductModal
           product={selectedProduct}
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onUpdate={handleUpdateProduct}
+          isOpen
+          onClose={() => setSelectedProduct(null)}
+          onUpdate={(product) => {
+            setSelectedProduct(product);
+            setRefreshKey((key) => key + 1);
+          }}
         />
       )}
-
       <NewProductModal
-        isOpen={isNewProductModalOpen}
-        onClose={() => setIsNewProductModalOpen(false)}
+        isOpen={newProductOpen}
+        onClose={() => {
+          setNewProductOpen(false);
+          setRefreshKey((key) => key + 1);
+        }}
       />
-    </div>
+    </main>
   );
 }

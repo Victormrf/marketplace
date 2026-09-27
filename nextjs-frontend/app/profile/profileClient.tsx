@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Edit, Mail, Phone, Store } from "lucide-react";
 import { ProfileFormModal } from "@/components/profileModal";
+import { CustomerAddressesManager } from "@/components/customerAddressesManager";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -120,15 +121,18 @@ export default function ProfileClient() {
           </CardHeader>
         </Card>
         {displayedProfile.customer && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Perfil de cliente</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              {displayedProfile.customer.phone || "Telefone não informado"}
-            </CardContent>
-          </Card>
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Perfil de cliente</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                {displayedProfile.customer.phone || "Telefone não informado"}
+              </CardContent>
+            </Card>
+            <CustomerAddressesManager />
+          </>
         )}
         {displayedProfile.seller && (
           <Card>
