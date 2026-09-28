@@ -21,6 +21,15 @@ function isAllowedRoute(domain: string, path: string[], method: string) {
   }
 
   if (domain === "payment-attempts") {
+    if (path.length === 1) return method === "GET";
+    return (
+      path.length === 2 &&
+      path[1] === "refunds" &&
+      ["GET", "POST"].includes(method)
+    );
+  }
+
+  if (domain === "refunds") {
     return method === "GET" && path.length === 1;
   }
 
@@ -175,7 +184,8 @@ async function proxy(request: NextRequest, context: Context) {
               request.method === "POST" &&
               ((domain === "customers" && path[0] === "addresses") ||
                 (domain === "cart" && path[0] === "items") ||
-                (domain === "orders" && path[1] === "payment-attempts"))
+                (domain === "orders" && path[1] === "payment-attempts") ||
+                (domain === "payment-attempts" && path[1] === "refunds"))
                 ? 201
                 : 200,
           });

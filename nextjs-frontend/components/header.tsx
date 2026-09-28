@@ -131,9 +131,8 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
                     {user.role === "CUSTOMER" && (
                       <>
                         <Link href="/orders" className="flex items-center gap-2 py-2 text-sm">
-                          <Package className="h-4 w-4" /> Pedidos
+                          <Package className="h-4 w-4" /> Meus pedidos
                         </Link>
-                        <Link href="/refunds" className="py-2 text-sm">Reembolsos</Link>
                       </>
                     )}
                     {user.role === "SELLER" && sellerId && (

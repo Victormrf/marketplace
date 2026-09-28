@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
 Última atualização: 28/09/2026
-Estado atual: **Aguardando revisão da 2.6A; 2.6B ainda não iniciada**
+Estado atual: **Aguardando revisão da 2.6B; 2.6C ainda não iniciada**
 
 ## Objetivo
 
@@ -49,8 +49,10 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 - [x] 2.5 Integrar checkout idempotente, leitura de pedidos e SellerOrders conforme os contratos v2.
 - Validação local em navegador (28/09/2026): CUSTOMER criou checkout e consultou o pedido persistido; resposta perdida simulada após commit foi recuperada após refresh com a mesma chave/endereço e retornou o mesmo pedido; concorrência com a mesma chave produziu 201/200 e um único pedido; endereço divergente retornou 409; estoque insuficiente retornou 409; pedido alheio retornou 404; ausência de sessão retornou 401; CUSTOMER recebeu 403 em SellerOrders; SELLER listou e abriu SellerOrder e recebeu 409 visível ao tentar PENDING → CONFIRMED enquanto a Order pai estava PENDING_PAYMENT. Rotas legadas redirecionaram sem criar pedidos. Fixtures foram removidas e a disponibilidade do inventário seed voltou a 10. O smoke adicional de 409 PROCESSING foi aprovado com refresh e retry: a mesma Idempotency-Key e o mesmo addressId foram reenviados; o registro temporário local foi removido e não houve criação de Order. `npx tsc --noEmit`, `npm run build`, `test:checkout` (15/15) e `test:orders` (14/14) passaram. A transição positiva de SellerOrder, dependente de Order CONFIRMED, permanece como validação integrada futura e não bloqueia o fechamento desta fatia.
 - [x] 2.6A Pagamentos no frontend: criar/listar/consultar PaymentAttempt sem simular captura ou pagamento concluído.
-- Validação local (28/09/2026): pedido PENDING_PAYMENT temporário permitiu iniciar uma tentativa PIX via UI; BFF preservou 201 e o POST enviou somente `{ method }`. Valor integral (56,00 BRL), `CREATED` e referência do simulador vieram da resposta real. GET da coleção e da tentativa individual responderam 200; refresh manteve exatamente uma tentativa e não enviou novo POST. Order/tentativa alheia retornaram 404, ausência de sessão 401, SELLER recebeu 403 sem perder a sessão, e mudança concorrente do pedido resultou em 409 exibido pela UI. Fixtures locais foram removidas e verificadas; nenhum estado seed foi alterado. `npx tsc --noEmit`, `npm run build` e `nodejs-backend/npm run test:payments` (14/14) passaram. Limite: o simulador deixa a tentativa em CREATED; captura/confirmação não possui ação pública e não foi simulada. Aguardar revisão antes de iniciar a 2.6B.
-- [ ] 2.6B Refunds no frontend.
+- Validação local (28/09/2026): pedido PENDING_PAYMENT temporário permitiu iniciar uma tentativa PIX via UI; BFF preservou 201 e o POST enviou somente `{ method }`. Valor integral (56,00 BRL), `CREATED` e referência do simulador vieram da resposta real. GET da coleção e da tentativa individual responderam 200; refresh manteve exatamente uma tentativa e não enviou novo POST. Order/tentativa alheia retornaram 404, ausência de sessão 401, SELLER recebeu 403 sem perder a sessão, e mudança concorrente do pedido resultou em 409 exibido pela UI. Fixtures locais foram removidas e verificadas; nenhum estado seed foi alterado. `npx tsc --noEmit`, `npm run build` e `nodejs-backend/npm run test:payments` (14/14) passaram. Limite: o simulador deixa a tentativa em CREATED; captura/confirmação não possui ação pública e não foi simulada. Aguardar revisão antes de iniciar a próxima fatia.
+- [x] 2.6B Refunds no frontend.
+- Validação local (28/09/2026): customer consultou refunds por PaymentAttempt, criou um refund parcial pela UI (201), viu status COMPLETED, valor, motivo, timestamps e referência; refresh e consulta individual mantiveram o mesmo registro. Saldo excedido retornou 409 visível; payload inválido 400; sem sessão 401; SELLER 403; refund inexistente 404. Fixture de Order/PaymentAttempt capturado/refund foi removida e conferida vazia; dados seed não foram alterados. `npx tsc --noEmit`, `npm run build` e `test:refunds` (8/8) passaram. Nenhuma captura foi simulada no frontend.
+- Ajuste de navegação (28/09/2026): o menu do customer possui um único link “Meus pedidos” para `/orders`; a rota provisória `/refunds` redireciona para `/orders`, onde refunds ficam no detalhe do pedido, por tentativa de pagamento.
 - [ ] 2.6C Deliveries e tracking no frontend.
 - [ ] 2.6D Reviews no frontend.
 - [ ] 2.6E Dashboard de seller no frontend.
@@ -156,4 +158,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 2.6A: integrar pagamentos no frontend por meio de PaymentAttempt, sem enviar valor ou simular captura/confirmação. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 2.6C: integrar deliveries e tracking no frontend somente após revisão da 2.6B. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.

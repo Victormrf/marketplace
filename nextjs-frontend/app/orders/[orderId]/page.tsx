@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { PaymentAttemptRefunds } from "@/components/orders/PaymentAttemptRefunds";
 import { useAuth } from "@/context/authContext";
 import { ApiError } from "@/lib/http";
 import { formatCurrency } from "@/lib/utils";
@@ -278,6 +279,7 @@ export default function OrderDetailPage() {
                 >
                   Consultar status
                 </Button>
+                <PaymentAttemptRefunds attempt={attempt} />
               </article>
             ))}
           </div>
