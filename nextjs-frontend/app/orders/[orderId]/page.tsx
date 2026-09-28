@@ -8,7 +8,16 @@ import { useAuth } from "@/context/authContext";
 import { ApiError } from "@/lib/http";
 import { formatCurrency } from "@/lib/utils";
 import { getMyOrder } from "@/services/ordersV2";
+import { usePaymentAttempts } from "@/hooks/usePaymentAttempts";
 import type { OrderDetailV2 } from "@/types/ordersV2";
+import type { PaymentMethodV2 } from "@/types/payments";
+
+const paymentMethods: { value: PaymentMethodV2; label: string }[] = [
+  { value: "PIX", label: "Pix" },
+  { value: "CREDIT_CARD", label: "Cartão de crédito" },
+  { value: "DEBIT_CARD", label: "Cartão de débito" },
+  { value: "PAYPAL", label: "PayPal" },
+];
 
 export default function OrderDetailPage() {
   const { user, loading: authLoading } = useAuth();
@@ -16,6 +25,11 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<OrderDetailV2 | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodV2>("PIX");
+  const payments = usePaymentAttempts(
+    params.orderId,
+    Boolean(user?.role === "CUSTOMER" && order),
+  );
 
   useEffect(() => {
     if (authLoading || !user || user.role !== "CUSTOMER") return;
@@ -137,6 +151,165 @@ export default function OrderDetailPage() {
         </ol>
       </section>
       <p className="border-t pt-4 text-right text-xl font-bold">Total do pedido: {formatCurrency(order.totalInCents / 100)} {order.currency}</p>
+      <section className="space-y-4 rounded border p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">Tentativas de pagamento</h2>
+            <p className="text-sm text-muted-foreground">
+              Cada tentativa cobra o valor integral do pedido:{" "}
+              {formatCurrency(order.totalInCents / 100)} {order.currency}.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void payments.reload()}
+            disabled={payments.loading}
+          >
+            {payments.loading ? "Atualizando…" : "Atualizar tentativas"}
+          </Button>
+        </div>
+
+        {order.status === "PENDING_PAYMENT" && (
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="grid gap-1 text-sm">
+              Método de pagamento
+              <select
+                className="h-10 rounded-md border bg-background px-3"
+                value={paymentMethod}
+                onChange={(event) =>
+                  setPaymentMethod(event.target.value as PaymentMethodV2)
+                }
+                disabled={
+                  payments.submitting ||
+                  payments.eligibilityLoading ||
+                  Boolean(payments.eligibilityError) ||
+                  !payments.canStartAttempt
+                }
+              >
+                {paymentMethods.map((method) => (
+                  <option key={method.value} value={method.value}>
+                    {method.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              type="button"
+              onClick={() =>
+                void payments.startAttempt({ method: paymentMethod })
+              }
+              disabled={
+                payments.submitting ||
+                payments.loading ||
+                payments.eligibilityLoading ||
+                Boolean(payments.eligibilityError) ||
+                !payments.canStartAttempt
+              }
+            >
+              {payments.submitting ? "Criando tentativa…" : "Iniciar tentativa"}
+            </Button>
+          </div>
+        )}
+
+        {order.status === "PENDING_PAYMENT" &&
+          payments.eligibilityLoading && (
+            <p className="text-sm" role="status">
+              Verificando se o pedido aceita uma nova tentativa...
+            </p>
+          )}
+        {order.status === "PENDING_PAYMENT" &&
+          !payments.eligibilityLoading &&
+          !payments.eligibilityError &&
+          !payments.canStartAttempt && (
+            <p className="text-sm" role="status">
+              O pedido já possui uma tentativa ativa ou capturada. Consulte o
+              estado abaixo; não é possível iniciar outra agora.
+            </p>
+          )}
+        {order.status === "PENDING_PAYMENT" && (
+          <p className="text-sm text-muted-foreground">
+            Iniciar uma tentativa não significa que o pedido foi pago. A captura
+            e a confirmação dependem do processamento do backend/provedor; esta
+            tela não simula sucesso.
+          </p>
+        )}
+
+        {(payments.error || payments.eligibilityError) && (
+          <p
+            className="rounded border border-destructive p-3 text-sm text-destructive"
+            role="alert"
+          >
+            {payments.error ?? payments.eligibilityError}
+          </p>
+        )}
+
+        {payments.loading && payments.attempts.length === 0 ? (
+          <p role="status">Carregando tentativas…</p>
+        ) : payments.attempts.length === 0 ? (
+          <p>Nenhuma tentativa de pagamento foi registrada.</p>
+        ) : (
+          <div className="space-y-3">
+            {payments.attempts.map((attempt) => (
+              <article key={attempt.id} className="space-y-2 rounded border p-4">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <h3 className="font-medium">
+                    {attempt.method} · {attempt.status}
+                  </h3>
+                  <span>
+                    {formatCurrency(attempt.amountInCents / 100)}{" "}
+                    {attempt.currency}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {attempt.provider}
+                  {attempt.providerReference
+                    ? ` · Referência: ${attempt.providerReference}`
+                    : " · Aguardando referência do provedor"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Criada em {new Date(attempt.createdAt).toLocaleString("pt-BR")}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void payments.refreshAttempt(attempt.id)}
+                >
+                  Consultar status
+                </Button>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {payments.pagination && payments.pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between border-t pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => payments.setPage(payments.page - 1)}
+              disabled={payments.page <= 1 || payments.loading}
+            >
+              Anterior
+            </Button>
+            <span className="text-sm">
+              Página {payments.page} de {payments.pagination.totalPages}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => payments.setPage(payments.page + 1)}
+              disabled={
+                payments.page >= payments.pagination.totalPages ||
+                payments.loading
+              }
+            >
+              Próxima
+            </Button>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

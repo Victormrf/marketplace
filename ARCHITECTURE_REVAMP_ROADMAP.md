@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
 Última atualização: 28/09/2026
-Estado atual: **Fase 2.5 — checkout e pedidos**
+Estado atual: **Aguardando revisão da 2.6A; 2.6B ainda não iniciada**
 
 ## Objetivo
 
@@ -46,9 +46,14 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 - [x] 2.4 Migrar endereços e carrinho, preservando ownership e mensagens de indisponibilidade.
 - Validação local em navegador real (26/09/2026): CUSTOMER criou dois endereços, trocou o default, editou e desativou endereço; tentativa de outro customer em endereço alheio recebeu 404. Carrinho v2 validado com inclusão pelo catálogo, alteração de quantidade, persistência após navegação/refresh, remoção e limpeza; insuficiência de estoque foi exibida após ajuste de inventário. SELLER recebeu 403 ao consultar carrinho e manteve sua sessão; sem sessão, a tela pede login e a API responde 401. Fixtures locais foram removidos e verificados. `npx tsc --noEmit`, `npm run build`, `test:addresses` (12/12) e `test:cart` (5/5) passaram.
 - Limite mantido da 2.4: carrinho anônimo legado não é importado nem enviado ao checkout. O fluxo autenticado de checkout schema-v2 está sendo integrado na 2.5; pagamento permanece na 2.6.
-- [~] 2.5 Integrar checkout idempotente, leitura de pedidos e SellerOrders conforme os contratos v2.
-- Validação local em navegador (28/09/2026): CUSTOMER criou checkout e consultou o pedido persistido; resposta perdida simulada após commit foi recuperada após refresh com a mesma chave/endereço e retornou o mesmo pedido; concorrência com a mesma chave produziu 201/200 e um único pedido; endereço divergente retornou 409; estoque insuficiente retornou 409; pedido alheio retornou 404; ausência de sessão retornou 401; CUSTOMER recebeu 403 em SellerOrders; SELLER listou e abriu SellerOrder e recebeu 409 visível ao tentar PENDING → CONFIRMED enquanto a Order pai estava PENDING_PAYMENT. Rotas legadas redirecionaram sem criar pedidos. Fixtures foram removidas e a disponibilidade do inventário seed voltou a 10. `npx tsc --noEmit`, `npm run build`, `test:checkout` (15/15) e `test:orders` (14/14) passaram. Mantida em andamento: não foi possível validar uma transição bem-sucedida de SellerOrder pela UI, pois requer Order pai CONFIRMED; a confirmação depende do fluxo de pagamento da 2.6, fora deste handoff.
-- [ ] 2.6 Migrar pagamento, refund, delivery, reviews e dashboard de seller conforme os contratos v2 existentes.
+- [x] 2.5 Integrar checkout idempotente, leitura de pedidos e SellerOrders conforme os contratos v2.
+- Validação local em navegador (28/09/2026): CUSTOMER criou checkout e consultou o pedido persistido; resposta perdida simulada após commit foi recuperada após refresh com a mesma chave/endereço e retornou o mesmo pedido; concorrência com a mesma chave produziu 201/200 e um único pedido; endereço divergente retornou 409; estoque insuficiente retornou 409; pedido alheio retornou 404; ausência de sessão retornou 401; CUSTOMER recebeu 403 em SellerOrders; SELLER listou e abriu SellerOrder e recebeu 409 visível ao tentar PENDING → CONFIRMED enquanto a Order pai estava PENDING_PAYMENT. Rotas legadas redirecionaram sem criar pedidos. Fixtures foram removidas e a disponibilidade do inventário seed voltou a 10. O smoke adicional de 409 PROCESSING foi aprovado com refresh e retry: a mesma Idempotency-Key e o mesmo addressId foram reenviados; o registro temporário local foi removido e não houve criação de Order. `npx tsc --noEmit`, `npm run build`, `test:checkout` (15/15) e `test:orders` (14/14) passaram. A transição positiva de SellerOrder, dependente de Order CONFIRMED, permanece como validação integrada futura e não bloqueia o fechamento desta fatia.
+- [x] 2.6A Pagamentos no frontend: criar/listar/consultar PaymentAttempt sem simular captura ou pagamento concluído.
+- Validação local (28/09/2026): pedido PENDING_PAYMENT temporário permitiu iniciar uma tentativa PIX via UI; BFF preservou 201 e o POST enviou somente `{ method }`. Valor integral (56,00 BRL), `CREATED` e referência do simulador vieram da resposta real. GET da coleção e da tentativa individual responderam 200; refresh manteve exatamente uma tentativa e não enviou novo POST. Order/tentativa alheia retornaram 404, ausência de sessão 401, SELLER recebeu 403 sem perder a sessão, e mudança concorrente do pedido resultou em 409 exibido pela UI. Fixtures locais foram removidas e verificadas; nenhum estado seed foi alterado. `npx tsc --noEmit`, `npm run build` e `nodejs-backend/npm run test:payments` (14/14) passaram. Limite: o simulador deixa a tentativa em CREATED; captura/confirmação não possui ação pública e não foi simulada. Aguardar revisão antes de iniciar a 2.6B.
+- [ ] 2.6B Refunds no frontend.
+- [ ] 2.6C Deliveries e tracking no frontend.
+- [ ] 2.6D Reviews no frontend.
+- [ ] 2.6E Dashboard de seller no frontend.
 - [ ] 2.7 Remover tipos e fluxos legados; revisar build e jornadas manuais completas nos três papéis.
 - [ ] 2.8 Consolidar a ponte Next de API: manter o mecanismo comum em `lib/server/route-proxy.ts` e adaptá-lo para ser reutilizado por rotas dedicadas e pela rota dinâmica `app/api/[domain]/[[...path]]/route.ts`. Preservar destinos e métodos permitidos por rota, cookie HttpOnly, verificação de origem, headers/status necessários e `no-store`; eliminar lógica de encaminhamento duplicada sem criar outra camada. Validar novamente as jornadas de autenticação, perfis, catálogo, carrinho e checkout.
 
@@ -151,4 +156,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 2.5: integrar checkout e consultas/estados de pedidos com os contratos v2, sem enviar preços, itens ou identidade de ownership pelo cliente. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 2.6A: integrar pagamentos no frontend por meio de PaymentAttempt, sem enviar valor ou simular captura/confirmação. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.

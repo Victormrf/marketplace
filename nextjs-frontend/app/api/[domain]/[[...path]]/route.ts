@@ -12,7 +12,16 @@ function isAllowedRoute(domain: string, path: string[], method: string) {
   }
 
   if (domain === "orders") {
-    return method === "GET" && path.length <= 1;
+    if (method === "GET" && path.length <= 1) return true;
+    return (
+      path.length === 2 &&
+      path[1] === "payment-attempts" &&
+      ["GET", "POST"].includes(method)
+    );
+  }
+
+  if (domain === "payment-attempts") {
+    return method === "GET" && path.length === 1;
   }
 
   if (domain === "seller-orders") {
@@ -165,7 +174,8 @@ async function proxy(request: NextRequest, context: Context) {
             status:
               request.method === "POST" &&
               ((domain === "customers" && path[0] === "addresses") ||
-                (domain === "cart" && path[0] === "items"))
+                (domain === "cart" && path[0] === "items") ||
+                (domain === "orders" && path[1] === "payment-attempts"))
                 ? 201
                 : 200,
           });
