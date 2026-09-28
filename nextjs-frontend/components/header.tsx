@@ -75,6 +75,11 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
                 Produtos
               </Link>
             )}
+            {user?.role === "SELLER" && sellerId && (
+              <Link href={`/store/${sellerId}/orders`} className="text-sm hover:underline">
+                Pedidos
+              </Link>
+            )}
             {user?.role === "CUSTOMER" && (
               <>
                 <Link href="/wishlist" className="text-sm hover:underline">
@@ -135,6 +140,7 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
                       <>
                         <Link href={`/store/${sellerId}`} className="py-2 text-sm">Painel</Link>
                         <Link href={`/store/${sellerId}/products`} className="py-2 text-sm">Produtos</Link>
+                        <Link href={`/store/${sellerId}/orders`} className="py-2 text-sm">Pedidos</Link>
                       </>
                     )}
                     <button

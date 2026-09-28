@@ -1,6 +1,6 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 26/09/2026
+Última atualização: 28/09/2026
 Estado atual: **Fase 2.5 — checkout e pedidos**
 
 ## Objetivo
@@ -45,10 +45,12 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 - [x] 2.3 Migrar catálogo, filtros paginados, detalhes e disponibilidade; migrar criação/edição de produtos e inventário do seller.
 - [x] 2.4 Migrar endereços e carrinho, preservando ownership e mensagens de indisponibilidade.
 - Validação local em navegador real (26/09/2026): CUSTOMER criou dois endereços, trocou o default, editou e desativou endereço; tentativa de outro customer em endereço alheio recebeu 404. Carrinho v2 validado com inclusão pelo catálogo, alteração de quantidade, persistência após navegação/refresh, remoção e limpeza; insuficiência de estoque foi exibida após ajuste de inventário. SELLER recebeu 403 ao consultar carrinho e manteve sua sessão; sem sessão, a tela pede login e a API responde 401. Fixtures locais foram removidos e verificados. `npx tsc --noEmit`, `npm run build`, `test:addresses` (12/12) e `test:cart` (5/5) passaram.
-- Limites mantidos: carrinho anônimo legado não é importado; botão de checkout não chama API. Migração do checkout permanece na 2.5.
-- [~] 2.5 Migrar checkout para a operação transacional e idempotente do backend; atualizar pedidos, SellerOrders e seus estados.
+- Limite mantido da 2.4: carrinho anônimo legado não é importado nem enviado ao checkout. O fluxo autenticado de checkout schema-v2 está sendo integrado na 2.5; pagamento permanece na 2.6.
+- [~] 2.5 Integrar checkout idempotente, leitura de pedidos e SellerOrders conforme os contratos v2.
+- Validação local em navegador (28/09/2026): CUSTOMER criou checkout e consultou o pedido persistido; resposta perdida simulada após commit foi recuperada após refresh com a mesma chave/endereço e retornou o mesmo pedido; concorrência com a mesma chave produziu 201/200 e um único pedido; endereço divergente retornou 409; estoque insuficiente retornou 409; pedido alheio retornou 404; ausência de sessão retornou 401; CUSTOMER recebeu 403 em SellerOrders; SELLER listou e abriu SellerOrder e recebeu 409 visível ao tentar PENDING → CONFIRMED enquanto a Order pai estava PENDING_PAYMENT. Rotas legadas redirecionaram sem criar pedidos. Fixtures foram removidas e a disponibilidade do inventário seed voltou a 10. `npx tsc --noEmit`, `npm run build`, `test:checkout` (15/15) e `test:orders` (14/14) passaram. Mantida em andamento: não foi possível validar uma transição bem-sucedida de SellerOrder pela UI, pois requer Order pai CONFIRMED; a confirmação depende do fluxo de pagamento da 2.6, fora deste handoff.
 - [ ] 2.6 Migrar pagamento, refund, delivery, reviews e dashboard de seller conforme os contratos v2 existentes.
 - [ ] 2.7 Remover tipos e fluxos legados; revisar build e jornadas manuais completas nos três papéis.
+- [ ] 2.8 Consolidar a ponte Next de API: manter o mecanismo comum em `lib/server/route-proxy.ts` e adaptá-lo para ser reutilizado por rotas dedicadas e pela rota dinâmica `app/api/[domain]/[[...path]]/route.ts`. Preservar destinos e métodos permitidos por rota, cookie HttpOnly, verificação de origem, headers/status necessários e `no-store`; eliminar lógica de encaminhamento duplicada sem criar outra camada. Validar novamente as jornadas de autenticação, perfis, catálogo, carrinho e checkout.
 
 **Concluída quando:** as jornadas principais funcionam de ponta a ponta sem depender dos campos e da orquestração v1 no navegador.
 

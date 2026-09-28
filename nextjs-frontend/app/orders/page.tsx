@@ -1,294 +1,217 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  Search,
-  Filter,
-  Package,
-  Calendar,
-  CircleDollarSign,
-  Truck,
-} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useAuth } from "@/context/authContext";
+import { ApiError } from "@/lib/http";
 import { formatCurrency } from "@/lib/utils";
-import { Order, OrderStatus } from "@/types/orders";
+import { listMyOrders } from "@/services/ordersV2";
+import type { OrderStatusV2, OrderSummaryV2, Paged } from "@/types/ordersV2";
 
-// Configuração de status para exibição
-const STATUS_CONFIG = {
-  [OrderStatus.PENDING]: {
-    label: "Pending",
-    variant: "secondary" as const,
-    color: "h-full",
-  },
-  [OrderStatus.PAID]: {
-    label: "Paid",
-    variant: "info" as const,
-    color: "h-full",
-  },
-  [OrderStatus.PROCESSING]: {
-    label: "Processing",
-    variant: "warning" as const,
-    color: "h-full",
-  },
-  [OrderStatus.SHIPPED]: {
-    label: "Sent",
-    variant: "purple" as const,
-    color: "h-full",
-  },
-  [OrderStatus.DELIVERED]: {
-    label: "Delivered",
-    variant: "success" as const,
-    color: "h-full",
-  },
-  [OrderStatus.CANCELLED]: {
-    label: "Cancelled",
-    variant: "destructive" as const,
-    color: "h-full",
-  },
-  [OrderStatus.REFUNDED]: {
-    label: "Reimbursed",
-    variant: "warning" as const,
-    color: "h-full",
-  },
-};
+const statuses: OrderStatusV2[] = [
+  "PENDING_PAYMENT",
+  "CONFIRMED",
+  "PARTIALLY_COMPLETED",
+  "COMPLETED",
+  "CANCELLED",
+];
 
-export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+function OrdersClientPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const query = searchParams.toString();
+  const [result, setResult] = useState<Paged<OrderSummaryV2> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const page = searchParams.get("page") ?? "1";
+  const limit = searchParams.get("limit") ?? "20";
+  const status = searchParams.get("status") ?? "";
+  const createdFrom = searchParams.get("createdFrom") ?? "";
+  const createdTo = searchParams.get("createdTo") ?? "";
 
-  // Carregar e ordenar orders por data decrescente
-  useEffect(() => {
-    async function fetchOrders() {
-      try {
-        // 1. Return customer
-        const customerRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/customers/`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-        if (!customerRes.ok) throw new Error("Error returning customer");
-        const customerData = await customerRes.json();
-
-        // 2. Return orders from customer
-        const ordersRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/orders/customer/${customerData.profile.id}`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-        if (!ordersRes.ok) throw new Error("Error returning orders");
-
-        const ordersData = await ordersRes.json();
-
-        const sortedOrders = [...ordersData.orders].sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        setOrders(sortedOrders);
-        setFilteredOrders(sortedOrders);
-      } catch (error) {
-        console.error("Error fetchin orders:", error);
-      }
-    }
-    fetchOrders();
-  }, []);
-
-  // Filtrar orders quando a busca ou status mudar
-  useEffect(() => {
-    let filtered = [...orders];
-
-    // Filtrar por busca nos produtos dos order items
-    if (searchQuery) {
-      filtered = filtered.filter((order) =>
-        order.orderItems.some((item) =>
-          item.product.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setResult(
+        await listMyOrders({
+          page: Number(page),
+          limit: Number(limit),
+          ...(status ? { status: status as OrderStatusV2 } : {}),
+          ...(createdFrom ? { createdFrom } : {}),
+          ...(createdTo ? { createdTo } : {}),
+        }),
       );
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiError
+          ? requestError.status === 401
+            ? "Entre como customer para consultar seus pedidos."
+            : requestError.status === 403
+              ? "Esta conta não tem permissão para consultar pedidos de customer."
+              : requestError.message
+          : "Não foi possível carregar os pedidos.",
+      );
+    } finally {
+      setLoading(false);
     }
+  }, [createdFrom, createdTo, limit, page, status]);
 
-    // Filtrar por status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((order) => order.status === statusFilter);
+  useEffect(() => {
+    if (!authLoading && user?.role === "CUSTOMER") void load();
+  }, [authLoading, load, user?.role, query]);
+
+  function updateQuery(values: Record<string, string>) {
+    const next = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(values)) {
+      if (value) next.set(key, value);
+      else next.delete(key);
     }
+    if ("page" in values === false) next.set("page", "1");
+    router.replace(`${pathname}?${next.toString()}`);
+  }
 
-    setFilteredOrders(filtered);
-  }, [searchQuery, statusFilter, orders]);
-
-  // Formatar data para exibição
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  if (authLoading) {
+    return (
+      <main className="p-8" role="status">
+        Carregando sessão…
+      </main>
+    );
+  }
+  if (!user) {
+    return (
+      <main className="space-y-4 p-8">
+        <h1 className="text-3xl font-semibold">Meus pedidos</h1>
+        <p role="alert">Entre como customer para continuar.</p>
+        <Button asChild>
+          <Link href="/login?returnTo=%2Forders">Entrar</Link>
+        </Button>
+      </main>
+    );
+  }
+  if (user.role !== "CUSTOMER") {
+    return (
+      <main className="p-8">
+        <p role="alert">Esta lista é exclusiva para customers.</p>
+      </main>
+    );
+  }
 
   return (
-    <div className="container py-8">
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4">
-          <h1 className="text-3xl font-bold">My orders</h1>
-
-          {/* Barra de busca e filtros */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search for products in your orders..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All status</SelectItem>
-                  {Object.entries(STATUS_CONFIG).map(([status, config]) => (
-                    <SelectItem key={status} value={status}>
-                      {config.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Lista de pedidos */}
-        {filteredOrders.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-10">
-              <Package className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">
-                {searchQuery || statusFilter !== "all"
-                  ? // ? "Nenhum pedido encontrado com os filtros aplicados."
-                    "No order found based on applied filters."
-                  : "You haven't made any order yet."}
-              </p>
-              {(searchQuery || statusFilter !== "all") && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("all");
-                  }}
-                >
-                  Clear filters
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {filteredOrders.map((order) => (
-              <Card key={order.id} className="overflow-hidden">
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <h3 className="font-semibold">Order #{order.id}</h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          {formatDate(order.createdAt)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant={STATUS_CONFIG[order.status].variant}
-                        className="py-2 px-4 h-9 flex items-center"
-                      >
-                        {STATUS_CONFIG[order.status].label}
-                      </Badge>
-                      <Link href={`/orders/${order.id}/tracking`}>
-                        <Button
-                          size="sm"
-                          className="inline-flex items-center gap-2"
-                        >
-                          <Truck className="h-4 w-4" />
-                          Track Order
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-4">
-                    {/* Valor total */}
-                    <div className="flex items-center gap-2">
-                      <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-lg font-semibold">
-                        {formatCurrency(order.totalPrice)}
-                      </span>
-                    </div>
-
-                    {/* Lista de produtos */}
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Products:
-                      </h4>
-                      <div className="grid gap-2">
-                        {order.orderItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-background rounded border overflow-hidden">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={item.product.image || "/placeholder.svg"}
-                                  alt={item.product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {item.product.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Amount: {item.quantity} ×{" "}
-                                  {formatCurrency(item.unitPrice)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-sm font-medium">
-                              {formatCurrency(item.quantity * item.unitPrice)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+    <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+      <h1 className="text-3xl font-semibold">Meus pedidos</h1>
+      <form
+        className="grid gap-3 rounded border p-4 sm:grid-cols-2 lg:grid-cols-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          updateQuery({
+            status: String(data.get("status") ?? ""),
+            createdFrom: String(data.get("createdFrom") ?? ""),
+            createdTo: String(data.get("createdTo") ?? ""),
+            page: "1",
+          });
+        }}
+      >
+        <label className="grid gap-1 text-sm">
+          Status
+          <select className="rounded border p-2" name="status" defaultValue={status}>
+            <option value="">Todos</option>
+            {statuses.map((value) => (
+              <option key={value} value={value}>{value}</option>
             ))}
-          </div>
-        )}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          Criado de
+          <input className="rounded border p-2" type="date" name="createdFrom" defaultValue={createdFrom} />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Criado até
+          <input className="rounded border p-2" type="date" name="createdTo" defaultValue={createdTo} />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Itens por página
+          <select
+            className="rounded border p-2"
+            name="limit"
+            value={limit}
+            onChange={(event) => updateQuery({ limit: event.target.value, page: "1" })}
+          >
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <div className="flex items-end">
+          <Button type="submit">Aplicar filtros</Button>
+        </div>
+      </form>
+      {error && (
+        <p role="alert" className="rounded border border-destructive p-3 text-destructive">
+          {error}
+        </p>
+      )}
+      {loading && <p role="status">Carregando pedidos…</p>}
+      {!loading && result?.data.length === 0 && (
+        <p className="rounded border p-5">Nenhum pedido encontrado.</p>
+      )}
+      <div className="space-y-3">
+        {result?.data.map((order) => (
+          <article
+            key={order.id}
+            className="flex flex-wrap items-center justify-between gap-4 rounded border p-4"
+          >
+            <div>
+              <h2 className="font-semibold">Pedido {order.id}</h2>
+              <p className="text-sm text-muted-foreground">
+                {order.status} · {new Date(order.createdAt).toLocaleString("pt-BR")}
+              </p>
+            </div>
+            <strong>{formatCurrency(order.totalInCents / 100)}</strong>
+            <Button asChild variant="outline">
+              <Link href={`/orders/${order.id}`}>Ver pedido</Link>
+            </Button>
+          </article>
+        ))}
       </div>
-    </div>
+      {result && (
+        <nav className="flex items-center justify-between" aria-label="Paginação dos pedidos">
+          <span>
+            Página {result.pagination.page} de {result.pagination.totalPages} · {result.pagination.total} pedidos
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={result.pagination.page <= 1}
+              onClick={() => updateQuery({ page: String(result.pagination.page - 1) })}
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="outline"
+              disabled={result.pagination.page >= result.pagination.totalPages}
+              onClick={() => updateQuery({ page: String(result.pagination.page + 1) })}
+            >
+              Próxima
+            </Button>
+          </div>
+        </nav>
+      )}
+    </main>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<main className="p-8" role="status">Carregando filtros…</main>}>
+      <OrdersClientPage />
+    </Suspense>
   );
 }

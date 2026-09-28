@@ -203,12 +203,16 @@ export default function CartPage() {
         <p className="text-sm text-muted-foreground">
           Total calculado pelo backend com preços atuais; não é um preço final de checkout.
         </p>
-        <Button type="button" className="w-full" disabled={!cart?.items.length}>
-          Prosseguir para checkout
-        </Button>
-        <p className="text-xs text-muted-foreground">
-          O checkout schema-v2 será integrado na etapa 2.5.
-        </p>
+        {cart?.items.length &&
+        cart.items.every((item) => item.isAvailable && item.hasSufficientStock) ? (
+          <Button asChild className="w-full">
+            <Link href="/cart/checkout">Prosseguir para checkout</Link>
+          </Button>
+        ) : (
+          <Button type="button" className="w-full" disabled>
+            Prosseguir para checkout
+          </Button>
+        )}
       </aside>
     </main>
   );

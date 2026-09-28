@@ -7,6 +7,23 @@ type Context = {
 };
 
 function isAllowedRoute(domain: string, path: string[], method: string) {
+  if (domain === "checkout") {
+    return path.length === 0 && method === "POST";
+  }
+
+  if (domain === "orders") {
+    return method === "GET" && path.length <= 1;
+  }
+
+  if (domain === "seller-orders") {
+    if (method === "GET") return path.length <= 1;
+    return (
+      method === "PATCH" &&
+      path.length === 2 &&
+      path[1] === "status"
+    );
+  }
+
   if (domain === "products") {
     if (method === "GET") {
       return (
@@ -87,7 +104,31 @@ async function proxy(request: NextRequest, context: Context) {
   const headers = new Headers();
   const token = request.cookies.get("token")?.value;
   if (token) headers.set("Cookie", `token=${token}`);
+  if (domain === "checkout") {
+    const idempotencyKey = request.headers.get("Idempotency-Key");
+    if (idempotencyKey) headers.set("Idempotency-Key", idempotencyKey);
+  }
   try {
+    if (domain === "checkout") {
+      headers.set("Content-Type", "application/json");
+      const upstream = await fetch(url, {
+        method: "POST",
+        headers,
+        body: await request.text(),
+        cache: "no-store",
+      });
+      const response = new NextResponse(
+        upstream.status === 204 ? null : await upstream.text(),
+        { status: upstream.status },
+      );
+      const contentType = upstream.headers.get("Content-Type");
+      if (contentType) response.headers.set("Content-Type", contentType);
+      const replayed = upstream.headers.get("Idempotency-Replayed");
+      if (replayed) response.headers.set("Idempotency-Replayed", replayed);
+      response.headers.set("Cache-Control", "private, no-store");
+      return response;
+    }
+
     let result: unknown;
     if (request.method === "GET" || request.method === "DELETE") {
       result = await requestJson<unknown>(url, {
@@ -146,3 +187,4 @@ export const GET = proxy;
 export const POST = proxy;
 export const PUT = proxy;
 export const DELETE = proxy;
+export const PATCH = proxy;
