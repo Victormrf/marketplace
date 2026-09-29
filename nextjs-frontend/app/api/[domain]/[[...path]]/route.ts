@@ -34,11 +34,34 @@ function isAllowedRoute(domain: string, path: string[], method: string) {
   }
 
   if (domain === "seller-orders") {
-    if (method === "GET") return path.length <= 1;
+    if (method === "GET" && path.length <= 1) return true;
+    if (
+      path.length === 2 &&
+      path[1] === "delivery" &&
+      ["GET", "POST"].includes(method)
+    ) {
+      return true;
+    }
     return (
       method === "PATCH" &&
       path.length === 2 &&
       path[1] === "status"
+    );
+  }
+
+  if (domain === "deliveries") {
+    if (method === "GET" && path.length === 1) return true;
+    if (
+      method === "GET" &&
+      path.length === 2 &&
+      path[1] === "history"
+    ) {
+      return true;
+    }
+    return (
+      method === "PATCH" &&
+      path.length === 2 &&
+      ["status", "tracking"].includes(path[1])
     );
   }
 
@@ -185,7 +208,8 @@ async function proxy(request: NextRequest, context: Context) {
               ((domain === "customers" && path[0] === "addresses") ||
                 (domain === "cart" && path[0] === "items") ||
                 (domain === "orders" && path[1] === "payment-attempts") ||
-                (domain === "payment-attempts" && path[1] === "refunds"))
+                (domain === "payment-attempts" && path[1] === "refunds") ||
+                (domain === "seller-orders" && path[1] === "delivery"))
                 ? 201
                 : 200,
           });

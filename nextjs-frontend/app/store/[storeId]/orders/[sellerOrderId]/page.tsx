@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { SellerOrderDeliveryManager } from "@/components/orders/SellerOrderDeliveryManager";
 import { useAuth } from "@/context/authContext";
 import { ApiError } from "@/lib/http";
 import { formatCurrency } from "@/lib/utils";
@@ -156,6 +157,7 @@ export default function SellerOrderDetailPage() {
           ))}
         </ol>
       </section>
+      <SellerOrderDeliveryManager sellerOrderId={order.id} />
     </main>
   );
 }
