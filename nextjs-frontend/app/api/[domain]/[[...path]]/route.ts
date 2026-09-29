@@ -33,6 +33,18 @@ function isAllowedRoute(domain: string, path: string[], method: string) {
     return method === "GET" && path.length === 1;
   }
 
+  if (domain === "reviews") {
+    return path.length === 1 && (method === "GET" || method === "PATCH");
+  }
+
+  if (domain === "sellers") {
+    return (
+      path.length === 2 &&
+      path[1] === "reviews" &&
+      (method === "GET" || method === "POST")
+    );
+  }
+
   if (domain === "seller-orders") {
     if (method === "GET" && path.length <= 1) return true;
     if (
@@ -66,6 +78,14 @@ function isAllowedRoute(domain: string, path: string[], method: string) {
   }
 
   if (domain === "products") {
+    if (
+      path.length === 2 &&
+      path[1] === "reviews" &&
+      (method === "GET" || method === "POST")
+    ) {
+      return true;
+    }
+
     if (method === "GET") {
       return (
         path.length === 0 ||
@@ -209,7 +229,9 @@ async function proxy(request: NextRequest, context: Context) {
                 (domain === "cart" && path[0] === "items") ||
                 (domain === "orders" && path[1] === "payment-attempts") ||
                 (domain === "payment-attempts" && path[1] === "refunds") ||
-                (domain === "seller-orders" && path[1] === "delivery"))
+                (domain === "seller-orders" && path[1] === "delivery") ||
+                ((domain === "products" || domain === "sellers") &&
+                  path[1] === "reviews"))
                 ? 201
                 : 200,
           });

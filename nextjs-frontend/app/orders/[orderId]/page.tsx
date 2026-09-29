@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PaymentAttemptRefunds } from "@/components/orders/PaymentAttemptRefunds";
 import { SellerOrderDeliveryStatus } from "@/components/orders/SellerOrderDeliveryStatus";
+import { PurchaseReviewActions } from "@/components/reviews/PurchaseReviewActions";
 import { useAuth } from "@/context/authContext";
 import { ApiError } from "@/lib/http";
 import { formatCurrency } from "@/lib/utils";
@@ -139,6 +140,13 @@ export default function OrderDetailPage() {
               ))}
             </ol>
             <SellerOrderDeliveryStatus sellerOrderId={sellerOrder.id} />
+            <PurchaseReviewActions
+              sellerOrderId={sellerOrder.id}
+              sellerId={sellerOrder.sellerId}
+              sellerName={sellerOrder.items[0]?.sellerNameSnapshot ?? "seller"}
+              status={sellerOrder.status}
+              items={sellerOrder.items}
+            />
           </article>
         ))}
       </section>

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import type { ProductReadDto } from "@/types/product";
 import { CollapsibleText } from "./collapsibleText";
+import { ReviewCollection } from "./reviews/ReviewCollection";
 
 export default function ProductOverview({
   product,
@@ -81,6 +82,18 @@ export default function ProductOverview({
               </div>
             )}
           </div>
+        </div>
+        <div className="mt-8 grid gap-5 lg:grid-cols-2">
+          <ReviewCollection
+            targetKind="product"
+            targetId={product.id}
+            targetName={product.name}
+          />
+          <ReviewCollection
+            targetKind="seller"
+            targetId={product.sellerId}
+            targetName={product.sellerName}
+          />
         </div>
       </div>
     </section>

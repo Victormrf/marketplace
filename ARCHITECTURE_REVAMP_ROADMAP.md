@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
 Última atualização: 28/09/2026
-Estado atual: **2.6C implementada e validada; próxima: 2.6D**
+Estado atual: **2.6D implementada e validada; próxima: 2.6E**
 
 ## Objetivo
 
@@ -55,8 +55,9 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 - Ajuste de navegação (28/09/2026): o menu do customer possui um único link “Meus pedidos” para `/orders`; a rota provisória `/refunds` redireciona para `/orders`, onde refunds ficam no detalhe do pedido, por tentativa de pagamento.
 - [x] 2.6C Deliveries e tracking no frontend: DTO e service v2, leitura individual por SellerOrder para customer, gestão de criação/tracking/transições para seller e rotas dedicadas na ponte Next. Smoke Playwright local: seller criou delivery, atualizou tracking e avançou status; customer consultou status/histórico e confirmou persistência após refresh. Customer sem sessão recebeu 401; escrita por customer recebeu 403; seller de outro perfil recebeu 404; transição obsoleta recebeu 409 e a UI recarregou o estado real. Fixture Order/SellerOrder/Delivery local foi removida e verificada. `npx tsc --noEmit`, `npm run build` e `test:deliveries` (13/13) passaram. Chamadas antigas do dashboard seller ainda geram 404 no console e permanecem fora do escopo da 2.6C.
 - Correção pontual 2.6C (28/09/2026): campo `datetime-local` converte ISO/UTC para o fuso local e volta a ISO sem deslocar previsão inalterada; PATCH omite campo intacto e envia `estimatedDelivery: null` ao remover; motivo limitado a 255 caracteres. Playwright confirmou edição, payload UTC, remoção e persistência após refresh; fixture local removida e verificada. Type-check e build passaram.
-- [~] 2.6D Reviews no frontend.
-- [ ] 2.6E Dashboard de seller no frontend.
+- [x] 2.6D Reviews no frontend: leitura pública paginada e filtrada por produto/seller com reputação do endpoint; criação contextual no SellerOrder entregue; edição somente para review cujo ID foi criado e retido na sessão do customer. A rota provisória `/reviews` redireciona para `/orders`, sem criar listagem global.
+- Validação local em navegador real (29/09/2026): customer criou reviews de produto e seller em uma compra entregue, editou a própria review e recuperou a edição após refresh; listagem pública mostrou reputação/distribuição, paginação do backend e filtro rating; tentativa duplicada 409, compra não entregue 403, edição por outro customer 403, seller/admin sem permissão 403 e sem sessão 401. `/reviews` encaminhou para `/orders`. Fixtures locais foram removidas e verificadas sem resíduos. `npx tsc --noEmit`, `npm run build` e backend `test:reviews` (10/10) passaram. Limitação observada no backend: POST sem a propriedade `comment` responde 400; o frontend envia `comment: null` quando vazio, sem alteração do backend.
+- [~] 2.6E Dashboard de seller no frontend.
 - [ ] 2.7 Remover tipos e fluxos legados; revisar build e jornadas manuais completas nos três papéis.
 - [ ] 2.8 Consolidar a ponte Next de API: manter o mecanismo comum em `lib/server/route-proxy.ts` e adaptá-lo para ser reutilizado por rotas dedicadas e pela rota dinâmica `app/api/[domain]/[[...path]]/route.ts`. Preservar destinos e métodos permitidos por rota, cookie HttpOnly, verificação de origem, headers/status necessários e `no-store`; eliminar lógica de encaminhamento duplicada sem criar outra camada. Validar novamente as jornadas de autenticação, perfis, catálogo, carrinho e checkout.
 
@@ -159,4 +160,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 2.6D: integrar reviews no frontend. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 2.6E: integrar dashboard de seller no frontend. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
