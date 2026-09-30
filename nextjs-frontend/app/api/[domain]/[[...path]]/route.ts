@@ -7,6 +7,20 @@ type Context = {
 };
 
 function isAllowedRoute(domain: string, path: string[], method: string) {
+  if (domain === "dashboard") {
+    const allowedPaths = [
+      "seller/summary",
+      "seller/orders",
+      "seller/orders/by-status",
+      "seller/sales/timeseries",
+      "seller/sales/by-category",
+      "seller/products/top",
+      "seller/customers/new",
+      "seller/ratings",
+    ];
+    return method === "GET" && allowedPaths.includes(path.join("/"));
+  }
+
   if (domain === "checkout") {
     return path.length === 0 && method === "POST";
   }

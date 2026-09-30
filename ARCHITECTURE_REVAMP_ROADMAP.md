@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 28/09/2026
-Estado atual: **2.6D implementada e validada; próxima: 2.6E**
+Última atualização: 29/09/2026
+Estado atual: **2.6E implementada e validada; próxima: 2.7**
 
 ## Objetivo
 
@@ -57,13 +57,18 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 - Correção pontual 2.6C (28/09/2026): campo `datetime-local` converte ISO/UTC para o fuso local e volta a ISO sem deslocar previsão inalterada; PATCH omite campo intacto e envia `estimatedDelivery: null` ao remover; motivo limitado a 255 caracteres. Playwright confirmou edição, payload UTC, remoção e persistência após refresh; fixture local removida e verificada. Type-check e build passaram.
 - [x] 2.6D Reviews no frontend: leitura pública paginada e filtrada por produto/seller com reputação do endpoint; criação contextual no SellerOrder entregue; edição somente para review cujo ID foi criado e retido na sessão do customer. A rota provisória `/reviews` redireciona para `/orders`, sem criar listagem global.
 - Validação local em navegador real (29/09/2026): customer criou reviews de produto e seller em uma compra entregue, editou a própria review e recuperou a edição após refresh; listagem pública mostrou reputação/distribuição, paginação do backend e filtro rating; tentativa duplicada 409, compra não entregue 403, edição por outro customer 403, seller/admin sem permissão 403 e sem sessão 401. `/reviews` encaminhou para `/orders`. Fixtures locais foram removidas e verificadas sem resíduos. `npx tsc --noEmit`, `npm run build` e backend `test:reviews` (10/10) passaram. Limitação observada no backend: POST sem a propriedade `comment` responde 400; o frontend envia `comment: null` quando vazio, sem alteração do backend.
-- [~] 2.6E Dashboard de seller no frontend.
-- [ ] 2.7 Remover tipos e fluxos legados; revisar build e jornadas manuais completas nos três papéis.
+- [x] 2.6E Dashboard de seller no frontend: métricas, gráficos, filtros temporais e SellerOrders migrados para os contratos schema-v2; seller é resolvido pelo backend e as oito leituras passam pela ponte same-origin.
+- Validação local (29/09/2026): Playwright autenticou seller e verificou intervalo sem dados e período com a SellerOrder entregue do seed (R$ 40,00/4.000 centavos), alternância diário/mensal mantendo from/to, filtro de status e refresh. Para paginação, foram criadas 11 SellerOrders pendentes descartáveis: página 1 exibiu 10/11, página 2 exibiu 1/11 e o filtro foi enviado ao backend; fixtures foram removidas e a ausência dos IDs confirmada. Sem sessão, a tela bloqueou e a API respondeu 401; customer viu bloqueio de papel e a API respondeu 403. `npx tsc --noEmit`, `npm run build` e `test:dashboard` (7/7) passaram. O `storeId` da rota não é usado para autorização. Receita segue bruta, sem desconto de refunds.
+- [~] 2.7 Remover tipos e fluxos legados; revisar build e jornadas manuais completas nos três papéis.
 - [ ] 2.8 Consolidar a ponte Next de API: manter o mecanismo comum em `lib/server/route-proxy.ts` e adaptá-lo para ser reutilizado por rotas dedicadas e pela rota dinâmica `app/api/[domain]/[[...path]]/route.ts`. Preservar destinos e métodos permitidos por rota, cookie HttpOnly, verificação de origem, headers/status necessários e `no-store`; eliminar lógica de encaminhamento duplicada sem criar outra camada. Validar novamente as jornadas de autenticação, perfis, catálogo, carrinho e checkout.
 
 **Concluída quando:** as jornadas principais funcionam de ponta a ponta sem depender dos campos e da orquestração v1 no navegador.
 
 **Fechamento da 2.1:** mapa de telas, chamadas e DTOs em [FRONTEND_PHASE_2_1_MIGRATION_MAP.md](FRONTEND_PHASE_2_1_MIGRATION_MAP.md). Decisão revisada em 24/09/2026 para simplificar a integração à ponte BFF no browser e remover a divisão client/server sem necessidade atual.
+
+## Pendências transversais do revamp
+
+- [ ] Recuperar reviews próprias sem depender de `sessionStorage`: definir no backend uma consulta autenticada e limitada ao customer atual para localizar sua review por produto ou seller; adaptar o frontend para carregar o ID persistido antes de oferecer criação/edição. Hoje, em outra aba, navegador ou dispositivo, a review existente não é descoberta e uma nova tentativa recebe 409. Validar ownership, ausência de review e atualização após refresh. Planejar após a conclusão da 2.7, sem ampliar o escopo atual.
 
 ## Fase 3 — Contratos e testes ponta a ponta
 
@@ -160,4 +165,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 2.6E: integrar dashboard de seller no frontend. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 2.7: remover tipos e fluxos legados do frontend com revisão de consumidores e validação das jornadas nos três papéis. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.

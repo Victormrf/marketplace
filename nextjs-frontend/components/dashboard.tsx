@@ -1,515 +1,458 @@
-// dashboard
 "use client";
 
+import { useMemo, useState } from "react";
 import {
-  LineChart,
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
   Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Legend,
-  Tooltip,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
 } from "recharts";
-import { Card, CardContent } from "@/components/ui/card";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
+import { useSellerDashboard } from "@/hooks/useSellerDashboard";
+import type { DashboardRange, SellerOrderStatus } from "@/types/dashboard";
 import { Button } from "./ui/button";
-import DashboardHeader from "./dashboardHeader";
-import { Store } from "@/types/store";
-import { Product } from "@/types/product";
+import { Card, CardContent } from "./ui/card";
 
-export interface OrderData {
-  id: string;
-  customerId: string;
-  totalPrice: number;
-  createdAt: Date;
+const statuses: SellerOrderStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "PROCESSING",
+  "SHIPPED",
+  "DELIVERED",
+  "CANCELLED",
+  "RETURNED",
+];
+const chartColors = ["#1f283c", "#7a7e8a", "#48556c", "#a1a1a1", "#64748b"];
+
+function formatDateInput(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
-const COLORS = ["#1f283c", "#7a7e8a", "#48556c", "#a1a1a1"];
+function initialRange(): DashboardRange {
+  const to = new Date();
+  const from = new Date(to);
+  from.setUTCDate(from.getUTCDate() - 29);
+  return { from: formatDateInput(from), to: formatDateInput(to) };
+}
+
+function formatCurrency(cents: number, currency = "BRL"): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency,
+  }).format(cents / 100);
+}
+
+function formatPeriod(period: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(period)) {
+    return new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "UTC",
+    }).format(new Date(`${period}T00:00:00.000Z`));
+  }
+  return period;
+}
 
 export default function SellerDashboard() {
-  const [view, setView] = useState<"6months" | "30days">("6months");
-  const [store, setStore] = useState<Store | null>(null);
-  const [selectedTab, setSelectedTab] = useState<
-    "overview" | "sales" | "customers"
-  >("overview");
-  const [loading, setLoading] = useState(true);
-  const [totalSales, setTotalSales] = useState(0);
-  const [storeProducts, setStoreProducts] = useState<Product[]>([]);
-  const [storeOrders, setStoreOrders] = useState<OrderData[]>([]);
-  const [avgRating, setAvgRating] = useState(0);
-  const [revenuePerDate, setRevenuePerDate] = useState<
-    { date: string; revenue: number }[]
-  >([]);
-  const [revenuePerCategory, setRevenuePerCategory] = useState<
-    { category: string; totalSales: number }[]
-  >([]);
-  const [bestSellingProducts, setBestSellingProducts] = useState<Product[]>([]);
-  const [ordersPerStatus, setOrdersPerStatus] = useState<
-    { status: string; count: number }[]
-  >([]);
-  const [newCustomers, setNewCustomers] = useState<
-    { month: string; newCustomers: number }[]
-  >([]);
-  const [ratingDistribution, setRatingDistribution] = useState<
-    { rating: number; count: number }[]
-  >([]);
+  const { user, loading: sessionLoading } = useAuth();
+  const [range, setRange] = useState<DashboardRange>(() => initialRange());
+  const stableRange = useMemo(
+    () => ({ from: range.from, to: range.to }),
+    [range.from, range.to],
+  );
+  const dashboard = useSellerDashboard(
+    stableRange,
+    !sessionLoading && user?.role === "SELLER",
+  );
 
-  const fetchRevenueData = async (
-    storeId: string,
-    dateFormat: "6months" | "30days"
-  ) => {
-    const endpoint =
-      dateFormat === "6months"
-        ? `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/lastSixMonthsSalesStats/${storeId}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/lastThirtyDaysSalesStats/${storeId}`;
+  if (sessionLoading) {
+    return <p className="p-8">Verificando sua sessão…</p>;
+  }
 
-    const response = await fetch(endpoint, {
-      method: "GET",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  if (!user) {
+    return (
+      <section className="p-8" role="alert">
+        Sua sessão expirou ou não está ativa. Entre como seller para acessar o dashboard.
+      </section>
+    );
+  }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch revenue data: ${errorText}`);
-    }
+  if (user.role !== "SELLER") {
+    return (
+      <section className="p-8" role="alert">
+        Você não tem permissão para acessar o dashboard do seller.
+      </section>
+    );
+  }
 
-    const data = await response.json();
-    setRevenuePerDate(data);
-    setView(dateFormat);
-  };
-
-  useEffect(() => {
-    async function fetchStoreData() {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sellers/`, {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch store data");
-        }
-
-        const data = await res.json();
-        const storeData = data.profile ? data.profile : null;
-        setStore(storeData);
-
-        // Only fetch dashboard data if we have store data
-        if (storeData?.id) {
-          try {
-            // Total sales
-            const salesRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/salesStats/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const salesData = await salesRes.json();
-            setTotalSales(salesData.totalSales);
-
-            // Total products
-            const productsRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/products/seller/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const productsData = await productsRes.json();
-            setStoreProducts(productsData.products);
-
-            // Total orders
-            const ordersRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/orders/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const ordersData = await ordersRes.json();
-            setStoreOrders(ordersData);
-
-            // Average store rating
-            const reviewRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/review/seller/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const reviewData = await reviewRes.json();
-            setAvgRating(reviewData.averageRating);
-
-            // Initial revenue data fetch
-            await fetchRevenueData(storeData.id, "6months");
-
-            // Top selling products
-            const bestSellingProductsRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/bestSellingProducts/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const bestSellingProductsData = await bestSellingProductsRes.json();
-            setBestSellingProducts(bestSellingProductsData);
-
-            // Revenue per category
-            const revenuePerCategoryRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/salesByCategory/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const revenuePerCategoryData = await revenuePerCategoryRes.json();
-            setRevenuePerCategory(revenuePerCategoryData);
-
-            // Orders per status
-            const ordersPerStatusRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/ordersByStatus/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const ordersPerStatusData = await ordersPerStatusRes.json();
-            setOrdersPerStatus(ordersPerStatusData);
-
-            // New customers per month
-            const newCustomersPerMonthRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/newCustomersByMonth/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const newCustomersPerMonthData =
-              await newCustomersPerMonthRes.json();
-            setNewCustomers(newCustomersPerMonthData);
-
-            // Rating distribution
-            const ratingDistributionRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/dashboard/sellers/ratingDistribution/${storeData.id}`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const ratingDistributionData = await ratingDistributionRes.json();
-            setRatingDistribution(ratingDistributionData);
-          } catch (error) {
-            console.error("Error retrieving dashboard data:", error);
-          }
-        }
-      } catch (error) {
-        console.error("Error retrieving store data:", error);
-        setStore(null);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchStoreData();
-  }, []);
-
-  const handleRevenuePerDateSwitch = async (
-    dateFormat: "6months" | "30days"
-  ) => {
-    if (!store?.id) return;
-    await fetchRevenueData(store.id, dateFormat);
-  };
+  const { data } = dashboard;
+  const canGoPrevious = dashboard.page > 1;
+  const canGoNext = dashboard.page < data.orders.pagination.totalPages;
 
   return (
-    <>
-      {loading ? (
-        <p>Fetching store data...</p>
-      ) : (
-        <div className="min-h-screen">
-          <div className="sticky top-0 z-10 border-b">
-            <DashboardHeader
-              storeLogo={store?.logo ? store.logo : "/store-placeholder.png"}
-              storeName={store?.storeName ? store.storeName : "Nome da Loja"}
-              userEmail={
-                store?.user?.email ? store.user.email : "email@exemplo.com"
-              }
-              selectedTab={selectedTab}
-              onTabChange={(tab) => setSelectedTab(tab)}
+    <main className="min-h-screen space-y-6 p-4 md:p-8">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard da loja</h1>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid gap-1 text-sm">
+            De
+            <input
+              aria-label="Data inicial"
+              className="h-9 rounded-md border px-2"
+              type="date"
+              value={range.from}
+              max={range.to}
+              onChange={(event) => {
+                dashboard.setPage(1);
+                setRange((current) => ({ ...current, from: event.target.value }));
+              }}
             />
-          </div>
-          <div className="p-6 space-y-8">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <p>Total Sales</p>
-                  <p className="text-2xl font-bold">
-                    {totalSales ? `$ ${totalSales}` : "$ 0,00"}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <p>Products Listed</p>
-                  <p className="text-2xl font-bold">
-                    {storeProducts.length ?? 23}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <p>Orders</p>
-                  <p className="text-2xl font-bold">
-                    {storeOrders.length ?? 87}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <p>Avg. Rating</p>
-                  <p className="text-2xl font-bold">
-                    {avgRating ? `${avgRating} / 5` : "-.- / 5"}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <p>Avg. time to Purchase</p>
-                  <p className="text-2xl font-bold">2d 4h</p>
-                </CardContent>
-              </Card>
-            </div>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Até
+            <input
+              aria-label="Data final"
+              className="h-9 rounded-md border px-2"
+              type="date"
+              value={range.to}
+              min={range.from}
+              onChange={(event) => {
+                dashboard.setPage(1);
+                setRange((current) => ({ ...current, to: event.target.value }));
+              }}
+            />
+          </label>
+          <Button
+            variant="outline"
+            onClick={() => void dashboard.refresh()}
+            disabled={dashboard.loading}
+          >
+            Atualizar
+          </Button>
+        </div>
+      </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-lg font-semibold">
-                      Sales (
-                      {view === "6months" ? "Last 6 Months" : "Last 30 Days"})
-                    </h2>
-                    <div className="space-x-2">
-                      <Button
-                        variant={view === "6months" ? "default" : "outline"}
-                        onClick={() => handleRevenuePerDateSwitch("6months")}
-                      >
-                        6 Months
-                      </Button>
-                      <Button
-                        variant={view === "30days" ? "default" : "outline"}
-                        onClick={() => handleRevenuePerDateSwitch("30days")}
-                      >
-                        30 Days
-                      </Button>
-                    </div>
-                  </div>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={revenuePerDate}>
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#1f283c"
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <h2 className="text-lg font-semibold mb-2">
-                    Top Selling Products
-                  </h2>
-                  {bestSellingProducts.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={bestSellingProducts} layout="vertical">
-                        <XAxis type="number" />
-                        <YAxis type="category" dataKey="name" width={180} />
-                        <Tooltip />
-                        <Bar dataKey="totalSold" fill="#1f283c" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[250px] flex items-center justify-center">
-                      <p className="text-muted-foreground text-center">
-                        No products have been sold yet.
-                        <br />
-                        Your top selling products will appear here.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <h2 className="text-lg font-semibold mb-2">
-                    Revenue by Category
-                  </h2>
-                  {revenuePerCategory.length ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie
-                          data={revenuePerCategory}
-                          dataKey="totalSales"
-                          nameKey="category"
-                          outerRadius={80}
-                          label
-                        >
-                          {revenuePerCategory.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend
-                          verticalAlign="bottom"
-                          align="right"
-                          iconType="circle"
-                          layout="horizontal"
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[250px] flex items-center justify-center">
-                      <p className="text-muted-foreground text-center">
-                        No products have been sold yet.
-                        <br />
-                        Your revenue per category will appear here.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <h2 className="text-lg font-semibold mb-2">
-                    Recent Orders by Status (Last 14 days)
-                  </h2>
-                  {ordersPerStatus.length ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie
-                          data={ordersPerStatus}
-                          dataKey="count"
-                          nameKey="status"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          label
-                        >
-                          {ordersPerStatus.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend verticalAlign="bottom" height={36} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[250px] flex items-center justify-center">
-                      <p className="text-muted-foreground text-center">
-                        No orders have been made recently.
-                        <br />
-                        Your order per status information will appear here.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <h2 className="text-lg font-semibold mb-2">
-                    New customers per Month
-                  </h2>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <AreaChart data={newCustomers}>
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area
-                        type="monotone"
-                        dataKey="newCustomers"
-                        stroke="#1f283c"
-                        fill="#1f283c"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <h2 className="text-lg font-semibold mb-2">
-                    Rating Distribution
-                  </h2>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={ratingDistribution}>
-                      <XAxis dataKey="rating" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#1f283c" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+      {dashboard.error && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4" role="alert">
+          <p>
+            {dashboard.errorStatus === 401
+              ? "Sua sessão não está autenticada. Entre novamente."
+              : dashboard.errorStatus === 403
+                ? "Sua conta não tem permissão de seller para consultar estes dados."
+                : dashboard.errorStatus === 400
+                  ? `O período ou filtro informado não é aceito pelo backend. ${dashboard.error}`
+                  : dashboard.error}
+          </p>
+          <Button className="mt-3" variant="outline" onClick={() => void dashboard.refresh()}>
+            Tentar novamente
+          </Button>
         </div>
       )}
-    </>
+
+      {dashboard.loading && <p role="status">Carregando métricas…</p>}
+
+      {!dashboard.error && (
+        <>
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              title="Receita bruta reconhecida"
+              value={formatCurrency(data.summary.grossRevenueInCents, data.summary.currency)}
+              hint="SellerOrders entregues no período; não desconta refunds."
+            />
+            <MetricCard
+              title="SellerOrders entregues"
+              value={String(data.summary.deliveredSellerOrders)}
+              hint="Contagem por data de conclusão."
+            />
+            <MetricCard
+              title="Itens vendidos"
+              value={String(data.summary.itemsSold)}
+              hint="Soma das quantidades em pedidos entregues."
+            />
+            <MetricCard
+              title="Ticket médio"
+              value={formatCurrency(data.summary.averageTicketInCents, data.summary.currency)}
+              hint="Receita bruta dividida pelas SellerOrders entregues."
+            />
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="font-semibold">Receita por período</h2>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={dashboard.interval === "day" ? "default" : "outline"}
+                      onClick={() => dashboard.setInterval("day")}
+                    >
+                      Diário
+                    </Button>
+                    <Button
+                      variant={dashboard.interval === "month" ? "default" : "outline"}
+                      onClick={() => dashboard.setInterval("month")}
+                    >
+                      Mensal
+                    </Button>
+                  </div>
+                </div>
+                <ChartEmpty isEmpty={data.timeseries.length === 0}>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={data.timeseries}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="period" tickFormatter={formatPeriod} />
+                      <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
+                      <Tooltip
+                        labelFormatter={formatPeriod}
+                        formatter={(value) => formatCurrency(Number(value))}
+                      />
+                      <Line dataKey="grossRevenueInCents" name="Receita bruta" stroke="#1f283c" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartEmpty>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5">
+                <h2 className="mb-4 font-semibold">Produtos mais vendidos</h2>
+                <ChartEmpty isEmpty={data.topProducts.length === 0}>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={data.topProducts} layout="vertical" margin={{ left: 20 }}>
+                      <XAxis type="number" />
+                      <YAxis type="category" dataKey="productName" width={150} />
+                      <Tooltip />
+                      <Bar dataKey="itemsSold" name="Itens vendidos" fill="#1f283c" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartEmpty>
+                {data.topProducts.length > 0 && (
+                  <ul className="mt-3 space-y-2 text-sm">
+                    {data.topProducts.map((product) => (
+                      <li
+                        className="flex justify-between gap-3"
+                        key={product.productId}
+                      >
+                        <span>{product.productName} · {product.itemsSold} itens</span>
+                        <span>{formatCurrency(product.grossRevenueInCents)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5">
+                <h2 className="mb-4 font-semibold">Receita por categoria</h2>
+                <ChartEmpty isEmpty={data.categories.length === 0}>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <PieChart>
+                      <Pie
+                        data={data.categories}
+                        dataKey="grossRevenueInCents"
+                        nameKey="category"
+                        outerRadius={90}
+                        label
+                      >
+                        {data.categories.map((item, index) => (
+                          <Cell key={item.category} fill={chartColors[index % chartColors.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) => formatCurrency(Number(value))}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartEmpty>
+                {data.categories.length > 0 && (
+                  <ul className="mt-3 space-y-2 text-sm">
+                    {data.categories.map((category) => (
+                      <li
+                        className="flex justify-between gap-3"
+                        key={category.category}
+                      >
+                        <span>{category.category} · {category.itemsSold} itens</span>
+                        <span>{formatCurrency(category.grossRevenueInCents)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5">
+                <h2 className="mb-4 font-semibold">SellerOrders por status</h2>
+                <ChartEmpty isEmpty={data.statuses.every((item) => item.count === 0)}>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={data.statuses}>
+                      <XAxis dataKey="status" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="count" name="SellerOrders" fill="#48556c" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartEmpty>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5">
+                <h2 className="mb-4 font-semibold">Novos customers por mês</h2>
+                <ChartEmpty isEmpty={data.newCustomers.length === 0}>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <AreaChart data={data.newCustomers}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="period" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Area dataKey="newCustomers" name="Novos customers" stroke="#1f283c" fill="#94a3b8" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </ChartEmpty>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5">
+                <h2 className="mb-2 font-semibold">Reputação do seller</h2>
+                <p className="text-3xl font-bold">
+                  {data.ratings.averageRating === null
+                    ? "Sem avaliações"
+                    : `${data.ratings.averageRating.toFixed(1)} / 5`}
+                </p>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {data.ratings.totalReviews} avaliações direcionadas à loja.
+                </p>
+                <ResponsiveContainer width="100%" height={170}>
+                  <BarChart
+                    data={Object.entries(data.ratings.distribution).map(([rating, count]) => ({ rating, count }))}
+                  >
+                    <XAxis dataKey="rating" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="count" name="Avaliações" fill="#1f283c" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </section>
+
+          <Card>
+            <CardContent className="space-y-4 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">SellerOrders criadas</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Filtradas por createdAt; receita reconhecida usa completedAt.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  Status
+                  <select
+                    className="h-9 rounded-md border bg-background px-2"
+                    value={dashboard.status}
+                    onChange={(event) => {
+                      dashboard.setStatus(event.target.value as SellerOrderStatus | "");
+                      dashboard.setPage(1);
+                    }}
+                  >
+                    <option value="">Todos</option>
+                    {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </label>
+              </div>
+              {data.orders.data.length === 0 ? (
+                <p className="py-6 text-center text-muted-foreground">
+                  Nenhuma SellerOrder neste período/filtro.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="p-2">ID</th>
+                        <th className="p-2">Criada</th>
+                        <th className="p-2">Status</th>
+                        <th className="p-2">Valor do pedido</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.orders.data.map((order) => (
+                        <tr className="border-b" key={order.id}>
+                          <td className="p-2 font-mono">{order.id.slice(0, 8)}</td>
+                          <td className="p-2">{new Date(order.createdAt).toLocaleDateString("pt-BR")}</td>
+                          <td className="p-2">{order.status}</td>
+                          <td className="p-2">{formatCurrency(order.totalInCents, order.currency)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {data.orders.pagination.total} resultados · página {dashboard.page} de{" "}
+                  {data.orders.pagination.totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={!canGoPrevious || dashboard.loading}
+                    onClick={() => dashboard.setPage((value) => value - 1)}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!canGoNext || dashboard.loading}
+                    onClick={() => dashboard.setPage((value) => value + 1)}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </main>
   );
+}
+
+function MetricCard({ title, value, hint }: { title: string; value: string; hint: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <p className="text-sm text-muted-foreground">{title}</p>
+        <p className="mt-2 text-2xl font-bold">{value}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChartEmpty({ isEmpty, children }: { isEmpty: boolean; children: React.ReactNode }) {
+  if (isEmpty) {
+    return (
+      <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+        Sem dados neste período.
+      </div>
+    );
+  }
+  return <>{children}</>;
 }
