@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
-import { proxyProfileRequest } from "@/lib/server/route-proxy";
+import { proxyBackendRequest } from "@/lib/server/route-proxy";
 
 export function GET(request: NextRequest) {
-  return proxyProfileRequest(request, "sellerProfile", "GET");
+  return proxyBackendRequest(request, "/sellers/");
 }
 
 export function POST(request: NextRequest) {
-  return proxyProfileRequest(request, "sellerProfile", "POST");
+  return proxyBackendRequest(request, "/sellers/");
 }
 
 export function PUT(request: NextRequest) {
-  return proxyProfileRequest(request, "sellerProfile", "PUT");
+  return proxyBackendRequest(request, "/sellers/");
 }

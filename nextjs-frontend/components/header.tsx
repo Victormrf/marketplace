@@ -82,23 +82,10 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
             )}
             {user?.role === "CUSTOMER" && (
               <>
-                <Link href="/wishlist" className="text-sm hover:underline">
-                  Favoritos
-                </Link>
                 <Link href="/cart" className="inline-flex items-center gap-2 text-sm">
                   <ShoppingCart className="h-4 w-4" /> Carrinho
                 </Link>
               </>
-            )}
-            {user?.role === "SELLER" && sellerId && (
-              <Link href={`/store/${sellerId}/customers`} className="text-sm hover:underline">
-                Clientes
-              </Link>
-            )}
-            {user?.role === "CUSTOMER" && (
-              <Link href="/orders" className="inline-flex items-center gap-2 text-sm">
-                <Package className="h-4 w-4" /> Pedidos
-              </Link>
             )}
             {!user && (
               <>
@@ -133,13 +120,6 @@ export default function Header({ onAuthClick }: { onAuthClick?: () => void }) {
                         <Link href="/orders" className="flex items-center gap-2 py-2 text-sm">
                           <Package className="h-4 w-4" /> Meus pedidos
                         </Link>
-                      </>
-                    )}
-                    {user.role === "SELLER" && sellerId && (
-                      <>
-                        <Link href={`/store/${sellerId}`} className="py-2 text-sm">Painel</Link>
-                        <Link href={`/store/${sellerId}/products`} className="py-2 text-sm">Produtos</Link>
-                        <Link href={`/store/${sellerId}/orders`} className="py-2 text-sm">Pedidos</Link>
                       </>
                     )}
                     <button

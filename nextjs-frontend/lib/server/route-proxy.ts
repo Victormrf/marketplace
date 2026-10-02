@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ApiError, requestJson } from "@/lib/http";
 
-type Endpoint =
-  | "register"
-  | "currentUser"
-  | "updateUser"
-  | "customerProfile"
-  | "sellerProfile";
+type ForwardableRequestHeader = "Idempotency-Key";
+type ForwardableResponseHeader =
+  | "Idempotency-Replayed"
+  | "Set-Cookie";
 
-const endpointPaths: Record<Endpoint, string> = {
-  register: "/users/register",
-  currentUser: "/users/me",
-  updateUser: "/users/",
-  customerProfile: "/customers/",
-  sellerProfile: "/sellers/",
+type ProxyOptions = {
+  requestHeaders?: readonly ForwardableRequestHeader[];
+  responseHeaders?: readonly ForwardableResponseHeader[];
 };
+
+const responseHeadersToPreserve = ["Content-Type"] as const;
 
 function backendBaseUrl(): string {
   const value = process.env.BACKEND_API_URL;
@@ -43,7 +39,7 @@ export function privateJsonResponse(
   return response;
 }
 
-function rejectCrossOriginMutation(request: NextRequest): NextResponse | null {
+export function rejectCrossOrigin(request: NextRequest): NextResponse | null {
   if (!isMutation(request.method)) return null;
 
   const requestOrigin = new URL(request.url).origin;
@@ -57,55 +53,109 @@ function rejectCrossOriginMutation(request: NextRequest): NextResponse | null {
   return null;
 }
 
-export async function proxyProfileRequest(
+function createBackendUrl(request: NextRequest, backendPath: string): URL {
+  if (
+    !backendPath.startsWith("/") ||
+    backendPath.startsWith("//") ||
+    backendPath.includes("?") ||
+    backendPath.includes("#")
+  ) {
+    throw new Error("Invalid internal backend path");
+  }
+
+  const pathSegments = backendPath.split("/");
+  if (pathSegments.some((segment) => segment === "." || segment === "..")) {
+    throw new Error("Invalid internal backend path");
+  }
+
+  const baseUrl = backendBaseUrl();
+  const target = new URL(`${baseUrl}${backendPath}`);
+  target.search = request.nextUrl.search;
+  return target;
+}
+
+async function readRequestBody(
   request: NextRequest,
-  endpoint: Endpoint,
-  method: "GET" | "POST" | "PUT",
-): Promise<NextResponse> {
-  const rejected = rejectCrossOriginMutation(request);
-  if (rejected) return rejected;
+  headers: Headers,
+): Promise<BodyInit | undefined | NextResponse> {
+  if (request.body === null || ["GET", "HEAD"].includes(request.method)) {
+    return undefined;
+  }
 
-  const token = request.cookies.get("token")?.value;
-  const headers = new Headers();
-  if (token) headers.set("Cookie", `token=${token}`);
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.toLowerCase().includes("multipart/form-data")) {
+    return request.formData();
+  }
 
-  const hasBody = method === "POST" || method === "PUT";
-  let json: unknown;
-  if (hasBody) {
+  if (
+    contentType.toLowerCase().includes("application/json") ||
+    contentType.toLowerCase().includes("+json")
+  ) {
+    let body: unknown;
     try {
-      json = await request.json();
+      body = await request.json();
     } catch {
       return privateJsonResponse({ error: "Invalid JSON body" }, 400);
     }
+
+    headers.set("Content-Type", "application/json");
+    return JSON.stringify(body);
   }
+
+  return privateJsonResponse({ error: "Unsupported request content type" }, 415);
+}
+
+export async function proxyBackendRequest(
+  request: NextRequest,
+  backendPath: string,
+  options: ProxyOptions = {},
+): Promise<NextResponse> {
+  const rejected = rejectCrossOrigin(request);
+  if (rejected) return rejected;
 
   try {
-    const result = await requestJson<unknown>(
-      `${backendBaseUrl()}${endpointPaths[endpoint]}`,
-      {
-        method,
-        headers,
-        ...(hasBody ? { json } : {}),
-        cache: "no-store",
-      },
-    );
-    return privateJsonResponse(result, method === "POST" ? 201 : 200);
-  } catch (error) {
-    if (error instanceof ApiError) {
-      return privateJsonResponse(
-        error.body ?? { message: error.message },
-        error.status,
-      );
+    const url = createBackendUrl(request, backendPath);
+    const headers = new Headers();
+    const token = request.cookies.get("token")?.value;
+    if (token) headers.set("Cookie", `token=${token}`);
+
+    for (const name of options.requestHeaders ?? []) {
+      const value = request.headers.get(name);
+      if (value) headers.set(name, value);
     }
 
+    const body = await readRequestBody(request, headers);
+    if (body instanceof NextResponse) return body;
+
+    const upstream = await fetch(url, {
+      method: request.method,
+      headers,
+      body,
+      cache: "no-store",
+    });
+
+    const responseHeaders = new Headers();
+    for (const name of responseHeadersToPreserve) {
+      const value = upstream.headers.get(name);
+      if (value) responseHeaders.set(name, value);
+    }
+
+    for (const name of options.responseHeaders ?? []) {
+      const value = upstream.headers.get(name);
+      if (value) responseHeaders.set(name, value);
+    }
+
+    responseHeaders.set("Cache-Control", "private, no-store");
+    const responseBody = [204, 205, 304].includes(upstream.status)
+      ? null
+      : upstream.body;
+
+    return new NextResponse(responseBody, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: responseHeaders,
+    });
+  } catch {
     return privateJsonResponse({ message: "Backend unavailable" }, 502);
   }
-}
-
-export function rejectCrossOrigin(request: NextRequest): NextResponse | null {
-  return rejectCrossOriginMutation(request);
-}
-
-export function forwardBackendUrl(): string {
-  return backendBaseUrl();
 }

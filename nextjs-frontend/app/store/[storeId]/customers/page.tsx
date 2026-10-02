@@ -1,20 +1,16 @@
-import Image from "next/image";
+import Link from "next/link";
 
 export default function CustomersPage() {
   return (
-    <div className="h-[calc(80vh-80px)] flex items-center justify-center">
-      <div className="flex flex-col items-center">
-        <p className="text-4xl font-semibold text-muted-foreground">
-          Work in progress...
-        </p>
-        <Image
-          src="/work_in_progress.png"
-          alt="Work in progress"
-          height={300}
-          width={300}
-          priority
-        />
-      </div>
-    </div>
+    <main className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center gap-4 p-8 text-center">
+      <h1 className="text-2xl font-semibold">Clientes indisponíveis</h1>
+      <p role="status">
+        O backend atual não disponibiliza uma consulta de clientes do seller.
+        Nenhum dado de cliente é exibido nesta página.
+      </p>
+      <Link className="underline" href="/">
+        Voltar ao início
+      </Link>
+    </main>
   );
 }

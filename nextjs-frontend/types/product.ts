@@ -1,19 +1,3 @@
-import { Seller } from "./seller";
-
-export type Product = {
-  id: string;
-  name: string;
-  price: number;
-  image?: string;
-  seller?: Pick<Seller, "id" | "storeName"> & Partial<Seller>;
-  stock: number;
-  description?: string;
-  category?: string;
-  averageRating?: number;
-  createdAt?: string;
-  totalSold?: number;
-};
-
 export type ProductReadDto = {
   id: string;
   sellerId: string;

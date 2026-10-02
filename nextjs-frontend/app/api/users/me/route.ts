@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { proxyProfileRequest } from "@/lib/server/route-proxy";
+import { proxyBackendRequest } from "@/lib/server/route-proxy";
 
 export function GET(request: NextRequest) {
-  return proxyProfileRequest(request, "currentUser", "GET");
+  return proxyBackendRequest(request, "/users/me");
 }
 
 export function PUT(request: NextRequest) {
-  return proxyProfileRequest(request, "updateUser", "PUT");
+  return proxyBackendRequest(request, "/users/");
 }

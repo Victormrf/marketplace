@@ -10,7 +10,7 @@ Componente → hook opcional → service por domínio → lib/http.ts → app/ap
 
 - `lib/http.ts` concentra fetch, JSON, resposta `204`, `ApiError` com status e `no-store` nas chamadas do navegador. Services usam exclusivamente rotas `/api` de mesma origem.
 - `services/auth.ts`, `user.ts`, `customer.ts` e `seller.ts` nomeiam operações do domínio. Não criar hooks pass-through; um hook só é justificável quando controlar estado ou interação útil da tela.
-- `app/api` permanece como BFF de allowlist fixa: o navegador não escolhe URL de destino; o Route Handler encaminha apenas o cookie `token`, valida `Origin` nas mutações e responde `private, no-store`, preservando status.
+- `app/api` permanece como BFF de allowlist fixa: o navegador não escolhe URL de destino; os Route Handlers definem caminhos/métodos e `lib/server/route-proxy.ts` encaminha o cookie `token`, valida `Origin` nas mutações, processa JSON/multipart e transmite status/corpo/headers necessários com `private, no-store`.
 - Login transfere o cookie emitido pelo backend para o domínio do Next como `HttpOnly`; o navegador nunca recebe o valor em JavaScript. `SameSite=Lax`, `Path=/` e `Secure` em produção.
 - Perfil é carregado no navegador via `/api/users/me` e service correspondente; exibe loading, erro, estado sem sessão e dados. `401` limpa a identidade; `403` preserva a sessão e informa falta de permissão.
 - No projeto atual, a justificativa concreta de `app/api` é a ponte de autenticação por cookie HttpOnly nas chamadas do navegador. Leituras executadas no servidor Next podem chamar o backend diretamente. Quando esse caso surgir, reutilizar o tratamento HTTP comum com destino explícito; não criar um segundo service por domínio antecipadamente.
@@ -18,6 +18,16 @@ Componente → hook opcional → service por domínio → lib/http.ts → app/ap
 - Em desenvolvimento, Next (`localhost:3000`) chama a API (`localhost:8000`) somente pelo BFF. Em produção, `BACKEND_API_URL` é configuração server-only do runtime Next; hostname e conectividade reais do backend ainda precisam ser confirmados antes do aceite da 2.2.
 
 Revisão baseada no frontend em `nextjs-frontend`, nos controllers e DTOs de `nodejs-backend/src`, no registro de rotas de `server.ts` e nos exemplos de `nodejs-backend/api.http`. Esta etapa documenta decisões; não migra telas.
+
+## Consolidação da ponte — 2.8 (02/10/2026)
+
+- `lib/server/route-proxy.ts` é o único mecanismo de encaminhamento usado pelos handlers dedicados e pela rota dinâmica. Recebe um caminho interno escolhido pelo handler, nunca uma URL fornecida pelo navegador; encaminha o cookie de sessão, valida origem nas mutações, serializa JSON, deixa o runtime definir o boundary de multipart, aplica `no-store` e preserva resposta/status do backend.
+- A rota dinâmica continua responsável por uma allowlist explícita de domínios, paths e métodos. Para checkout, encaminha `Idempotency-Key` e devolve `Idempotency-Replayed`; consulta individual de PaymentAttempt e leitura/criação de refunds permanecem permitidas.
+- Login captura o `Set-Cookie` emitido pela API e o grava como cookie HttpOnly do Next; logout encaminha a sessão e remove o cookie local. Os demais handlers de user/profile/register usam o mesmo proxy sem converter status de sucesso.
+- `nextjs-frontend npm run test:proxy` passou 10/10 testes controlados: status/body 409, replay header, 204, JSON de entrada inválido, multipart/boundary, body de erro upstream não JSON, indisponibilidade 502, origem, allowlist de PaymentAttempt/refunds, handlers dedicados e ciclo de cookie.
+- Regressões frontend `npx tsc --noEmit`, `npm run build`, `test:checkout` e `test:dashboard` passaram; `test:proxy` passou 10/10.
+- Playwright local com PostgreSQL, backend e Next disponíveis: login CUSTOMER/SELLER/ADMIN; cookie não legível via `document.cookie`; logout seguido de `/api/users/me` 401; sessão SELLER em `/api/cart` 403; CUSTOMER navegou perfil, catálogo/detalhe e reviews, carrinho, checkout sem submissão, pedido, PaymentAttempts/refunds, deliveries e histórico; SELLER navegou dashboard, produtos, inventário e SellerOrders; ADMIN recebeu 403 no dashboard seller. Chamadas foram de leitura/autenticação apenas; nenhuma fixture ou registro do seed foi alterado.
+- Limitação observada fora do escopo da ponte: link de categoria da home transmite rótulo visual (`Office`) e a API v2 rejeita com 400, pois espera o enum (`OFFICE`). A ponte manteve status e corpo recebidos. A validação integrada completa da 2.7 permanece pendente; este smoke de regressão não repetiu todas as mutações/limpezas com fixtures nem substitui suas suítes backend.
 
 ## Arquitetura inicial (histórico; não seguir nos próximos handoffs)
 

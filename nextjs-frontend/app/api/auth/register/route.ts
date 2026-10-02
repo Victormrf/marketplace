@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { proxyProfileRequest } from "@/lib/server/route-proxy";
+import { proxyBackendRequest } from "@/lib/server/route-proxy";
 
 export function POST(request: NextRequest) {
-  return proxyProfileRequest(request, "register", "POST");
+  return proxyBackendRequest(request, "/users/register");
 }
