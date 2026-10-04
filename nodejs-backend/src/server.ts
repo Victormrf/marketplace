@@ -1,5 +1,6 @@
 import express from "express";
 import prisma from "./config/db";
+import path from "path";
 import { userRoutes } from "./controllers/userController";
 import { authRoutes } from "./controllers/authController";
 import { customerRoutes } from "./controllers/customerController";
@@ -26,6 +27,23 @@ const PORT = process.env.PORT || 8000;
 app.get("/", (req, res) => {
   res.send("Server running on port 8000");
 });
+
+if (process.env.NODE_ENV !== "production") {
+  const docsDirectory = path.resolve(__dirname, "../docs");
+
+  app.get("/docs", (_req, res) => {
+    res.sendFile(path.join(docsDirectory, "index.html"));
+  });
+
+  app.get("/docs/", (_req, res) => {
+    res.sendFile(path.join(docsDirectory, "index.html"));
+  });
+
+  app.get("/docs/openapi.yaml", (_req, res) => {
+    res.type("application/yaml; charset=utf-8");
+    res.sendFile(path.join(docsDirectory, "openapi.yaml"));
+  });
+}
 
 // app.get("/health", (req, res) => {
 //   res.json({ status: "ok", env: process.env.NODE_ENV, db: process.env.DATABASE_URL ? "set" : "not set" });

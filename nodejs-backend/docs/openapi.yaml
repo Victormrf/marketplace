@@ -1,0 +1,729 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Marketplace API — schema-v2",
+    "version": "2.0.0",
+    "description": "Contrato HTTP do backend Express. Este documento usa a sintaxe JSON, que é um subconjunto válido de YAML 1.2, para permitir validação sem dependência de parser externo. Datas são strings ISO 8601 no JSON. Valores monetários são inteiros em centavos; currency acompanha os valores quando aplicável."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Somente desenvolvimento local; não é uma URL de produção"
+    }
+  ],
+  "tags": [
+    { "name": "System" },
+    { "name": "Authentication" },
+    { "name": "Users" },
+    { "name": "Customer profiles" },
+    { "name": "Seller profiles" },
+    { "name": "Customer addresses" },
+    { "name": "Catalog" },
+    { "name": "Inventory" },
+    { "name": "Cart" },
+    { "name": "Checkout" },
+    { "name": "Orders" },
+    { "name": "Seller orders" },
+    { "name": "Payments" },
+    { "name": "Refunds" },
+    { "name": "Deliveries" },
+    { "name": "Reviews" },
+    { "name": "Seller dashboard" }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["System"],
+        "operationId": "getRoot",
+        "summary": "Confirma que o processo HTTP respondeu",
+        "responses": {
+          "200": {
+            "description": "Texto simples de inicialização do servidor",
+            "content": { "text/html": { "schema": { "type": "string" }, "example": "Server running on port 8000" } }
+          }
+        }
+      }
+    },
+    "/users/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "login",
+        "summary": "Autentica e define o cookie de sessão",
+        "description": "O JWT não é retornado no corpo. A resposta define o cookie token HttpOnly, com validade de 24 horas no cookie (o JWT expira em 1 hora). No navegador, o frontend usa sua ponte Next /api para transferir a sessão ao domínio do frontend; essa ponte não faz parte deste contrato.",
+        "requestBody": { "$ref": "#/components/requestBodies/LoginInput" },
+        "responses": {
+          "200": { "description": "Autenticado; cookie token emitido", "headers": { "Set-Cookie": { "schema": { "type": "string" }, "description": "Cookie token HttpOnly; valor fictício omitido" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Message" }, "example": { "message": "User logged in successfully." } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/users/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "logout",
+        "summary": "Limpa o cookie de sessão",
+        "description": "Não exige autenticação válida; a resposta limpa token no cliente HTTP.",
+        "responses": {
+          "200": { "description": "Cookie limpo", "headers": { "Set-Cookie": { "schema": { "type": "string" }, "description": "Cookie token expirado" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Message" } } } }
+        }
+      }
+    },
+    "/users/register": {
+      "post": {
+        "tags": ["Users"],
+        "operationId": "registerUser",
+        "summary": "Cria uma conta CUSTOMER ou SELLER",
+        "description": "ADMIN não pode ser criado pelo registro público. Password é aceito somente na entrada e nunca faz parte do DTO de resposta.",
+        "requestBody": { "$ref": "#/components/requestBodies/UserRegistrationInput" },
+        "responses": {
+          "201": { "description": "Conta criada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": ["Users"],
+        "operationId": "getCurrentUser",
+        "summary": "Lê a identidade autenticada",
+        "description": "A identidade é extraída da sessão; não aceite userId para selecionar outro usuário.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Usuário atual", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/users/": {
+      "put": {
+        "tags": ["Users"],
+        "operationId": "updateCurrentUser",
+        "summary": "Atualiza a própria conta",
+        "description": "Aceita somente name, email e password; body vazio e campos protegidos são rejeitados. Email duplicado retorna conflito.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/UserUpdateInput" },
+        "responses": {
+          "200": { "description": "Conta atualizada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/users/{userId}": {
+      "delete": {
+        "tags": ["Users"],
+        "operationId": "deactivateUser",
+        "summary": "Desativa logicamente um usuário",
+        "description": "Somente ADMIN. A operação não remove o registro fisicamente.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/UserId" }],
+        "responses": {
+          "204": { "$ref": "#/components/responses/NoContent" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/customers": {
+      "post": {
+        "tags": ["Customer profiles"],
+        "operationId": "createCustomerProfile",
+        "summary": "Cria o perfil da conta CUSTOMER atual",
+        "description": "Somente role CUSTOMER. A propriedade permitida é phone; userId vem da autenticação. Apenas um perfil de customer/seller pode existir por usuário.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CustomerProfileInput" },
+        "responses": {
+          "201": { "description": "Perfil criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerProfile" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "get": {
+        "tags": ["Customer profiles"],
+        "operationId": "getCurrentCustomerProfile",
+        "summary": "Lê o perfil CUSTOMER atual",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Perfil próprio no envelope profile", "content": { "application/json": { "schema": { "type": "object", "required": ["profile"], "properties": { "profile": { "$ref": "#/components/schemas/CustomerProfile" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "put": {
+        "tags": ["Customer profiles"],
+        "operationId": "updateCurrentCustomerProfile",
+        "summary": "Atualiza o perfil CUSTOMER atual",
+        "description": "Aceita somente phone; null ou string vazia limpam o telefone.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CustomerProfileInput" },
+        "responses": {
+          "200": { "description": "Perfil atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerProfile" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/customers/all": {
+      "get": {
+        "tags": ["Customer profiles"],
+        "operationId": "listAllCustomerProfiles",
+        "summary": "Lista perfis CUSTOMER para administração",
+        "description": "Somente ADMIN. Retorna { profiles: [...] } sem paginação.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Perfis e DTOs públicos dos usuários", "content": { "application/json": { "schema": { "type": "object", "required": ["profiles"], "properties": { "profiles": { "type": "array", "items": { "$ref": "#/components/schemas/CustomerProfileWithUser" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/sellers": {
+      "post": {
+        "tags": ["Seller profiles"],
+        "operationId": "createSellerProfile",
+        "summary": "Cria o perfil SELLER da conta atual",
+        "description": "Somente role SELLER. userId é derivado da autenticação. Campos aceitos: storeName obrigatório, description e logo opcionais. Logo pode ser enviada como arquivo multipart ou string conforme o middleware/serviço.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/SellerProfileInput" },
+        "responses": {
+          "201": { "description": "Perfil criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerProfile" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "get": {
+        "tags": ["Seller profiles"],
+        "operationId": "getCurrentSellerProfile",
+        "summary": "Lê o perfil SELLER atual",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Perfil próprio no envelope profile", "content": { "application/json": { "schema": { "type": "object", "required": ["profile"], "properties": { "profile": { "$ref": "#/components/schemas/SellerProfile" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "put": {
+        "tags": ["Seller profiles"],
+        "operationId": "updateCurrentSellerProfile",
+        "summary": "Atualiza o perfil SELLER atual",
+        "description": "Aceita storeName, description e logo; userId é determinado pelo backend.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/SellerProfileInput" },
+        "responses": {
+          "200": { "description": "Perfil atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerProfile" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/sellers/all": {
+      "get": {
+        "tags": ["Seller profiles"],
+        "operationId": "listAllSellerProfiles",
+        "summary": "Lista perfis SELLER para administração",
+        "description": "Somente ADMIN. Retorna { profiles: [...] } sem paginação.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Perfis e DTOs públicos dos usuários", "content": { "application/json": { "schema": { "type": "object", "required": ["profiles"], "properties": { "profiles": { "type": "array", "items": { "$ref": "#/components/schemas/SellerProfileWithUser" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/sellers/{userId}": {
+      "delete": {
+        "tags": ["Seller profiles"],
+        "operationId": "deactivateSellerProfile",
+        "summary": "Desativa logicamente perfil de seller",
+        "description": "O próprio seller ou ADMIN. Apesar de o service produzir um DTO, o controller responde sem corpo (204).",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/UserId" }],
+        "responses": {
+          "204": { "$ref": "#/components/responses/NoContent" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/customers/addresses": {
+      "get": {
+        "tags": ["Customer addresses"],
+        "operationId": "listCustomerAddresses",
+        "summary": "Lista endereços ativos do customer autenticado",
+        "description": "Somente CUSTOMER; ownership vem de req.user. Paginação padrão page=1, limit=20, máximo 100.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }],
+        "responses": {
+          "200": { "description": "Coleção paginada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddressCollection" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["Customer addresses"], "operationId": "createCustomerAddress", "summary": "Cria endereço para o customer autenticado", "description": "Campos obrigatórios: recipientName, postalCode, street, number, neighborhood, city e state. countryCode ausente assume BR; somente BR é suportado. isDefault é opcional.",
+        "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/CustomerAddressCreateInput" },
+        "responses": { "201": { "description": "Endereço criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddress" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/customers/addresses/{addressId}": {
+      "get": {
+        "tags": ["Customer addresses"], "operationId": "getCustomerAddress", "summary": "Consulta endereço ativo próprio", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/AddressId" }],
+        "responses": { "200": { "description": "Endereço", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddress" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "put": {
+        "tags": ["Customer addresses"], "operationId": "updateCustomerAddress", "summary": "Atualiza endereço próprio", "description": "Whitelist de campos sem isDefault; envie ao menos um campo. Campos opcionais podem ser null para limpar.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/AddressId" }], "requestBody": { "$ref": "#/components/requestBodies/CustomerAddressUpdateInput" },
+        "responses": { "200": { "description": "Endereço atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddress" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "delete": {
+        "tags": ["Customer addresses"], "operationId": "deactivateCustomerAddress", "summary": "Desativa endereço próprio", "description": "Desativação lógica; não remove fisicamente.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/AddressId" }],
+        "responses": { "204": { "$ref": "#/components/responses/NoContent" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/customers/addresses/{addressId}/default": {
+      "put": {
+        "tags": ["Customer addresses"], "operationId": "setDefaultCustomerAddress", "summary": "Define endereço próprio como default", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/AddressId" }],
+        "responses": { "200": { "description": "Endereço default", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddress" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": ["Catalog"], "operationId": "listProducts", "summary": "Lista produtos ativos com filtros aplicados antes da paginação", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/Category" }, { "$ref": "#/components/parameters/SellerIdQuery" }, { "$ref": "#/components/parameters/InStock" }],
+        "responses": { "200": { "description": "Produtos e paginação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "post": {
+        "tags": ["Catalog"], "operationId": "createProduct", "summary": "Seller cria produto e Inventory inicial", "description": "Somente SELLER ativo. sellerId é sempre derivado da sessão. Envie imagem como arquivo image multipart ou como URL/texto image no JSON. Estoque não é criado por esse payload.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/ProductWriteInput" },
+        "responses": { "201": { "description": "Produto criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/products/search": {
+      "get": {
+        "tags": ["Catalog"], "operationId": "searchProducts", "summary": "Busca produtos pelo termo q", "parameters": [{ "name": "q", "in": "query", "required": true, "schema": { "type": "string", "minLength": 1 } }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "$ref": "#/components/parameters/Category" }, { "$ref": "#/components/parameters/SellerIdQuery" }, { "$ref": "#/components/parameters/InStock" }],
+        "responses": { "200": { "description": "Produtos e paginação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/products/seller/{sellerId}": {
+      "get": {
+        "tags": ["Catalog"], "operationId": "listProductsBySeller", "summary": "Lista produtos públicos de um seller", "parameters": [{ "$ref": "#/components/parameters/SellerIdPath" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/Category" }, { "$ref": "#/components/parameters/InStock" }],
+        "responses": { "200": { "description": "Produtos e paginação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/products/category/{category}": {
+      "get": {
+        "tags": ["Catalog"], "operationId": "listProductsByCategory", "summary": "Lista produtos por ProductCategory do schema", "parameters": [{ "name": "category", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/ProductCategory" } }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/SellerIdQuery" }, { "$ref": "#/components/parameters/InStock" }],
+        "responses": { "200": { "description": "Produtos e paginação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/products/{productIds}": {
+      "get": {
+        "tags": ["Catalog"], "operationId": "getProductOrProductsByIds", "summary": "Consulta um produto ou uma coleção por IDs separados por vírgula", "description": "Um ID retorna Product; múltiplos IDs retornam ProductCollection paginada.", "parameters": [{ "name": "productIds", "in": "path", "required": true, "description": "UUID de produto ou lista de UUIDs separada por vírgula", "schema": { "type": "string" } }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Produto individual ou coleção, conforme quantidade de IDs", "content": { "application/json": { "schema": { "oneOf": [{ "$ref": "#/components/schemas/Product" }, { "$ref": "#/components/schemas/ProductCollection" }] } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "put": {
+        "tags": ["Catalog"], "operationId": "updateProduct", "summary": "Atualiza produto pertencente ao seller autenticado", "description": "Somente seller proprietário. Aceita JSON ou multipart/form-data, whitelist de campos de catálogo e imagem; estoque não é alterado aqui.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "name": "productIds", "in": "path", "required": true, "description": "Use o ID único do produto", "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "$ref": "#/components/requestBodies/ProductWriteInput" },
+        "responses": { "200": { "description": "Produto atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "delete": {
+        "tags": ["Catalog"], "operationId": "deactivateProduct", "summary": "Desativa logicamente produto do seller autenticado", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "name": "productIds", "in": "path", "required": true, "description": "Use o ID único do produto", "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "204": { "$ref": "#/components/responses/NoContent" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/inventory/products/{productId}": {
+      "get": {
+        "tags": ["Inventory"], "operationId": "getProductInventory", "summary": "Consulta estoque físico, reservado e disponível", "description": "SELLER proprietário ou ADMIN. availableQuantity = onHandQuantity - reservedQuantity.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ProductId" }],
+        "responses": { "200": { "description": "Snapshot do inventory", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Inventory" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/inventory/products/{productId}/movements": {
+      "get": {
+        "tags": ["Inventory"], "operationId": "listInventoryMovements", "summary": "Lista movimentos paginados de estoque", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ProductId" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Movimentos e paginação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InventoryMovementCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/inventory/products/{productId}/restock": {
+      "post": {
+        "tags": ["Inventory"], "operationId": "restockInventory", "summary": "Adiciona quantidade ao estoque físico", "description": "SELLER proprietário ou ADMIN. A operação registra InventoryMovement RESTOCK; onHandQuantity aumenta e reservedQuantity não muda.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ProductId" }], "requestBody": { "$ref": "#/components/requestBodies/RestockInput" },
+        "responses": { "200": { "description": "Snapshot atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Inventory" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/inventory/products/{productId}/adjustments": {
+      "post": {
+        "tags": ["Inventory"], "operationId": "adjustInventory", "summary": "Aplica correção manual ao estoque físico", "description": "onHandDelta deve ser inteiro diferente de zero; reason é obrigatório. Não reduz abaixo da quantidade reservada.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ProductId" }], "requestBody": { "$ref": "#/components/requestBodies/InventoryAdjustmentInput" },
+        "responses": { "200": { "description": "Snapshot atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Inventory" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/cart": {
+      "get": {
+        "tags": ["Cart"], "operationId": "getActiveCart", "summary": "Obtém ou cria carrinho ACTIVE do customer autenticado", "description": "Somente CUSTOMER com CustomerProfile. Disponibilidade retornada é informativa; não reserva estoque.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": { "200": { "description": "Carrinho atual", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Cart" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/cart/items": {
+      "post": {
+        "tags": ["Cart"], "operationId": "addCartItem", "summary": "Adiciona ou incrementa item no carrinho", "description": "Body aceita somente productId e quantity positiva inteira. Repetir o produto incrementa a linha existente; estoque é validado mas não reservado.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/CartItemInput" },
+        "responses": { "201": { "description": "Carrinho atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Cart" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "delete": {
+        "tags": ["Cart"], "operationId": "clearCart", "summary": "Remove todos os itens do carrinho", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": { "204": { "$ref": "#/components/responses/NoContent" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/cart/items/{productId}": {
+      "put": {
+        "tags": ["Cart"], "operationId": "updateCartItemQuantity", "summary": "Substitui quantidade de produto no carrinho", "description": "Aceita somente quantity inteira positiva; quantity zero não remove item.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ProductId" }], "requestBody": { "$ref": "#/components/requestBodies/CartQuantityInput" },
+        "responses": { "200": { "description": "Carrinho atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Cart" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "delete": {
+        "tags": ["Cart"], "operationId": "removeCartItem", "summary": "Remove produto do carrinho", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ProductId" }],
+        "responses": { "204": { "$ref": "#/components/responses/NoContent" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/checkout": {
+      "post": {
+        "tags": ["Checkout"], "operationId": "checkout", "summary": "Converte o carrinho ativo em pedido e reserva estoque", "description": "Uma transação cria Order, SellerOrders, snapshots, reservas e movimentos e converte o Cart. Envie somente addressId no body; customer, carrinho, produtos, quantidades, sellers, preços e totais são determinados pelo backend. Idempotency-Key é obrigatória, trim, não vazia, máximo 255. O fingerprint considera addressId. Chave repetida com mesmo payload e concluída devolve o JSON persistido (200, Idempotency-Replayed: true); execução original retorna 201. Chave em PROCESSING ou payload divergente retorna 409. Falhas transacionais fazem rollback da chave e do pedido.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 255 } }], "requestBody": { "$ref": "#/components/requestBodies/CheckoutInput" },
+        "responses": { "201": { "description": "Checkout criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CheckoutResult" } } } }, "200": { "description": "Replay idempotente do resultado persistido", "headers": { "Idempotency-Replayed": { "schema": { "type": "string", "enum": ["true"] } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CheckoutResult" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "description": "Carrinho vazio/estoque insuficiente, chave em PROCESSING, chave reutilizada com outro addressId ou outro conflito", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" }, "examples": { "processing": { "value": { "error": "Idempotency key is processing" } }, "stock": { "value": { "error": "Cart stock is insufficient" } } } } } }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/orders": {
+      "get": {
+        "tags": ["Orders"], "operationId": "listCustomerOrders", "summary": "Lista pedidos próprios do customer", "description": "Somente customer com perfil. Defaults page=1, limit=20; limit máximo 100. createdFrom/createdTo são datas parseáveis aplicadas inclusive à criação. Ordenação mais recente primeiro, desempate id.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/OrderStatus" } }, { "$ref": "#/components/parameters/CreatedFrom" }, { "$ref": "#/components/parameters/CreatedTo" }],
+        "responses": { "200": { "description": "Pedidos e paginação; lista vazia é sucesso", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/orders/{orderId}": {
+      "get": {
+        "tags": ["Orders"], "operationId": "getCustomerOrder", "summary": "Consulta pedido consolidado próprio", "description": "CustomerId é derivado da sessão. Contém SellerOrders, snapshots, endereço e históricos; pedido fora do ownership responde 404.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/OrderId" }],
+        "responses": { "200": { "description": "Detalhe consolidado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderDetail" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/seller-orders": {
+      "get": {
+        "tags": ["Seller orders"], "operationId": "listSellerOrders", "summary": "Lista SellerOrders próprios", "description": "Somente SELLER ativo. sellerId deriva da sessão; defaults page=1, limit=20, máximo 100.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/SellerOrderStatus" } }, { "$ref": "#/components/parameters/CreatedFrom" }, { "$ref": "#/components/parameters/CreatedTo" }],
+        "responses": { "200": { "description": "SellerOrders e paginação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerOrderCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/seller-orders/{sellerOrderId}": {
+      "get": {
+        "tags": ["Seller orders"], "operationId": "getSellerOrder", "summary": "Consulta SellerOrder própria", "description": "Seller não vê outras SellerOrders do mesmo Order; recurso fora do ownership responde 404.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/SellerOrderId" }],
+        "responses": { "200": { "description": "Detalhe, itens e histórico", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerOrderDetail" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/seller-orders/{sellerOrderId}/status": {
+      "patch": {
+        "tags": ["Seller orders"], "operationId": "transitionSellerOrder", "summary": "Solicita transição permitida de SellerOrder", "description": "Seller proprietário ou ADMIN. reason opcional, trim, máximo 500. Transições públicas disponíveis: PENDING → CONFIRMED e CONFIRMED → PROCESSING, e somente quando Order pai está CONFIRMED. Repetir status atual é idempotente; CANCELLED, SHIPPED, DELIVERED, RETURNED e transições agregadas permanecem bloqueadas.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/SellerOrderId" }], "requestBody": { "$ref": "#/components/requestBodies/SellerOrderTransitionInput" },
+        "responses": { "200": { "description": "SellerOrder após transição/idempotência", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerOrderDetail" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/orders/{orderId}/payment-attempts": {
+      "post": {
+        "tags": ["Payments"], "operationId": "createPaymentAttempt", "summary": "Cria tentativa de cobrança integral", "description": "Somente customer proprietário. Body aceita somente method. Backend define valor como Order.totalInCents, currency, provider, referência e status. Uma tentativa ativa ou capturada impede outra; FAILED/CANCELLED permitem retry integral. Provider padrão é simulador determinístico e é chamado fora da transação. Erro definitivo pode persistir FAILED; resultado desconhecido mantém CREATED e bloqueia retry; respostas do provider podem gerar 500 sem concluir pagamento.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/OrderId" }], "requestBody": { "$ref": "#/components/requestBodies/PaymentAttemptInput" },
+        "responses": { "201": { "description": "Tentativa iniciada; isso não significa pagamento capturado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PaymentAttempt" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "get": {
+        "tags": ["Payments"], "operationId": "listPaymentAttempts", "summary": "Lista tentativas da Order", "description": "Customer proprietário ou ADMIN. page=1, limit=20, máximo 100. Filtros status, method, createdFrom e createdTo; createdTo é inclusivo.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/OrderId" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/PaymentAttemptStatus" } }, { "name": "method", "in": "query", "schema": { "$ref": "#/components/schemas/PaymentMethod" } }, { "$ref": "#/components/parameters/CreatedFrom" }, { "$ref": "#/components/parameters/CreatedTo" }],
+        "responses": { "200": { "description": "Coleção paginada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PaymentAttemptCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/payment-attempts/{paymentAttemptId}": {
+      "get": {
+        "tags": ["Payments"], "operationId": "getPaymentAttempt", "summary": "Consulta tentativa própria ou qualquer tentativa como ADMIN", "description": "Seller não tem acesso; customer recebe 404 para tentativa alheia.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/PaymentAttemptId" }],
+        "responses": { "200": { "description": "Tentativa de pagamento", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PaymentAttempt" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/payment-attempts/{paymentAttemptId}/refunds": {
+      "post": {
+        "tags": ["Refunds"], "operationId": "requestRefund", "summary": "Solicita refund parcial ou integral de tentativa CAPTURED", "description": "Customer proprietário ou ADMIN. amountInCents inteiro positivo e reason opcional (trim, máximo 500). Currency vem da tentativa. REQUESTED/PROCESSING/COMPLETED comprometem o saldo; DECLINED/FAILED liberam. Provider é chamado fora da transação; falha definitiva pode retornar 500 com estado FAILED/DECLINED já persistido, resultado desconhecido mantém PROCESSING.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/PaymentAttemptId" }], "requestBody": { "$ref": "#/components/requestBodies/RefundInput" },
+        "responses": { "201": { "description": "Refund criado e resultado corrente do provider", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Refund" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "get": {
+        "tags": ["Refunds"], "operationId": "listRefunds", "summary": "Lista refunds da tentativa", "description": "Customer proprietário ou ADMIN; seller proibido. page=1, limit=20, máximo 100. Filtros status, createdFrom e createdTo. Lista vazia retorna data=[] e paginação.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/PaymentAttemptId" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/RefundStatus" } }, { "$ref": "#/components/parameters/CreatedFrom" }, { "$ref": "#/components/parameters/CreatedTo" }],
+        "responses": { "200": { "description": "Coleção paginada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RefundCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/refunds/{refundId}": {
+      "get": {
+        "tags": ["Refunds"], "operationId": "getRefund", "summary": "Consulta refund próprio ou qualquer refund como ADMIN", "description": "Seller não acessa; recurso alheio é ocultado como 404.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/RefundId" }],
+        "responses": { "200": { "description": "Refund", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Refund" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/seller-orders/{sellerOrderId}/delivery": {
+      "post": {
+        "tags": ["Deliveries"], "operationId": "createDelivery", "summary": "Cria delivery para SellerOrder", "description": "Seller proprietário ou ADMIN. Status inicial SEPARATED e histórico inicial null → SEPARATED são definidos pelo backend. sellerOrderId é a relação; não existe delivery única por Order. Não aceita status/timestamps/histórico no body. Somente SellerOrder em situação compatível.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/SellerOrderId" }], "requestBody": { "$ref": "#/components/requestBodies/DeliveryCreateInput" },
+        "responses": { "201": { "description": "Delivery criada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Delivery" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "get": {
+        "tags": ["Deliveries"], "operationId": "getDeliveryBySellerOrder", "summary": "Consulta delivery relacionada à SellerOrder", "description": "Customer proprietário da Order, seller proprietário da SellerOrder ou ADMIN. Se ainda não existe, retorna 404.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/SellerOrderId" }],
+        "responses": { "200": { "description": "Delivery", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Delivery" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/deliveries/{deliveryId}": {
+      "get": {
+        "tags": ["Deliveries"], "operationId": "getDelivery", "summary": "Consulta delivery com ownership de Order/SellerOrder", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/DeliveryId" }],
+        "responses": { "200": { "description": "Delivery", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Delivery" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/deliveries/{deliveryId}/history": {
+      "get": {
+        "tags": ["Deliveries"], "operationId": "listDeliveryHistory", "summary": "Lista histórico da delivery em ordem determinística", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/DeliveryId" }],
+        "responses": { "200": { "description": "Histórico mais recente primeiro", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DeliveryStatusHistory" } } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/deliveries/{deliveryId}/status": {
+      "patch": {
+        "tags": ["Deliveries"], "operationId": "transitionDelivery", "summary": "Solicita transição da máquina de delivery", "description": "Seller proprietário ou ADMIN; customer somente leitura. Fluxo: SEPARATED → PROCESSING → SHIPPED → COLLECTED → ARRIVED_AT_CENTER → DELIVERED; estados operacionais também podem ir a FAILED; FAILED ou DELIVERED podem ir a RETURNED. Repetir estado atual é idempotente. reason opcional, trim, máximo 255 caracteres. deliveredAt é definido pelo backend.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/DeliveryId" }], "requestBody": { "$ref": "#/components/requestBodies/DeliveryStatusInput" },
+        "responses": { "200": { "description": "Delivery após transição", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Delivery" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/deliveries/{deliveryId}/tracking": {
+      "patch": {
+        "tags": ["Deliveries"], "operationId": "updateDeliveryTracking", "summary": "Atualiza código, transportadora ou previsão", "description": "Seller proprietário ou ADMIN. Atualização parcial por whitelist; null pode limpar campos nullable. Tracking não altera histórico de status e é bloqueado em estados finais ou FAILED.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/DeliveryId" }], "requestBody": { "$ref": "#/components/requestBodies/DeliveryTrackingInput" },
+        "responses": { "200": { "description": "Delivery atualizada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Delivery" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/products/{productId}/reviews": {
+      "get": {
+        "tags": ["Reviews"], "operationId": "listProductReviews", "summary": "Lista reviews públicas de produto e reputação", "parameters": [{ "$ref": "#/components/parameters/ProductId" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "$ref": "#/components/parameters/Rating" }],
+        "responses": { "200": { "description": "Coleção vazia retorna 200; inclui reputation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "post": {
+        "tags": ["Reviews"], "operationId": "createProductReview", "summary": "Customer avalia produto comprado em SellerOrder entregue", "description": "Somente CUSTOMER. productId vem da rota. Body aceita apenas rating inteiro 1–5 e comment opcional/null até 2000 chars. Unicidade customer/produto; duplicata 409. Product ativo não é requisito; compra entregue é.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ProductId" }], "requestBody": { "$ref": "#/components/requestBodies/ReviewCreateInput" },
+        "responses": { "201": { "description": "Review criada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Review" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/sellers/{sellerId}/reviews": {
+      "get": {
+        "tags": ["Reviews"], "operationId": "listSellerReviews", "summary": "Lista reviews públicas direcionadas diretamente ao seller", "description": "Reviews de produtos do seller não entram na reputação direta.", "parameters": [{ "$ref": "#/components/parameters/SellerIdPath" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "$ref": "#/components/parameters/Rating" }],
+        "responses": { "200": { "description": "Coleção e reputation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "post": {
+        "tags": ["Reviews"], "operationId": "createSellerReview", "summary": "Customer avalia seller com SellerOrder entregue", "description": "Somente CUSTOMER. sellerId vem da rota; body aceita apenas rating e comment. Unicidade customer/seller; duplicata 409.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/SellerIdPath" }], "requestBody": { "$ref": "#/components/requestBodies/ReviewCreateInput" },
+        "responses": { "201": { "description": "Review criada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Review" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/reviews/{reviewId}": {
+      "get": {
+        "tags": ["Reviews"], "operationId": "getReview", "summary": "Consulta review individual pública", "parameters": [{ "$ref": "#/components/parameters/ReviewId" }],
+        "responses": { "200": { "description": "Review", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Review" } } } }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      },
+      "patch": {
+        "tags": ["Reviews"], "operationId": "updateOwnReview", "summary": "Autor atualiza rating e/ou comment da própria review", "description": "Autenticação obrigatória; somente o autor. Campos de alvo/autor não são aceitos. Campos omitidos são preservados; comment null ou vazio limpa o comentário. Não existe DELETE.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ReviewId" }], "requestBody": { "$ref": "#/components/requestBodies/ReviewUpdateInput" },
+        "responses": { "200": { "description": "Review atualizada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Review" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/dashboard/seller/summary": {
+      "get": {
+        "tags": ["Seller dashboard"], "operationId": "getSellerDashboardSummary", "summary": "Resumo de receita bruta, pedidos entregues e unidades", "description": "Somente SELLER; sellerId derivado da sessão. Receita usa SellerOrder DELIVERED e completedAt, totalInCents; não desconta refunds. Range padrão últimos 30 dias; from/to inclusivos YYYY-MM-DD, intervalo máximo 366 dias.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/DashboardFrom" }, { "$ref": "#/components/parameters/DashboardTo" }],
+        "responses": { "200": { "description": "Valores financeiros em centavos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DashboardSummary" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/dashboard/seller/orders": {
+      "get": {
+        "tags": ["Seller dashboard"], "operationId": "listSellerDashboardOrders", "summary": "Lista SellerOrders criadas no período", "description": "Filtro temporal usa createdAt, distinto das métricas de receita. Defaults page=1, limit=20, máximo 100.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/DashboardFrom" }, { "$ref": "#/components/parameters/DashboardTo" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Limit" }, { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/SellerOrderStatus" } }],
+        "responses": { "200": { "description": "Pedidos do seller e paginação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DashboardOrderCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/dashboard/seller/orders/by-status": {
+      "get": {
+        "tags": ["Seller dashboard"], "operationId": "countSellerDashboardOrdersByStatus", "summary": "Contagem por todos os status de SellerOrder", "parameters": [{ "$ref": "#/components/parameters/DashboardFrom" }, { "$ref": "#/components/parameters/DashboardTo" }],
+        "responses": { "200": { "description": "Inclui status com contagem zero", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DashboardStatusCount" } } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/dashboard/seller/sales/timeseries": {
+      "get": {
+        "tags": ["Seller dashboard"], "operationId": "getSellerSalesTimeseries", "summary": "Série temporal de receita reconhecida", "description": "Usa completedAt e SellerOrder DELIVERED; períodos ausentes são preenchidos com zero, em ordem crescente.", "parameters": [{ "$ref": "#/components/parameters/DashboardFrom" }, { "$ref": "#/components/parameters/DashboardTo" }, { "name": "interval", "in": "query", "schema": { "type": "string", "enum": ["day", "month"], "default": "day" } }], "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": { "200": { "description": "Pontos diários YYYY-MM-DD ou mensais YYYY-MM", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DashboardTimeseriesPoint" } } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/dashboard/seller/sales/by-category": {
+      "get": {
+        "tags": ["Seller dashboard"], "operationId": "getSellerSalesByCategory", "summary": "Agrega receita e unidades por categoria atual do produto", "description": "Somente DELIVERED no período de completedAt; categoria é cadastro atual porque OrderItem não possui snapshot da categoria.", "parameters": [{ "$ref": "#/components/parameters/DashboardFrom" }, { "$ref": "#/components/parameters/DashboardTo" }], "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": { "200": { "description": "Agregações em centavos", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DashboardCategory" } } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/dashboard/seller/products/top": {
+      "get": {
+        "tags": ["Seller dashboard"], "operationId": "getSellerTopProducts", "summary": "Produtos mais vendidos por unidades entregues", "description": "Nome vem do snapshot mais recente de OrderItem; limit default 5, máximo 50. Receita baseada em linhas de SellerOrders DELIVERED dentro do período.", "parameters": [{ "$ref": "#/components/parameters/DashboardFrom" }, { "$ref": "#/components/parameters/DashboardTo" }, { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 5 } }], "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": { "200": { "description": "Top produtos sem lookup por item", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DashboardTopProduct" } } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/dashboard/seller/customers/new": {
+      "get": {
+        "tags": ["Seller dashboard"], "operationId": "getSellerNewCustomers", "summary": "Conta customers na primeira compra com este seller", "description": "Considera o histórico completo de SellerOrders do par customer/seller, e não a primeira Order global do customer.", "parameters": [{ "$ref": "#/components/parameters/DashboardFrom" }, { "$ref": "#/components/parameters/DashboardTo" }], "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": { "200": { "description": "Contagem agregada por mês", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DashboardNewCustomers" } } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/dashboard/seller/ratings": {
+      "get": {
+        "tags": ["Seller dashboard"], "operationId": "getSellerRatings", "summary": "Reputação direta do seller", "description": "Inclui apenas reviews cujo alvo é o seller; reviews de produtos não são agregadas.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+        "responses": { "200": { "description": "Média, total e distribuição de ratings", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Reputation" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": { "type": "apiKey", "in": "cookie", "name": "token", "description": "Cookie JWT token HttpOnly emitido por POST /users/login." },
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Alternativa aceita pelo authMiddleware; não use token enviado no body." }
+    },
+    "parameters": {
+      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+      "Limit": { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+      "Search": { "name": "search", "in": "query", "schema": { "type": "string", "minLength": 1 } },
+      "Category": { "name": "category", "in": "query", "schema": { "$ref": "#/components/schemas/ProductCategory" } },
+      "SellerIdQuery": { "name": "sellerId", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+      "InStock": { "name": "inStock", "in": "query", "description": "Boolean textual true ou false", "schema": { "type": "boolean" } },
+      "Rating": { "name": "rating", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 5 } },
+      "CreatedFrom": { "name": "createdFrom", "in": "query", "description": "String de data/hora parseável; limite inferior inclusivo", "schema": { "type": "string", "format": "date-time" } },
+      "CreatedTo": { "name": "createdTo", "in": "query", "description": "String de data/hora parseável; limite superior inclusivo", "schema": { "type": "string", "format": "date-time" } },
+      "DashboardFrom": { "name": "from", "in": "query", "description": "Início inclusivo, YYYY-MM-DD. Default: 30 dias antes do dia de to.", "schema": { "type": "string", "format": "date" } },
+      "DashboardTo": { "name": "to", "in": "query", "description": "Dia final inclusivo, YYYY-MM-DD. Default: hoje.", "schema": { "type": "string", "format": "date" } },
+      "UserId": { "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "AddressId": { "name": "addressId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "ProductId": { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "SellerIdPath": { "name": "sellerId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "OrderId": { "name": "orderId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "SellerOrderId": { "name": "sellerOrderId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "PaymentAttemptId": { "name": "paymentAttemptId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "RefundId": { "name": "refundId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "DeliveryId": { "name": "deliveryId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "ReviewId": { "name": "reviewId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+    },
+    "requestBodies": {
+      "LoginInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "additionalProperties": false, "properties": { "email": { "type": "string", "format": "email" }, "password": { "type": "string", "minLength": 1 } } }, "example": { "email": "customer@example.invalid", "password": "example-only" } } } },
+      "UserRegistrationInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserRegistrationInput" }, "example": { "name": "Example Customer", "email": "customer@example.invalid", "password": "example-only", "role": "CUSTOMER" } } } },
+      "UserUpdateInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserUpdateInput" } } } },
+      "CustomerProfileInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerProfileInput" }, "example": { "phone": "+55 11 5555-0100" } } } },
+      "SellerProfileInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerProfileInput" }, "example": { "storeName": "Example Store", "description": "Development example", "logo": null } }, "multipart/form-data": { "schema": { "type": "object", "required": ["storeName"], "properties": { "storeName": { "type": "string" }, "description": { "type": "string" }, "logo": { "type": "string", "format": "binary" } } } } } },
+      "CustomerAddressCreateInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddressCreateInput" }, "example": { "recipientName": "Example Person", "postalCode": "01001000", "street": "Rua Exemplo", "number": "100", "complement": null, "neighborhood": "Centro", "city": "São Paulo", "state": "SP", "countryCode": "BR", "phone": null, "isDefault": true } } } },
+      "CustomerAddressUpdateInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddressUpdateInput" } } } },
+      "ProductWriteInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductWriteInput" } }, "multipart/form-data": { "schema": { "type": "object", "required": ["name", "priceInCents", "category"], "properties": { "name": { "type": "string" }, "reference": { "type": "string" }, "description": { "type": "string" }, "priceInCents": { "type": "integer", "minimum": 0 }, "currency": { "$ref": "#/components/schemas/Currency" }, "category": { "$ref": "#/components/schemas/ProductCategory" }, "image": { "type": "string", "format": "binary" } } } } } },
+      "RestockInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["quantity"], "properties": { "quantity": { "type": "integer", "minimum": 1 }, "reason": { "type": "string", "nullable": true } } }, "example": { "quantity": 5, "reason": "Reposição de exemplo" } } } },
+      "InventoryAdjustmentInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["onHandDelta", "reason"], "properties": { "onHandDelta": { "type": "integer", "not": { "enum": [0] } }, "reason": { "type": "string", "minLength": 1 } } } } } },
+      "CartItemInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["productId", "quantity"], "additionalProperties": false, "properties": { "productId": { "type": "string", "format": "uuid" }, "quantity": { "type": "integer", "minimum": 1 } } } } } },
+      "CartQuantityInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["quantity"], "additionalProperties": false, "properties": { "quantity": { "type": "integer", "minimum": 1 } } } } } },
+      "CheckoutInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["addressId"], "additionalProperties": false, "properties": { "addressId": { "type": "string", "format": "uuid" } } }, "example": { "addressId": "00000000-0000-0000-0000-000000000111" } } } },
+      "SellerOrderTransitionInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["status"], "additionalProperties": false, "properties": { "status": { "$ref": "#/components/schemas/SellerOrderStatus" }, "reason": { "type": "string", "maxLength": 500 } } } } } },
+      "PaymentAttemptInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["method"], "additionalProperties": false, "properties": { "method": { "$ref": "#/components/schemas/PaymentMethod" } } }, "example": { "method": "PIX" } } } },
+      "RefundInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["amountInCents"], "additionalProperties": false, "properties": { "amountInCents": { "type": "integer", "minimum": 1 }, "reason": { "type": "string", "nullable": true, "maxLength": 500 } } }, "example": { "amountInCents": 2500, "reason": "Solicitação de exemplo" } } } },
+      "DeliveryCreateInput": { "required": false, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DeliveryCreateInput" } } } },
+      "DeliveryStatusInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["status"], "additionalProperties": false, "properties": { "status": { "$ref": "#/components/schemas/DeliveryStatus" }, "reason": { "type": "string", "nullable": true, "maxLength": 255 } } } } } },
+      "DeliveryTrackingInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "minProperties": 1, "additionalProperties": false, "properties": { "trackingCode": { "type": "string", "maxLength": 255 }, "carrier": { "type": "string", "maxLength": 255 }, "estimatedDelivery": { "type": "string", "format": "date-time", "nullable": true } } } } } },
+      "ReviewCreateInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["rating"], "additionalProperties": false, "properties": { "rating": { "type": "integer", "minimum": 1, "maximum": 5 }, "comment": { "type": "string", "nullable": true, "maxLength": 2000 } } } } } },
+      "ReviewUpdateInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "minProperties": 1, "additionalProperties": false, "properties": { "rating": { "type": "integer", "minimum": 1, "maximum": 5 }, "comment": { "type": "string", "nullable": true, "maxLength": 2000 } } } } } }
+    },
+    "responses": {
+      "BadRequest": { "description": "Validação/parsing falhou; normalmente { error: string }", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } },
+      "Unauthorized": { "description": "Sessão ausente/inválida; { message: string }", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Message" }, "example": { "message": "Invalid credentials" } } } },
+      "Forbidden": { "description": "Role ou ownership sem permissão; { error: string } ou { message: string } conforme middleware/controller", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } },
+      "NotFound": { "description": "Recurso ausente ou fora do ownership quando o endpoint oculta sua existência", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } },
+      "Conflict": { "description": "Conflito de estado, unicidade, estoque ou concorrência", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } },
+      "InternalError": { "description": "Falha não classificada; pode ser { message: string } ou { error: string }", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } },
+      "NoContent": { "description": "Operação concluída sem corpo" }
+    },
+    "schemas": {
+      "ErrorBody": { "type": "object", "properties": { "error": { "type": "string" }, "message": { "type": "string" } }, "additionalProperties": true },
+      "Message": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string" } } },
+      "UserRole": { "type": "string", "enum": ["CUSTOMER", "SELLER", "ADMIN"] },
+      "Currency": { "type": "string", "enum": ["BRL"] },
+      "ProductCategory": { "type": "string", "enum": ["OFFICE", "SPORTS", "BOOKS", "BEAUTY", "CLOTHING", "TOYS", "TV_PROJECTORS", "SMARTPHONES_TABLETS", "ELECTRONICS", "PETS", "FURNITURE"] },
+      "OrderStatus": { "type": "string", "enum": ["PENDING_PAYMENT", "CONFIRMED", "PARTIALLY_COMPLETED", "COMPLETED", "CANCELLED"] },
+      "SellerOrderStatus": { "type": "string", "enum": ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"] },
+      "PaymentMethod": { "type": "string", "enum": ["CREDIT_CARD", "DEBIT_CARD", "PIX", "PAYPAL"] },
+      "PaymentAttemptStatus": { "type": "string", "enum": ["CREATED", "PROCESSING", "AUTHORIZED", "CAPTURED", "FAILED", "CANCELLED"] },
+      "RefundStatus": { "type": "string", "enum": ["REQUESTED", "PROCESSING", "COMPLETED", "DECLINED", "FAILED"] },
+      "DeliveryStatus": { "type": "string", "enum": ["SEPARATED", "PROCESSING", "SHIPPED", "COLLECTED", "ARRIVED_AT_CENTER", "DELIVERED", "FAILED", "RETURNED"] },
+      "InventoryMovementType": { "type": "string", "enum": ["RESTOCK", "RESERVATION", "SALE_COMMIT", "RELEASE", "RETURN", "MANUAL_CORRECTION"] },
+      "Pagination": { "type": "object", "required": ["page", "limit", "total", "totalPages"], "properties": { "page": { "type": "integer" }, "limit": { "type": "integer" }, "total": { "type": "integer" }, "totalPages": { "type": "integer" } } },
+      "User": { "type": "object", "required": ["id", "name", "email", "role", "isActive", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "name": { "type": "string" }, "email": { "type": "string", "format": "email" }, "role": { "$ref": "#/components/schemas/UserRole" }, "isActive": { "type": "boolean" }, "createdAt": { "type": "string", "format": "date-time" } }, "description": "Nunca contém password ou normalizedEmail." },
+      "UserRegistrationInput": { "type": "object", "required": ["name", "email", "password", "role"], "additionalProperties": false, "properties": { "name": { "type": "string", "minLength": 1 }, "email": { "type": "string", "format": "email" }, "password": { "type": "string", "minLength": 6 }, "role": { "type": "string", "enum": ["CUSTOMER", "SELLER"] } } },
+      "UserUpdateInput": { "type": "object", "minProperties": 1, "additionalProperties": false, "properties": { "name": { "type": "string", "minLength": 1 }, "email": { "type": "string", "format": "email" }, "password": { "type": "string", "minLength": 6 } } },
+      "CustomerProfileInput": { "type": "object", "additionalProperties": false, "properties": { "phone": { "type": "string", "nullable": true } } },
+      "CustomerProfile": { "type": "object", "required": ["id", "userId", "phone"], "properties": { "id": { "type": "string", "format": "uuid" }, "userId": { "type": "string", "format": "uuid" }, "phone": { "type": "string", "nullable": true } } },
+      "CustomerProfileWithUser": { "allOf": [{ "$ref": "#/components/schemas/CustomerProfile" }, { "type": "object", "required": ["user"], "properties": { "user": { "$ref": "#/components/schemas/User" } } }] },
+      "SellerProfileInput": { "type": "object", "required": ["storeName"], "additionalProperties": false, "properties": { "storeName": { "type": "string", "minLength": 1 }, "description": { "type": "string", "nullable": true }, "logo": { "type": "string", "nullable": true } } },
+      "SellerProfile": { "type": "object", "required": ["id", "userId", "storeName", "logo", "description", "isActive"], "properties": { "id": { "type": "string", "format": "uuid" }, "userId": { "type": "string", "format": "uuid" }, "storeName": { "type": "string" }, "logo": { "type": "string", "nullable": true }, "description": { "type": "string", "nullable": true }, "isActive": { "type": "boolean" } }, "description": "O DTO não persiste nem retorna rating." },
+      "SellerProfileWithUser": { "allOf": [{ "$ref": "#/components/schemas/SellerProfile" }, { "type": "object", "required": ["user"], "properties": { "user": { "$ref": "#/components/schemas/User" } } }] },
+      "CustomerAddressCreateInput": { "type": "object", "required": ["recipientName", "postalCode", "street", "number", "neighborhood", "city", "state"], "additionalProperties": false, "properties": { "recipientName": { "type": "string", "minLength": 1 }, "postalCode": { "type": "string", "pattern": "^[0-9]{5}-?[0-9]{3}$" }, "street": { "type": "string", "minLength": 1 }, "number": { "type": "string", "minLength": 1 }, "complement": { "type": "string", "nullable": true }, "neighborhood": { "type": "string", "minLength": 1 }, "city": { "type": "string", "minLength": 1 }, "state": { "type": "string", "minLength": 1 }, "countryCode": { "type": "string", "enum": ["BR"] }, "phone": { "type": "string", "nullable": true }, "isDefault": { "type": "boolean" } } },
+      "CustomerAddressUpdateInput": { "type": "object", "minProperties": 1, "additionalProperties": false, "properties": { "recipientName": { "type": "string", "minLength": 1 }, "postalCode": { "type": "string", "pattern": "^[0-9]{5}-?[0-9]{3}$" }, "street": { "type": "string", "minLength": 1 }, "number": { "type": "string", "minLength": 1 }, "complement": { "type": "string", "nullable": true }, "neighborhood": { "type": "string", "minLength": 1 }, "city": { "type": "string", "minLength": 1 }, "state": { "type": "string", "minLength": 1 }, "countryCode": { "type": "string", "enum": ["BR"] }, "phone": { "type": "string", "nullable": true } } },
+      "CustomerAddress": { "type": "object", "required": ["id", "recipientName", "postalCode", "street", "number", "complement", "neighborhood", "city", "state", "countryCode", "phone", "isDefault", "createdAt", "updatedAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "recipientName": { "type": "string" }, "postalCode": { "type": "string" }, "street": { "type": "string" }, "number": { "type": "string" }, "complement": { "type": "string", "nullable": true }, "neighborhood": { "type": "string" }, "city": { "type": "string" }, "state": { "type": "string" }, "countryCode": { "type": "string", "enum": ["BR"] }, "phone": { "type": "string", "nullable": true }, "isDefault": { "type": "boolean" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" } } },
+      "CustomerAddressCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/CustomerAddress" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
+      "ProductWriteInput": { "type": "object", "required": ["name", "priceInCents", "category"], "additionalProperties": false, "properties": { "name": { "type": "string", "minLength": 1 }, "reference": { "type": "string", "nullable": true }, "description": { "type": "string", "nullable": true }, "priceInCents": { "type": "integer", "minimum": 0 }, "currency": { "$ref": "#/components/schemas/Currency" }, "category": { "$ref": "#/components/schemas/ProductCategory" }, "image": { "type": "string", "nullable": true } }, "description": "Não aceita price, stock ou sellerId; moeda omitida usa BRL." },
+      "ProductInventory": { "type": "object", "required": ["onHandQuantity", "reservedQuantity", "availableQuantity"], "properties": { "onHandQuantity": { "type": "integer" }, "reservedQuantity": { "type": "integer" }, "availableQuantity": { "type": "integer", "description": "onHandQuantity - reservedQuantity" } } },
+      "Product": { "type": "object", "required": ["id", "sellerId", "sellerName", "name", "reference", "description", "priceInCents", "currency", "category", "image", "inventory", "isAvailable", "averageRating"], "properties": { "id": { "type": "string", "format": "uuid" }, "sellerId": { "type": "string", "format": "uuid" }, "sellerName": { "type": "string" }, "name": { "type": "string" }, "reference": { "type": "string", "nullable": true }, "description": { "type": "string", "nullable": true }, "priceInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "category": { "$ref": "#/components/schemas/ProductCategory" }, "image": { "type": "string", "nullable": true }, "inventory": { "$ref": "#/components/schemas/ProductInventory" }, "isAvailable": { "type": "boolean" }, "averageRating": { "type": "number", "nullable": true } } },
+      "ProductCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
+      "Inventory": { "type": "object", "required": ["productId", "onHandQuantity", "reservedQuantity", "availableQuantity"], "properties": { "productId": { "type": "string", "format": "uuid" }, "onHandQuantity": { "type": "integer", "description": "Estoque físico" }, "reservedQuantity": { "type": "integer", "description": "Unidades reservadas para orders" }, "availableQuantity": { "type": "integer", "description": "Estoque físico menos reservado; não equivale ao físico" } } },
+      "InventoryMovement": { "type": "object", "required": ["id", "inventoryId", "orderItemId", "movementType", "onHandDelta", "reservedDelta", "onHandAfter", "reservedAfter", "reason", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "inventoryId": { "type": "string", "format": "uuid" }, "orderItemId": { "type": "string", "format": "uuid", "nullable": true }, "movementType": { "$ref": "#/components/schemas/InventoryMovementType" }, "onHandDelta": { "type": "integer" }, "reservedDelta": { "type": "integer" }, "onHandAfter": { "type": "integer" }, "reservedAfter": { "type": "integer" }, "reason": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "InventoryMovementCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/InventoryMovement" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
+      "CartItem": { "type": "object", "required": ["id", "productId", "quantity", "name", "priceInCents", "currency", "image", "availableQuantity", "hasSufficientStock", "isAvailable", "lineTotalInCents"], "properties": { "id": { "type": "string", "format": "uuid" }, "productId": { "type": "string", "format": "uuid" }, "quantity": { "type": "integer" }, "name": { "type": "string" }, "priceInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "image": { "type": "string", "nullable": true }, "availableQuantity": { "type": "integer" }, "hasSufficientStock": { "type": "boolean" }, "isAvailable": { "type": "boolean" }, "lineTotalInCents": { "type": "integer" } } },
+      "Cart": { "type": "object", "required": ["id", "status", "items", "totalInCents"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "type": "string", "enum": ["ACTIVE"] }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/CartItem" } }, "totalInCents": { "type": "integer", "description": "Estimativa atual, não order snapshot" } } },
+      "CheckoutReservation": { "type": "object", "required": ["id", "status", "quantity", "expiresAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "type": "string" }, "quantity": { "type": "integer" }, "expiresAt": { "type": "string", "format": "date-time", "nullable": true } } },
+      "OrderItem": { "type": "object", "required": ["id", "productId", "quantity", "unitPriceInCents", "lineTotalInCents", "currency", "productNameSnapshot", "productReferenceSnapshot", "sellerNameSnapshot"], "properties": { "id": { "type": "string", "format": "uuid" }, "productId": { "type": "string", "format": "uuid" }, "quantity": { "type": "integer" }, "unitPriceInCents": { "type": "integer" }, "lineTotalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "productNameSnapshot": { "type": "string" }, "productReferenceSnapshot": { "type": "string", "nullable": true }, "sellerNameSnapshot": { "type": "string" } } },
+      "CheckoutOrderItem": { "allOf": [{ "$ref": "#/components/schemas/OrderItem" }, { "type": "object", "required": ["reservation"], "properties": { "reservation": { "oneOf": [{ "$ref": "#/components/schemas/CheckoutReservation" }, { "type": "object", "nullable": true }] } } }] },
+      "OrderAddress": { "type": "object", "required": ["id", "sourceAddressId", "recipientName", "postalCode", "street", "number", "complement", "neighborhood", "city", "state", "countryCode", "phone", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "sourceAddressId": { "type": "string", "format": "uuid", "nullable": true }, "recipientName": { "type": "string" }, "postalCode": { "type": "string" }, "street": { "type": "string" }, "number": { "type": "string" }, "complement": { "type": "string", "nullable": true }, "neighborhood": { "type": "string" }, "city": { "type": "string" }, "state": { "type": "string" }, "countryCode": { "type": "string" }, "phone": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "CheckoutSellerOrder": { "type": "object", "required": ["id", "sellerId", "status", "subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "totalInCents", "currency", "items"], "properties": { "id": { "type": "string", "format": "uuid" }, "sellerId": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/SellerOrderStatus" }, "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/CheckoutOrderItem" } } } },
+      "CheckoutResult": { "type": "object", "required": ["id", "status", "subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "totalInCents", "currency", "createdAt", "updatedAt", "address", "sellerOrders"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/OrderStatus" }, "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }, "address": { "oneOf": [{ "$ref": "#/components/schemas/OrderAddress" }, { "type": "object", "nullable": true }] }, "sellerOrders": { "type": "array", "items": { "$ref": "#/components/schemas/CheckoutSellerOrder" } } } },
+      "OrderSummary": { "type": "object", "required": ["id", "status", "totalInCents", "currency", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/OrderStatus" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "OrderCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/OrderSummary" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
+      "OrderStatusHistory": { "type": "object", "required": ["id", "fromStatus", "toStatus", "reason", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/OrderStatus" }, { "type": "object", "nullable": true }] }, "toStatus": { "$ref": "#/components/schemas/OrderStatus" }, "reason": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "SellerOrderHistory": { "type": "object", "required": ["id", "fromStatus", "toStatus", "reason", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/SellerOrderStatus" }, { "type": "object", "nullable": true }] }, "toStatus": { "$ref": "#/components/schemas/SellerOrderStatus" }, "reason": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "SellerOrderSummary": { "type": "object", "required": ["id", "orderId", "sellerId", "status", "totalInCents", "currency", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "orderId": { "type": "string", "format": "uuid" }, "sellerId": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/SellerOrderStatus" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "SellerOrderDetail": { "allOf": [{ "$ref": "#/components/schemas/SellerOrderSummary" }, { "type": "object", "required": ["subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "updatedAt", "confirmedAt", "completedAt", "cancelledAt", "items", "statusHistory"], "properties": { "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "updatedAt": { "type": "string", "format": "date-time" }, "confirmedAt": { "type": "string", "format": "date-time", "nullable": true }, "completedAt": { "type": "string", "format": "date-time", "nullable": true }, "cancelledAt": { "type": "string", "format": "date-time", "nullable": true }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } }, "statusHistory": { "type": "array", "items": { "$ref": "#/components/schemas/SellerOrderHistory" } } } }] },
+      "OrderDetail": { "allOf": [{ "$ref": "#/components/schemas/OrderSummary" }, { "type": "object", "required": ["customerId", "subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "updatedAt", "confirmedAt", "completedAt", "cancelledAt", "address", "sellerOrders", "statusHistory"], "properties": { "customerId": { "type": "string", "format": "uuid" }, "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "updatedAt": { "type": "string", "format": "date-time" }, "confirmedAt": { "type": "string", "format": "date-time", "nullable": true }, "completedAt": { "type": "string", "format": "date-time", "nullable": true }, "cancelledAt": { "type": "string", "format": "date-time", "nullable": true }, "address": { "oneOf": [{ "$ref": "#/components/schemas/OrderAddress" }, { "type": "object", "nullable": true }] }, "sellerOrders": { "type": "array", "items": { "$ref": "#/components/schemas/SellerOrderDetail" } }, "statusHistory": { "type": "array", "items": { "$ref": "#/components/schemas/OrderStatusHistory" } } } }] },
+      "SellerOrderCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/SellerOrderSummary" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
+      "PaymentAttempt": { "type": "object", "required": ["id", "orderId", "provider", "providerReference", "method", "status", "amountInCents", "currency", "failureCode", "failureMessage", "createdAt", "updatedAt", "authorizedAt", "capturedAt", "failedAt", "cancelledAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "orderId": { "type": "string", "format": "uuid" }, "provider": { "type": "string", "example": "DEV_SIMULATOR" }, "providerReference": { "type": "string", "nullable": true }, "method": { "$ref": "#/components/schemas/PaymentMethod" }, "status": { "$ref": "#/components/schemas/PaymentAttemptStatus" }, "amountInCents": { "type": "integer", "description": "Sempre o total integral da Order" }, "currency": { "$ref": "#/components/schemas/Currency" }, "failureCode": { "type": "string", "nullable": true }, "failureMessage": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }, "authorizedAt": { "type": "string", "format": "date-time", "nullable": true }, "capturedAt": { "type": "string", "format": "date-time", "nullable": true }, "failedAt": { "type": "string", "format": "date-time", "nullable": true }, "cancelledAt": { "type": "string", "format": "date-time", "nullable": true } } },
+      "PaymentAttemptCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/PaymentAttempt" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
+      "Refund": { "type": "object", "required": ["id", "paymentAttemptId", "amountInCents", "currency", "reason", "status", "providerReference", "createdAt", "updatedAt", "completedAt", "failedAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "paymentAttemptId": { "type": "string", "format": "uuid" }, "amountInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "reason": { "type": "string", "nullable": true }, "status": { "$ref": "#/components/schemas/RefundStatus" }, "providerReference": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }, "completedAt": { "type": "string", "format": "date-time", "nullable": true }, "failedAt": { "type": "string", "format": "date-time", "nullable": true } } },
+      "RefundCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Refund" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
+      "DeliveryCreateInput": { "type": "object", "additionalProperties": false, "properties": { "trackingCode": { "type": "string", "maxLength": 255 }, "carrier": { "type": "string", "maxLength": 255 }, "estimatedDelivery": { "type": "string", "format": "date-time", "nullable": true } } },
+      "DeliveryTrackingInput": { "type": "object", "minProperties": 1, "additionalProperties": false, "properties": { "trackingCode": { "type": "string", "maxLength": 255 }, "carrier": { "type": "string", "maxLength": 255 }, "estimatedDelivery": { "type": "string", "format": "date-time", "nullable": true } } },
+      "Delivery": { "type": "object", "required": ["id", "sellerOrderId", "trackingCode", "carrier", "status", "estimatedDelivery", "deliveredAt", "createdAt", "updatedAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "sellerOrderId": { "type": "string", "format": "uuid" }, "trackingCode": { "type": "string", "nullable": true }, "carrier": { "type": "string", "nullable": true }, "status": { "$ref": "#/components/schemas/DeliveryStatus" }, "estimatedDelivery": { "type": "string", "format": "date-time", "nullable": true }, "deliveredAt": { "type": "string", "format": "date-time", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" } } },
+      "DeliveryStatusHistory": { "type": "object", "required": ["id", "deliveryId", "fromStatus", "toStatus", "changedAt", "reason"], "properties": { "id": { "type": "string", "format": "uuid" }, "deliveryId": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/DeliveryStatus" }, { "type": "object", "nullable": true }] }, "toStatus": { "$ref": "#/components/schemas/DeliveryStatus" }, "changedAt": { "type": "string", "format": "date-time" }, "reason": { "type": "string", "nullable": true } } },
+      "Review": { "type": "object", "required": ["id", "productId", "sellerId", "rating", "comment", "createdAt", "updatedAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "productId": { "type": "string", "format": "uuid", "nullable": true }, "sellerId": { "type": "string", "format": "uuid", "nullable": true }, "rating": { "type": "integer", "minimum": 1, "maximum": 5 }, "comment": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" } }, "description": "Exatamente um entre productId e sellerId é preenchido; userId é omitido do DTO." },
+      "Reputation": { "type": "object", "required": ["averageRating", "totalReviews", "distribution"], "properties": { "averageRating": { "type": "number", "nullable": true }, "totalReviews": { "type": "integer" }, "distribution": { "type": "object", "required": ["1", "2", "3", "4", "5"], "properties": { "1": { "type": "integer" }, "2": { "type": "integer" }, "3": { "type": "integer" }, "4": { "type": "integer" }, "5": { "type": "integer" } } } } },
+      "ReviewCollection": { "type": "object", "required": ["data", "pagination", "reputation"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Review" } }, "pagination": { "$ref": "#/components/schemas/Pagination" }, "reputation": { "$ref": "#/components/schemas/Reputation" } } },
+      "DashboardSummary": { "type": "object", "required": ["currency", "grossRevenueInCents", "deliveredSellerOrders", "itemsSold", "averageTicketInCents"], "properties": { "currency": { "$ref": "#/components/schemas/Currency" }, "grossRevenueInCents": { "type": "integer" }, "deliveredSellerOrders": { "type": "integer" }, "itemsSold": { "type": "integer" }, "averageTicketInCents": { "type": "integer" } } },
+      "DashboardOrder": { "type": "object", "required": ["id", "status", "totalInCents", "currency", "createdAt", "completedAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/SellerOrderStatus" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "createdAt": { "type": "string", "format": "date-time" }, "completedAt": { "type": "string", "format": "date-time", "nullable": true } } },
+      "DashboardOrderCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/DashboardOrder" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
+      "DashboardStatusCount": { "type": "object", "required": ["status", "count"], "properties": { "status": { "$ref": "#/components/schemas/SellerOrderStatus" }, "count": { "type": "integer" } } },
+      "DashboardTimeseriesPoint": { "type": "object", "required": ["period", "grossRevenueInCents", "sellerOrders"], "properties": { "period": { "type": "string" }, "grossRevenueInCents": { "type": "integer" }, "sellerOrders": { "type": "integer" } } },
+      "DashboardCategory": { "type": "object", "required": ["category", "grossRevenueInCents", "itemsSold"], "properties": { "category": { "type": "string" }, "grossRevenueInCents": { "type": "integer" }, "itemsSold": { "type": "integer" } } },
+      "DashboardTopProduct": { "type": "object", "required": ["productId", "productName", "itemsSold", "grossRevenueInCents"], "properties": { "productId": { "type": "string", "format": "uuid" }, "productName": { "type": "string" }, "itemsSold": { "type": "integer" }, "grossRevenueInCents": { "type": "integer" } } },
+      "DashboardNewCustomers": { "type": "object", "required": ["period", "newCustomers"], "properties": { "period": { "type": "string", "example": "2026-10" }, "newCustomers": { "type": "integer" } } }
+    }
+  },
+  "x-operation-count": 71,
+  "x-notes": [
+    "Todos os valores monetários são inteiros em centavos e devem ser interpretados junto de currency; não existe float monetário no contrato v2.",
+    "Inventory distingue onHandQuantity (físico), reservedQuantity (comprometido) e availableQuantity = onHandQuantity - reservedQuantity.",
+    "PaymentAttempt é cobrança integral da Order; tentativas FAILED/CANCELLED permitem retry, não parcelamento. A captura é interna ao provider/service e não há endpoint público de captura.",
+    "Refund associa-se a PaymentAttempt, não a produto ou SellerOrder. A máquina é REQUESTED → PROCESSING → COMPLETED|DECLINED|FAILED; REQUESTED/PROCESSING/COMPLETED comprometem o saldo.",
+    "Order pública não possui endpoint de transição. Pagamento pode confirmar PENDING_PAYMENT; estados agregados não são arbitrariamente alterados pela API.",
+    "Delivery pertence a SellerOrder; atualiza somente a máquina de delivery e não sincroniza automaticamente SellerOrder.",
+    "A ponte Next /api é uma camada same-origin do frontend que encaminha cookie HttpOnly, valida origem e allowlists; não é backend API e não é descrita como rotas neste documento."
+  ]
+}

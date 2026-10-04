@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.app = void 0;
 const express_1 = __importDefault(require("express"));
 const db_1 = __importDefault(require("./config/db"));
+const path_1 = __importDefault(require("path"));
 const userController_1 = require("./controllers/userController");
 const authController_1 = require("./controllers/authController");
 const customerController_1 = require("./controllers/customerController");
@@ -39,6 +40,19 @@ const PORT = process.env.PORT || 8000;
 app.get("/", (req, res) => {
     res.send("Server running on port 8000");
 });
+if (process.env.NODE_ENV !== "production") {
+    const docsDirectory = path_1.default.resolve(__dirname, "../docs");
+    app.get("/docs", (_req, res) => {
+        res.sendFile(path_1.default.join(docsDirectory, "index.html"));
+    });
+    app.get("/docs/", (_req, res) => {
+        res.sendFile(path_1.default.join(docsDirectory, "index.html"));
+    });
+    app.get("/docs/openapi.yaml", (_req, res) => {
+        res.type("application/yaml; charset=utf-8");
+        res.sendFile(path_1.default.join(docsDirectory, "openapi.yaml"));
+    });
+}
 // app.get("/health", (req, res) => {
 //   res.json({ status: "ok", env: process.env.NODE_ENV, db: process.env.DATABASE_URL ? "set" : "not set" });
 // });

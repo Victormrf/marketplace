@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="OpenAPI schema-v2 local" />
+    <title>Marketplace API — Swagger UI</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/swagger-ui-dist@5.33.1/swagger-ui.css"
+    />
+    <style>
+      .local-docs-notice {
+        margin: 16px auto;
+        max-width: 1460px;
+        padding: 12px 20px;
+        border-left: 4px solid #ee9b00;
+        background: #fff8e7;
+        color: #172033;
+        font: 14px/1.5 Segoe UI, Arial, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="local-docs-notice">
+      <strong>Desenvolvimento local.</strong>
+      Esta documentação está disponível somente quando o backend não está em
+      modo production. Ela descreve as rotas Express; a ponte Next <code>/api</code>,
+      que encaminha cookies e protege chamadas do navegador, é uma integração
+      separada e não duplica este contrato. “Try it out” está desativado.
+    </aside>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.33.1/swagger-ui-bundle.js"></script>
+    <script>
+      window.onload = () => {
+        window.ui = SwaggerUIBundle({
+          url: "/docs/openapi.yaml",
+          dom_id: "#swagger-ui",
+          deepLinking: true,
+          docExpansion: "none",
+          filter: true,
+          supportedSubmitMethods: [],
+          validatorUrl: null,
+        });
+      };
+    </script>
+  </body>
+</html>

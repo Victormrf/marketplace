@@ -73,12 +73,14 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 - [ ] Recuperar reviews próprias sem depender de `sessionStorage`: definir no backend uma consulta autenticada e limitada ao customer atual para localizar sua review por produto ou seller; adaptar o frontend para carregar o ID persistido antes de oferecer criação/edição. Hoje, em outra aba, navegador ou dispositivo, a review existente não é descoberta e uma nova tentativa recebe 409. Validar ownership, ausência de review e atualização após refresh. Planejar após a conclusão da 2.7, sem ampliar o escopo atual.
 
+**Fechamento da fase 2 (03/10/2026):** fase concluída por decisão do responsável. A validação integrada completa da 2.7 continua registrada como pendência transversal; esse fechamento administrativo não substitui essa validação.
+
 ## Fase 3 — Contratos e testes ponta a ponta
 
 **Objetivo:** criar uma referência estável de comportamento antes dos experimentos de escala.
 
-- [ ] 3.1 Publicar contratos de API legíveis, preferencialmente OpenAPI, com payloads, respostas, autenticação, paginação e erros.
-- [ ] 3.2 Cobrir com testes E2E as jornadas críticas: login, busca, carrinho, checkout, pagamento e consulta de pedido; incluir ao menos um fluxo de seller.
+- [x] 3.1 Publicar contratos de API OpenAPI 3.0.3 para as rotas de negócio atuais: 53 caminhos e 71 operações; Swagger UI em `/docs` (assets CDN 5.33.1, Try it out e validador remoto desativados), restrito a ambiente não-production; `npm run validate:openapi` validou sintaxe, referências locais, parâmetros e contagem. Build, type-check e `test:db` (12/12) passaram; Playwright confirmou endpoints/schemas visíveis sem executar mutações. Resumo: [Etapa 3.1](STEP_3_1_API_CONTRACTS_SUMMARY.md).
+- [~] 3.2 Cobrir com testes E2E as jornadas críticas: login, busca, carrinho, checkout, pagamento e consulta de pedido; incluir ao menos um fluxo de seller.
 - [ ] 3.3 Definir ambiente de teste reproduzível, dados conhecidos e uma baseline funcional registrada.
 
 **Concluída quando:** mudanças de contrato quebram testes de forma clara e as jornadas prioritárias são reproduzíveis.
