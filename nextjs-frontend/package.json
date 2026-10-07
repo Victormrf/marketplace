@@ -9,7 +9,11 @@
     "lint": "next lint",
     "test:checkout": "node --experimental-strip-types --test tests/checkout-attempt.test.mjs",
     "test:dashboard": "node --test tests/seller-dashboard.test.mjs",
-    "test:proxy": "node --test tests/route-proxy.test.mjs"
+    "test:proxy": "node --test tests/route-proxy.test.mjs",
+    "e2e:prepare": "node scripts/run-e2e.mjs --prepare-only",
+    "test:e2e": "node scripts/run-e2e.mjs",
+    "test:e2e:safety": "node --test tests/e2e-safety.test.mjs",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -37,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

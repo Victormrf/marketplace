@@ -80,7 +80,7 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 **Objetivo:** criar uma referência estável de comportamento antes dos experimentos de escala.
 
 - [x] 3.1 Publicar contratos de API OpenAPI 3.0.3 para as rotas de negócio atuais: 53 caminhos e 71 operações; Swagger UI em `/docs` (assets CDN 5.33.1, Try it out e validador remoto desativados), restrito a ambiente não-production; `npm run validate:openapi` validou sintaxe, referências locais, parâmetros e contagem. Build, type-check e `test:db` (12/12) passaram; Playwright confirmou endpoints/schemas visíveis sem executar mutações. Resumo: [Etapa 3.1](STEP_3_1_API_CONTRACTS_SUMMARY.md).
-- [~] 3.2 Cobrir com testes E2E as jornadas críticas: login, busca, carrinho, checkout, pagamento e consulta de pedido; incluir ao menos um fluxo de seller.
+- [!] 3.2 Infraestrutura Playwright local adicionada e executada duas vezes contra PostgreSQL isolado `marketplace_e2e` (porta 5434), com limpeza verificada por teste. Em cada rodada, 11/12 cenários passaram; o teste de remoção de item do carrinho comprovou que DELETE `/api/cart/items/:productId` retorna 415 (`Unsupported request content type`), sem remover o item. Corrigir o encaminhamento DELETE na ponte antes de fechar 3.2. Auth customer/seller, catálogo/filtros, carrinho/estoque insuficiente, checkout/replay após perda de resposta real, pagamento integral com callback simulado interno e fluxo seller/inventário/transição passaram. Typecheck e build frontend passaram. Resumo: [Etapa 3.2](STEP_3_2_E2E_SUMMARY.md).
 - [ ] 3.3 Definir ambiente de teste reproduzível, dados conhecidos e uma baseline funcional registrada.
 
 **Concluída quando:** mudanças de contrato quebram testes de forma clara e as jornadas prioritárias são reproduzíveis.

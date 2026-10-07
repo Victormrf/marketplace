@@ -202,7 +202,7 @@
         "summary": "Cria o perfil SELLER da conta atual",
         "description": "Somente role SELLER. userId é derivado da autenticação. Campos aceitos: storeName obrigatório, description e logo opcionais. Logo pode ser enviada como arquivo multipart ou string conforme o middleware/serviço.",
         "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
-        "requestBody": { "$ref": "#/components/requestBodies/SellerProfileInput" },
+        "requestBody": { "$ref": "#/components/requestBodies/SellerProfileCreateInput" },
         "responses": {
           "201": { "description": "Perfil criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerProfile" } } } },
           "400": { "$ref": "#/components/responses/BadRequest" },
@@ -231,7 +231,7 @@
         "summary": "Atualiza o perfil SELLER atual",
         "description": "Aceita storeName, description e logo; userId é determinado pelo backend.",
         "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
-        "requestBody": { "$ref": "#/components/requestBodies/SellerProfileInput" },
+        "requestBody": { "$ref": "#/components/requestBodies/SellerProfileUpdateInput" },
         "responses": {
           "200": { "description": "Perfil atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerProfile" } } } },
           "400": { "$ref": "#/components/responses/BadRequest" },
@@ -318,7 +318,7 @@
         "responses": { "200": { "description": "Produtos e paginação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductCollection" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "500": { "$ref": "#/components/responses/InternalError" } }
       },
       "post": {
-        "tags": ["Catalog"], "operationId": "createProduct", "summary": "Seller cria produto e Inventory inicial", "description": "Somente SELLER ativo. sellerId é sempre derivado da sessão. Envie imagem como arquivo image multipart ou como URL/texto image no JSON. Estoque não é criado por esse payload.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/ProductWriteInput" },
+        "tags": ["Catalog"], "operationId": "createProduct", "summary": "Seller cria produto e Inventory inicial", "description": "Somente SELLER ativo. sellerId é sempre derivado da sessão. Envie imagem como arquivo image multipart ou como URL/texto image no JSON. Estoque não é criado por esse payload.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "requestBody": { "$ref": "#/components/requestBodies/ProductCreateInput" },
         "responses": { "201": { "description": "Produto criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
       }
     },
@@ -346,7 +346,7 @@
         "responses": { "200": { "description": "Produto individual ou coleção, conforme quantidade de IDs", "content": { "application/json": { "schema": { "oneOf": [{ "$ref": "#/components/schemas/Product" }, { "$ref": "#/components/schemas/ProductCollection" }] } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "404": { "$ref": "#/components/responses/NotFound" }, "500": { "$ref": "#/components/responses/InternalError" } }
       },
       "put": {
-        "tags": ["Catalog"], "operationId": "updateProduct", "summary": "Atualiza produto pertencente ao seller autenticado", "description": "Somente seller proprietário. Aceita JSON ou multipart/form-data, whitelist de campos de catálogo e imagem; estoque não é alterado aqui.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "name": "productIds", "in": "path", "required": true, "description": "Use o ID único do produto", "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "$ref": "#/components/requestBodies/ProductWriteInput" },
+        "tags": ["Catalog"], "operationId": "updateProduct", "summary": "Atualiza produto pertencente ao seller autenticado", "description": "Somente seller proprietário. Aceita JSON ou multipart/form-data, whitelist de campos de catálogo e imagem; estoque não é alterado aqui.", "security": [{ "cookieAuth": [] }, { "bearerAuth": [] }], "parameters": [{ "name": "productIds", "in": "path", "required": true, "description": "Use o ID único do produto", "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "$ref": "#/components/requestBodies/ProductUpdateInput" },
         "responses": { "200": { "description": "Produto atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
       },
       "delete": {
@@ -618,10 +618,163 @@
       "UserRegistrationInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserRegistrationInput" }, "example": { "name": "Example Customer", "email": "customer@example.invalid", "password": "example-only", "role": "CUSTOMER" } } } },
       "UserUpdateInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserUpdateInput" } } } },
       "CustomerProfileInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerProfileInput" }, "example": { "phone": "+55 11 5555-0100" } } } },
-      "SellerProfileInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SellerProfileInput" }, "example": { "storeName": "Example Store", "description": "Development example", "logo": null } }, "multipart/form-data": { "schema": { "type": "object", "required": ["storeName"], "properties": { "storeName": { "type": "string" }, "description": { "type": "string" }, "logo": { "type": "string", "format": "binary" } } } } } },
+      "SellerProfileCreateInput": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SellerProfileCreateInput"
+            },
+            "example": {
+              "storeName": "Example Store",
+              "description": "Development example",
+              "logo": null
+            }
+          },
+          "multipart/form-data": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "storeName"
+              ],
+              "properties": {
+                "storeName": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "logo": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SellerProfileUpdateInput": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SellerProfileUpdateInput"
+            },
+            "example": {
+              "description": "Updated description"
+            }
+          },
+          "multipart/form-data": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "storeName": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "logo": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      },
       "CustomerAddressCreateInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddressCreateInput" }, "example": { "recipientName": "Example Person", "postalCode": "01001000", "street": "Rua Exemplo", "number": "100", "complement": null, "neighborhood": "Centro", "city": "São Paulo", "state": "SP", "countryCode": "BR", "phone": null, "isDefault": true } } } },
       "CustomerAddressUpdateInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerAddressUpdateInput" } } } },
-      "ProductWriteInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductWriteInput" } }, "multipart/form-data": { "schema": { "type": "object", "required": ["name", "priceInCents", "category"], "properties": { "name": { "type": "string" }, "reference": { "type": "string" }, "description": { "type": "string" }, "priceInCents": { "type": "integer", "minimum": 0 }, "currency": { "$ref": "#/components/schemas/Currency" }, "category": { "$ref": "#/components/schemas/ProductCategory" }, "image": { "type": "string", "format": "binary" } } } } } },
+      "ProductCreateInput": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProductCreateInput"
+            }
+          },
+          "multipart/form-data": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "priceInCents",
+                "category"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "priceInCents": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "currency": {
+                  "$ref": "#/components/schemas/Currency"
+                },
+                "category": {
+                  "$ref": "#/components/schemas/ProductCategory"
+                },
+                "image": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProductUpdateInput": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProductUpdateInput"
+            }
+          },
+          "multipart/form-data": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "priceInCents": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "currency": {
+                  "$ref": "#/components/schemas/Currency"
+                },
+                "category": {
+                  "$ref": "#/components/schemas/ProductCategory"
+                },
+                "image": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "minProperties": 1
+            }
+          }
+        }
+      },
       "RestockInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["quantity"], "properties": { "quantity": { "type": "integer", "minimum": 1 }, "reason": { "type": "string", "nullable": true } } }, "example": { "quantity": 5, "reason": "Reposição de exemplo" } } } },
       "InventoryAdjustmentInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["onHandDelta", "reason"], "properties": { "onHandDelta": { "type": "integer", "not": { "enum": [0] } }, "reason": { "type": "string", "minLength": 1 } } } } } },
       "CartItemInput": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["productId", "quantity"], "additionalProperties": false, "properties": { "productId": { "type": "string", "format": "uuid" }, "quantity": { "type": "integer", "minimum": 1 } } } } } },
@@ -665,14 +818,129 @@
       "CustomerProfileInput": { "type": "object", "additionalProperties": false, "properties": { "phone": { "type": "string", "nullable": true } } },
       "CustomerProfile": { "type": "object", "required": ["id", "userId", "phone"], "properties": { "id": { "type": "string", "format": "uuid" }, "userId": { "type": "string", "format": "uuid" }, "phone": { "type": "string", "nullable": true } } },
       "CustomerProfileWithUser": { "allOf": [{ "$ref": "#/components/schemas/CustomerProfile" }, { "type": "object", "required": ["user"], "properties": { "user": { "$ref": "#/components/schemas/User" } } }] },
-      "SellerProfileInput": { "type": "object", "required": ["storeName"], "additionalProperties": false, "properties": { "storeName": { "type": "string", "minLength": 1 }, "description": { "type": "string", "nullable": true }, "logo": { "type": "string", "nullable": true } } },
+      "SellerProfileCreateInput": {
+        "type": "object",
+        "required": [
+          "storeName"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "storeName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "SellerProfileUpdateInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "storeName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "SellerProfile": { "type": "object", "required": ["id", "userId", "storeName", "logo", "description", "isActive"], "properties": { "id": { "type": "string", "format": "uuid" }, "userId": { "type": "string", "format": "uuid" }, "storeName": { "type": "string" }, "logo": { "type": "string", "nullable": true }, "description": { "type": "string", "nullable": true }, "isActive": { "type": "boolean" } }, "description": "O DTO não persiste nem retorna rating." },
       "SellerProfileWithUser": { "allOf": [{ "$ref": "#/components/schemas/SellerProfile" }, { "type": "object", "required": ["user"], "properties": { "user": { "$ref": "#/components/schemas/User" } } }] },
       "CustomerAddressCreateInput": { "type": "object", "required": ["recipientName", "postalCode", "street", "number", "neighborhood", "city", "state"], "additionalProperties": false, "properties": { "recipientName": { "type": "string", "minLength": 1 }, "postalCode": { "type": "string", "pattern": "^[0-9]{5}-?[0-9]{3}$" }, "street": { "type": "string", "minLength": 1 }, "number": { "type": "string", "minLength": 1 }, "complement": { "type": "string", "nullable": true }, "neighborhood": { "type": "string", "minLength": 1 }, "city": { "type": "string", "minLength": 1 }, "state": { "type": "string", "minLength": 1 }, "countryCode": { "type": "string", "enum": ["BR"] }, "phone": { "type": "string", "nullable": true }, "isDefault": { "type": "boolean" } } },
       "CustomerAddressUpdateInput": { "type": "object", "minProperties": 1, "additionalProperties": false, "properties": { "recipientName": { "type": "string", "minLength": 1 }, "postalCode": { "type": "string", "pattern": "^[0-9]{5}-?[0-9]{3}$" }, "street": { "type": "string", "minLength": 1 }, "number": { "type": "string", "minLength": 1 }, "complement": { "type": "string", "nullable": true }, "neighborhood": { "type": "string", "minLength": 1 }, "city": { "type": "string", "minLength": 1 }, "state": { "type": "string", "minLength": 1 }, "countryCode": { "type": "string", "enum": ["BR"] }, "phone": { "type": "string", "nullable": true } } },
       "CustomerAddress": { "type": "object", "required": ["id", "recipientName", "postalCode", "street", "number", "complement", "neighborhood", "city", "state", "countryCode", "phone", "isDefault", "createdAt", "updatedAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "recipientName": { "type": "string" }, "postalCode": { "type": "string" }, "street": { "type": "string" }, "number": { "type": "string" }, "complement": { "type": "string", "nullable": true }, "neighborhood": { "type": "string" }, "city": { "type": "string" }, "state": { "type": "string" }, "countryCode": { "type": "string", "enum": ["BR"] }, "phone": { "type": "string", "nullable": true }, "isDefault": { "type": "boolean" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" } } },
       "CustomerAddressCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/CustomerAddress" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
-      "ProductWriteInput": { "type": "object", "required": ["name", "priceInCents", "category"], "additionalProperties": false, "properties": { "name": { "type": "string", "minLength": 1 }, "reference": { "type": "string", "nullable": true }, "description": { "type": "string", "nullable": true }, "priceInCents": { "type": "integer", "minimum": 0 }, "currency": { "$ref": "#/components/schemas/Currency" }, "category": { "$ref": "#/components/schemas/ProductCategory" }, "image": { "type": "string", "nullable": true } }, "description": "Não aceita price, stock ou sellerId; moeda omitida usa BRL." },
+      "ProductCreateInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "priceInCents",
+          "category"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceInCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ProductCategory"
+          },
+          "image": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "description": "Não aceita price, stock ou sellerId; moeda omitida usa BRL."
+      },
+      "ProductUpdateInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceInCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ProductCategory"
+          },
+          "image": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "description": "Atualização parcial; campos omitidos são preservados. Não aceita price, stock ou sellerId.",
+        "minProperties": 1
+      },
+      "NullValue": {
+        "type": "object",
+        "nullable": true,
+        "enum": [null],
+        "description": "Aceita exclusivamente null. Mantém alternativas oneOf disjuntas em OpenAPI 3.0.3."
+      },
       "ProductInventory": { "type": "object", "required": ["onHandQuantity", "reservedQuantity", "availableQuantity"], "properties": { "onHandQuantity": { "type": "integer" }, "reservedQuantity": { "type": "integer" }, "availableQuantity": { "type": "integer", "description": "onHandQuantity - reservedQuantity" } } },
       "Product": { "type": "object", "required": ["id", "sellerId", "sellerName", "name", "reference", "description", "priceInCents", "currency", "category", "image", "inventory", "isAvailable", "averageRating"], "properties": { "id": { "type": "string", "format": "uuid" }, "sellerId": { "type": "string", "format": "uuid" }, "sellerName": { "type": "string" }, "name": { "type": "string" }, "reference": { "type": "string", "nullable": true }, "description": { "type": "string", "nullable": true }, "priceInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "category": { "$ref": "#/components/schemas/ProductCategory" }, "image": { "type": "string", "nullable": true }, "inventory": { "$ref": "#/components/schemas/ProductInventory" }, "isAvailable": { "type": "boolean" }, "averageRating": { "type": "number", "nullable": true } } },
       "ProductCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
@@ -683,17 +951,17 @@
       "Cart": { "type": "object", "required": ["id", "status", "items", "totalInCents"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "type": "string", "enum": ["ACTIVE"] }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/CartItem" } }, "totalInCents": { "type": "integer", "description": "Estimativa atual, não order snapshot" } } },
       "CheckoutReservation": { "type": "object", "required": ["id", "status", "quantity", "expiresAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "type": "string" }, "quantity": { "type": "integer" }, "expiresAt": { "type": "string", "format": "date-time", "nullable": true } } },
       "OrderItem": { "type": "object", "required": ["id", "productId", "quantity", "unitPriceInCents", "lineTotalInCents", "currency", "productNameSnapshot", "productReferenceSnapshot", "sellerNameSnapshot"], "properties": { "id": { "type": "string", "format": "uuid" }, "productId": { "type": "string", "format": "uuid" }, "quantity": { "type": "integer" }, "unitPriceInCents": { "type": "integer" }, "lineTotalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "productNameSnapshot": { "type": "string" }, "productReferenceSnapshot": { "type": "string", "nullable": true }, "sellerNameSnapshot": { "type": "string" } } },
-      "CheckoutOrderItem": { "allOf": [{ "$ref": "#/components/schemas/OrderItem" }, { "type": "object", "required": ["reservation"], "properties": { "reservation": { "oneOf": [{ "$ref": "#/components/schemas/CheckoutReservation" }, { "type": "object", "nullable": true }] } } }] },
+      "CheckoutOrderItem": { "allOf": [{ "$ref": "#/components/schemas/OrderItem" }, { "type": "object", "required": ["reservation"], "properties": { "reservation": { "oneOf": [{ "$ref": "#/components/schemas/CheckoutReservation" }, { "$ref": "#/components/schemas/NullValue" }] } } }] },
       "OrderAddress": { "type": "object", "required": ["id", "sourceAddressId", "recipientName", "postalCode", "street", "number", "complement", "neighborhood", "city", "state", "countryCode", "phone", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "sourceAddressId": { "type": "string", "format": "uuid", "nullable": true }, "recipientName": { "type": "string" }, "postalCode": { "type": "string" }, "street": { "type": "string" }, "number": { "type": "string" }, "complement": { "type": "string", "nullable": true }, "neighborhood": { "type": "string" }, "city": { "type": "string" }, "state": { "type": "string" }, "countryCode": { "type": "string" }, "phone": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
       "CheckoutSellerOrder": { "type": "object", "required": ["id", "sellerId", "status", "subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "totalInCents", "currency", "items"], "properties": { "id": { "type": "string", "format": "uuid" }, "sellerId": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/SellerOrderStatus" }, "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/CheckoutOrderItem" } } } },
-      "CheckoutResult": { "type": "object", "required": ["id", "status", "subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "totalInCents", "currency", "createdAt", "updatedAt", "address", "sellerOrders"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/OrderStatus" }, "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }, "address": { "oneOf": [{ "$ref": "#/components/schemas/OrderAddress" }, { "type": "object", "nullable": true }] }, "sellerOrders": { "type": "array", "items": { "$ref": "#/components/schemas/CheckoutSellerOrder" } } } },
+      "CheckoutResult": { "type": "object", "required": ["id", "status", "subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "totalInCents", "currency", "createdAt", "updatedAt", "address", "sellerOrders"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/OrderStatus" }, "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }, "address": { "oneOf": [{ "$ref": "#/components/schemas/OrderAddress" }, { "$ref": "#/components/schemas/NullValue" }] }, "sellerOrders": { "type": "array", "items": { "$ref": "#/components/schemas/CheckoutSellerOrder" } } } },
       "OrderSummary": { "type": "object", "required": ["id", "status", "totalInCents", "currency", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/OrderStatus" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "createdAt": { "type": "string", "format": "date-time" } } },
       "OrderCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/OrderSummary" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
-      "OrderStatusHistory": { "type": "object", "required": ["id", "fromStatus", "toStatus", "reason", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/OrderStatus" }, { "type": "object", "nullable": true }] }, "toStatus": { "$ref": "#/components/schemas/OrderStatus" }, "reason": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
-      "SellerOrderHistory": { "type": "object", "required": ["id", "fromStatus", "toStatus", "reason", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/SellerOrderStatus" }, { "type": "object", "nullable": true }] }, "toStatus": { "$ref": "#/components/schemas/SellerOrderStatus" }, "reason": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "OrderStatusHistory": { "type": "object", "required": ["id", "fromStatus", "toStatus", "reason", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/OrderStatus" }, { "$ref": "#/components/schemas/NullValue" }] }, "toStatus": { "$ref": "#/components/schemas/OrderStatus" }, "reason": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "SellerOrderHistory": { "type": "object", "required": ["id", "fromStatus", "toStatus", "reason", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/SellerOrderStatus" }, { "$ref": "#/components/schemas/NullValue" }] }, "toStatus": { "$ref": "#/components/schemas/SellerOrderStatus" }, "reason": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } },
       "SellerOrderSummary": { "type": "object", "required": ["id", "orderId", "sellerId", "status", "totalInCents", "currency", "createdAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "orderId": { "type": "string", "format": "uuid" }, "sellerId": { "type": "string", "format": "uuid" }, "status": { "$ref": "#/components/schemas/SellerOrderStatus" }, "totalInCents": { "type": "integer" }, "currency": { "$ref": "#/components/schemas/Currency" }, "createdAt": { "type": "string", "format": "date-time" } } },
       "SellerOrderDetail": { "allOf": [{ "$ref": "#/components/schemas/SellerOrderSummary" }, { "type": "object", "required": ["subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "updatedAt", "confirmedAt", "completedAt", "cancelledAt", "items", "statusHistory"], "properties": { "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "updatedAt": { "type": "string", "format": "date-time" }, "confirmedAt": { "type": "string", "format": "date-time", "nullable": true }, "completedAt": { "type": "string", "format": "date-time", "nullable": true }, "cancelledAt": { "type": "string", "format": "date-time", "nullable": true }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } }, "statusHistory": { "type": "array", "items": { "$ref": "#/components/schemas/SellerOrderHistory" } } } }] },
-      "OrderDetail": { "allOf": [{ "$ref": "#/components/schemas/OrderSummary" }, { "type": "object", "required": ["customerId", "subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "updatedAt", "confirmedAt", "completedAt", "cancelledAt", "address", "sellerOrders", "statusHistory"], "properties": { "customerId": { "type": "string", "format": "uuid" }, "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "updatedAt": { "type": "string", "format": "date-time" }, "confirmedAt": { "type": "string", "format": "date-time", "nullable": true }, "completedAt": { "type": "string", "format": "date-time", "nullable": true }, "cancelledAt": { "type": "string", "format": "date-time", "nullable": true }, "address": { "oneOf": [{ "$ref": "#/components/schemas/OrderAddress" }, { "type": "object", "nullable": true }] }, "sellerOrders": { "type": "array", "items": { "$ref": "#/components/schemas/SellerOrderDetail" } }, "statusHistory": { "type": "array", "items": { "$ref": "#/components/schemas/OrderStatusHistory" } } } }] },
+      "OrderDetail": { "allOf": [{ "$ref": "#/components/schemas/OrderSummary" }, { "type": "object", "required": ["customerId", "subtotalInCents", "shippingInCents", "taxInCents", "discountInCents", "updatedAt", "confirmedAt", "completedAt", "cancelledAt", "address", "sellerOrders", "statusHistory"], "properties": { "customerId": { "type": "string", "format": "uuid" }, "subtotalInCents": { "type": "integer" }, "shippingInCents": { "type": "integer" }, "taxInCents": { "type": "integer" }, "discountInCents": { "type": "integer" }, "updatedAt": { "type": "string", "format": "date-time" }, "confirmedAt": { "type": "string", "format": "date-time", "nullable": true }, "completedAt": { "type": "string", "format": "date-time", "nullable": true }, "cancelledAt": { "type": "string", "format": "date-time", "nullable": true }, "address": { "oneOf": [{ "$ref": "#/components/schemas/OrderAddress" }, { "$ref": "#/components/schemas/NullValue" }] }, "sellerOrders": { "type": "array", "items": { "$ref": "#/components/schemas/SellerOrderDetail" } }, "statusHistory": { "type": "array", "items": { "$ref": "#/components/schemas/OrderStatusHistory" } } } }] },
       "SellerOrderCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/SellerOrderSummary" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
       "PaymentAttempt": { "type": "object", "required": ["id", "orderId", "provider", "providerReference", "method", "status", "amountInCents", "currency", "failureCode", "failureMessage", "createdAt", "updatedAt", "authorizedAt", "capturedAt", "failedAt", "cancelledAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "orderId": { "type": "string", "format": "uuid" }, "provider": { "type": "string", "example": "DEV_SIMULATOR" }, "providerReference": { "type": "string", "nullable": true }, "method": { "$ref": "#/components/schemas/PaymentMethod" }, "status": { "$ref": "#/components/schemas/PaymentAttemptStatus" }, "amountInCents": { "type": "integer", "description": "Sempre o total integral da Order" }, "currency": { "$ref": "#/components/schemas/Currency" }, "failureCode": { "type": "string", "nullable": true }, "failureMessage": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }, "authorizedAt": { "type": "string", "format": "date-time", "nullable": true }, "capturedAt": { "type": "string", "format": "date-time", "nullable": true }, "failedAt": { "type": "string", "format": "date-time", "nullable": true }, "cancelledAt": { "type": "string", "format": "date-time", "nullable": true } } },
       "PaymentAttemptCollection": { "type": "object", "required": ["data", "pagination"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/PaymentAttempt" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } },
@@ -702,7 +970,7 @@
       "DeliveryCreateInput": { "type": "object", "additionalProperties": false, "properties": { "trackingCode": { "type": "string", "maxLength": 255 }, "carrier": { "type": "string", "maxLength": 255 }, "estimatedDelivery": { "type": "string", "format": "date-time", "nullable": true } } },
       "DeliveryTrackingInput": { "type": "object", "minProperties": 1, "additionalProperties": false, "properties": { "trackingCode": { "type": "string", "maxLength": 255 }, "carrier": { "type": "string", "maxLength": 255 }, "estimatedDelivery": { "type": "string", "format": "date-time", "nullable": true } } },
       "Delivery": { "type": "object", "required": ["id", "sellerOrderId", "trackingCode", "carrier", "status", "estimatedDelivery", "deliveredAt", "createdAt", "updatedAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "sellerOrderId": { "type": "string", "format": "uuid" }, "trackingCode": { "type": "string", "nullable": true }, "carrier": { "type": "string", "nullable": true }, "status": { "$ref": "#/components/schemas/DeliveryStatus" }, "estimatedDelivery": { "type": "string", "format": "date-time", "nullable": true }, "deliveredAt": { "type": "string", "format": "date-time", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" } } },
-      "DeliveryStatusHistory": { "type": "object", "required": ["id", "deliveryId", "fromStatus", "toStatus", "changedAt", "reason"], "properties": { "id": { "type": "string", "format": "uuid" }, "deliveryId": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/DeliveryStatus" }, { "type": "object", "nullable": true }] }, "toStatus": { "$ref": "#/components/schemas/DeliveryStatus" }, "changedAt": { "type": "string", "format": "date-time" }, "reason": { "type": "string", "nullable": true } } },
+      "DeliveryStatusHistory": { "type": "object", "required": ["id", "deliveryId", "fromStatus", "toStatus", "changedAt", "reason"], "properties": { "id": { "type": "string", "format": "uuid" }, "deliveryId": { "type": "string", "format": "uuid" }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/DeliveryStatus" }, { "$ref": "#/components/schemas/NullValue" }] }, "toStatus": { "$ref": "#/components/schemas/DeliveryStatus" }, "changedAt": { "type": "string", "format": "date-time" }, "reason": { "type": "string", "nullable": true } } },
       "Review": { "type": "object", "required": ["id", "productId", "sellerId", "rating", "comment", "createdAt", "updatedAt"], "properties": { "id": { "type": "string", "format": "uuid" }, "productId": { "type": "string", "format": "uuid", "nullable": true }, "sellerId": { "type": "string", "format": "uuid", "nullable": true }, "rating": { "type": "integer", "minimum": 1, "maximum": 5 }, "comment": { "type": "string", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" } }, "description": "Exatamente um entre productId e sellerId é preenchido; userId é omitido do DTO." },
       "Reputation": { "type": "object", "required": ["averageRating", "totalReviews", "distribution"], "properties": { "averageRating": { "type": "number", "nullable": true }, "totalReviews": { "type": "integer" }, "distribution": { "type": "object", "required": ["1", "2", "3", "4", "5"], "properties": { "1": { "type": "integer" }, "2": { "type": "integer" }, "3": { "type": "integer" }, "4": { "type": "integer" }, "5": { "type": "integer" } } } } },
       "ReviewCollection": { "type": "object", "required": ["data", "pagination", "reputation"], "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Review" } }, "pagination": { "$ref": "#/components/schemas/Pagination" }, "reputation": { "$ref": "#/components/schemas/Reputation" } } },
