@@ -124,6 +124,70 @@ test("proxy preserves 204 without inventing a response body", async (t) => {
   assert.equal(response.headers.get("cache-control"), "private, no-store");
 });
 
+test("proxy forwards an empty DELETE stream without requiring Content-Type", async (t) => {
+  let outboundBody = "not checked";
+  let outboundContentType;
+  t.mock.method(globalThis, "fetch", async (_input, init) => {
+    outboundBody = init.body;
+    outboundContentType = new Headers(init.headers).get("content-type");
+    return new Response(null, { status: 204 });
+  });
+
+  const request = makeRequest("/api/cart/items/product-1", "DELETE", {
+    body: "",
+  });
+  assert.notEqual(request.body, null);
+
+  const response = await proxy.proxyBackendRequest(
+    request,
+    "/cart/items/product-1",
+  );
+
+  assert.equal(response.status, 204);
+  assert.equal(outboundBody, undefined);
+  assert.equal(outboundContentType, null);
+});
+
+test("proxy treats an empty JSON-typed request as empty, not invalid JSON", async (t) => {
+  t.mock.method(globalThis, "fetch", async (_input, init) => {
+    assert.equal(init.body, undefined);
+    assert.equal(new Headers(init.headers).get("content-type"), null);
+    return new Response(null, { status: 204 });
+  });
+
+  const response = await proxy.proxyBackendRequest(
+    makeRequest("/api/cart/items/product-1", "DELETE", {
+      body: "",
+      headers: { "content-type": "application/json" },
+    }),
+    "/cart/items/product-1",
+  );
+
+  assert.equal(response.status, 204);
+});
+
+test("proxy rejects a non-empty unsupported body without calling backend", async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    calls += 1;
+    return Response.json({ ok: true });
+  });
+
+  const response = await proxy.proxyBackendRequest(
+    makeRequest("/api/cart/items/product-1", "DELETE", {
+      body: "plain text payload",
+      headers: { "content-type": "text/plain" },
+    }),
+    "/cart/items/product-1",
+  );
+
+  assert.equal(response.status, 415);
+  assert.deepEqual(await response.json(), {
+    error: "Unsupported request content type",
+  });
+  assert.equal(calls, 0);
+});
+
 test("invalid incoming JSON returns 400 without calling the backend", async (t) => {
   let calls = 0;
   t.mock.method(globalThis, "fetch", async () => {

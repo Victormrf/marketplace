@@ -6,58 +6,47 @@ Foi adicionada uma suíte Playwright reproduzível que percorre navegador, Next 
 backend Express e PostgreSQL exclusivo. Execução serial, com fixtures próprias,
 limpeza conferida no final de cada teste, screenshots e traces em falhas.
 
-## Ambiente e comandos
+## Execução
 
-Banco descartável em `127.0.0.1:5434/marketplace_e2e`, usuário
-`marketplace_e2e`, executado em container Postgres 16 com filesystem em tmpfs.
-Backend `127.0.0.1:8100`, Next `localhost:3100` e `.next-e2e`. A proteção
-confere a URL completa permitida antes de importar Prisma ou executar migrations;
-a identidade real de banco e usuário é verificada antes de cada limpeza.
-Nenhum dado de `marketplace_dev`, seed ou produção foi usado.
-
-No `nextjs-frontend`:
-
-```sh
-npx playwright install chromium
-npm run e2e:prepare
-npm run test:e2e
-npm run test:e2e -- --grep "checkout: lost real response"
-npm run e2e:report
-npm run test:e2e:safety
-```
-
-`test:e2e` também prepara a infraestrutura, aplica somente a baseline existente,
-compila o backend, inicia os servidores, aguarda disponibilidade e encerra-os.
-O banco é reutilizado entre execuções, porém todas as tabelas de negócio são
-limpas e verificadas para cada cenário. Um worker evita disputa entre fixtures.
+Pré-requisitos, comandos, isolamento, fixtures, relatórios e recuperação após
+interrupção estão centralizados no [README E2E](nextjs-frontend/e2e/README.md).
 
 ## Evidências
 
-As duas execuções completas tiveram 12 testes cada: 11 aprovados e 1 reprovado
-em ambas. A repetição produziu os mesmos resultados após limpeza integral.
+Após as correções, as duas execuções completas tiveram 12/12 testes aprovados
+cada. A repetição ocorreu após a limpeza das fixtures de cada cenário.
 
 - Auth: login válido CUSTOMER/SELLER, cookie HttpOnly, refresh, logout,
   credenciais inválidas e acesso protegido sem sessão.
 - Catálogo: busca, filtros combinados, contagem, paginação/URL e disponibilidade.
-- Carrinho: inclusão, atualização, valores e estoque insuficiente sem mutação.
+- Carrinho: inclusão, atualização, valores, estoque insuficiente sem mutação e
+  remoção HTTP `204` confirmada com carrinho vazio.
 - Checkout: endereço e snapshot, valores/itens, refresh e recuperação idempotente.
   O POST real foi encaminhado ao backend, seu 201 foi consumido, e a resposta
   somente então foi interrompida antes de chegar ao browser. O retry usou a mesma
   chave/endereço e recebeu replay 200 para o mesmo pedido, sem reservas extras.
 - Pagamento: criação integral pela UI; callback do provider simulado executado
-  via métodos internos existentes; captura/Order confirmadas e persistidas após
-  refresh, sem endpoint público ou sucesso fictício na interface.
+  via métodos internos existentes; após refresh, GET do pedido e da lista de
+  PaymentAttempts retornam `200`, incluindo `CAPTURED`. O banco confirma Order
+  `CONFIRMED`, um único PaymentAttempt e um histórico de confirmação, sem endpoint
+  público de captura ou sucesso fictício na interface.
 - Seller: produtos e inventário, reposição, bloqueio de outro seller e transição
   permitida de SellerOrder.
 - Segurança: guard rejeita marketplace_dev, host externo, porta divergente e
-  parâmetros extras; 1 teste de segurança passou. Typecheck e build passaram;
-  testes existentes de checkout (2), dashboard (6) e proxy (10) passaram.
+  parâmetros extras; teste de segurança passou. Typecheck e build passaram.
+- Proxy Next: 13/13 testes; corpo DELETE vazio encaminhado sem Content-Type,
+  corpo não suportado rejeitado com 415 e JSON inválido com 400.
+- Duas execuções E2E completas: 12/12 em cada rodada.
 
-## Pendência para fechar a etapa
+## Diagnóstico das pendências
 
-O teste de remoção via interface falha consistentemente: backend espera `204`,
-mas o Next BFF responde `415 Unsupported request content type` ao encaminhar o
-DELETE sem corpo. A requisição não remove o item. O comportamento foi mantido
-visível nas duas rodadas; a fase 3.2 permanece em andamento até corrigir e repetir
-a suíte completa. A captura do pagamento é representada por callback interno do
-simulador, pois não existe endpoint HTTP público para captura.
+- DELETE vazio: o stream do request podia existir mesmo sem bytes. O proxy agora
+  verifica se há conteúdo antes de exigir Content-Type, sem descartar corpos
+  DELETE não vazios; o E2E confirmou `204` e remoção persistida.
+- Refresh do pagamento: a demora inicial foi observada durante o arranque e a
+  compilação de rotas do Next dev. O cenário estabilizado passou nas duas
+  rodadas; os GETs do pedido/tentativas foram `200` e o banco confirmou captura
+  e pedido confirmado. Nenhum sleep, retry artificial ou aumento de timeout
+  foi usado.
+- A captura continua sendo simulada pelo fluxo interno existente do provider de
+  desenvolvimento; não há endpoint HTTP público de captura.

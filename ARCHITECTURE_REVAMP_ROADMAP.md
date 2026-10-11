@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 30/09/2026
-Estado atual: **2.6E e 2.8 concluídas; validação integrada final da 2.7 permanece pendente**
+Última atualização: 09/10/2026
+Estado atual: **Fase 3 concluída; 4.1 próxima; validação integrada final da 2.7 permanece pendente**
 
 ## Objetivo
 
@@ -63,7 +63,7 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 - Limpeza confirmada (30/09/2026): removidos cinco arquivos de tipos sem consumidores, o tipo v1 `Product` sem consumidores e `DashboardHeader` abandonado. O menu não aponta mais para Favoritos/Clientes; essas páginas agora explicam que a funcionalidade não está disponível no backend. Redirecionamentos de `/refunds`, `/reviews` e rotas antigas de checkout/pagamento foram preservados. Não foram encontrados fetches de página diretamente ao backend: as chamadas permanecem no cliente HTTP, BFF ou handlers de sessão.
 - Concorrência do dashboard: `nextjs-frontend npm run test:dashboard` passou 6/6. Os seis casos cobrem respostas de períodos fora de ordem, erros/loading obsoletos, dependências de status/página/intervalo, respostas concorrentes do gráfico, refresh que substitui requisições pendentes e invalidação/re-habilitação da consulta.
 - Validação desta revisão da 2.7: type-check, build, `test:dashboard` (6/6) e `test:checkout` (2/2) passaram. A disponibilidade anterior impediu o smoke integrado; a revisão Playwright da 2.8 abaixo confirmou leituras principais nos três papéis, mas não repetiu todas as jornadas mutáveis e limpezas com fixtures. Portanto, a validação integrada completa da 2.7 continua pendente. Também foi observado um link de categoria da home que envia rótulo visual (`Office`) em vez do enum aceito pela API (`OFFICE`); corrigir na fatia de catálogo, fora da consolidação da ponte.
-- [x] 2.8 Consolidar a ponte Next de API: o encaminhamento comum em `lib/server/route-proxy.ts` é usado por handlers dedicados e pela rota dinâmica, que mantém sua allowlist. Testes controlados passaram 10/10 para status/body (incluindo 409 e 204), cookies, JSON, multipart, origem, indisponibilidade, checkout/idempotência e PaymentAttempt/refunds. Type-check, build, `test:checkout` e `test:dashboard` passaram. Playwright local confirmou login por cookie HttpOnly, logout/401 e SELLER/403; CUSTOMER percorreu perfil, catálogo/detalhe/reviews, carrinho, checkout sem envio, pedido com payments/refunds/delivery; SELLER percorreu produtos, inventário, SellerOrders e dashboard; ADMIN recebeu 403 no dashboard seller. Nenhuma fixture ou mutação de domínio foi executada. Um filtro de categoria pela etiqueta visual `Office` retornou 400 por incompatibilidade já existente entre link e enum; a ponte preservou corretamente a resposta. Ver [mapa de integração](FRONTEND_PHASE_2_1_MIGRATION_MAP.md).
+- [x] 2.8 Consolidar a ponte Next de API: o encaminhamento comum em `lib/server/route-proxy.ts` é usado por handlers dedicados e pela rota dinâmica, que mantém sua allowlist. A suíte atual de proxy passa 13/13 para status/body (incluindo 409 e 204), cookies, JSON, corpo vazio, multipart, origem, indisponibilidade, checkout/idempotência e PaymentAttempt/refunds. Type-check, build, `test:checkout` e `test:dashboard` passaram. Playwright local confirmou login por cookie HttpOnly, logout/401 e SELLER/403; CUSTOMER percorreu perfil, catálogo/detalhe/reviews, carrinho, checkout sem envio, pedido com payments/refunds/delivery; SELLER percorreu produtos, inventário, SellerOrders e dashboard; ADMIN recebeu 403 no dashboard seller. Nenhuma fixture ou mutação de domínio foi executada. Um filtro de categoria pela etiqueta visual `Office` retornou 400 por incompatibilidade já existente entre link e enum; a ponte preservou corretamente a resposta. Ver [mapa de integração](FRONTEND_PHASE_2_1_MIGRATION_MAP.md).
 
 **Concluída quando:** as jornadas principais funcionam de ponta a ponta sem depender dos campos e da orquestração v1 no navegador.
 
@@ -80,16 +80,18 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 **Objetivo:** criar uma referência estável de comportamento antes dos experimentos de escala.
 
 - [x] 3.1 Publicar contratos de API OpenAPI 3.0.3 para as rotas de negócio atuais: 53 caminhos e 71 operações; Swagger UI em `/docs` (assets CDN 5.33.1, Try it out e validador remoto desativados), restrito a ambiente não-production; `npm run validate:openapi` validou sintaxe, referências locais, parâmetros e contagem. Build, type-check e `test:db` (12/12) passaram; Playwright confirmou endpoints/schemas visíveis sem executar mutações. Resumo: [Etapa 3.1](STEP_3_1_API_CONTRACTS_SUMMARY.md).
-- [!] 3.2 Infraestrutura Playwright local adicionada e executada duas vezes contra PostgreSQL isolado `marketplace_e2e` (porta 5434), com limpeza verificada por teste. Em cada rodada, 11/12 cenários passaram; o teste de remoção de item do carrinho comprovou que DELETE `/api/cart/items/:productId` retorna 415 (`Unsupported request content type`), sem remover o item. Corrigir o encaminhamento DELETE na ponte antes de fechar 3.2. Auth customer/seller, catálogo/filtros, carrinho/estoque insuficiente, checkout/replay após perda de resposta real, pagamento integral com callback simulado interno e fluxo seller/inventário/transição passaram. Typecheck e build frontend passaram. Resumo: [Etapa 3.2](STEP_3_2_E2E_SUMMARY.md).
-- [ ] 3.3 Definir ambiente de teste reproduzível, dados conhecidos e uma baseline funcional registrada.
+- [x] 3.2 Infraestrutura Playwright local validada em duas rodadas completas (12/12 cada) contra PostgreSQL isolado `marketplace_e2e` (porta 5434), com limpeza confirmada por teste. O proxy encaminha DELETE sem corpo sem exigir Content-Type e preserva 204; o E2E confirma remoção efetiva do item e carrinho vazio. Proxy: 13/13; type-check e build frontend passaram. Pagamento após refresh confirmado por GETs 200, PaymentAttempt CAPTURED, Order CONFIRMED e um único attempt/histórico. A demora observada ocorreu no primeiro arranque/compilação do Next dev e não se reproduziu nas execuções estáveis; nenhum timeout ou sleep foi aumentado. Resumo: [Etapa 3.2](STEP_3_2_E2E_SUMMARY.md).
+- [x] 3.3 Ambiente reproduzível e baseline funcional: E2E executado duas vezes (12/12 em ambas), primeira rodada iniciada com container E2E parado; migrations aplicadas pelo runner, fixtures independentes recriadas/limpas, Next/backend encerrados ao final. Banco de desenvolvimento e produção intocados. Versões, commit-base, fixtures, durações e limites registrados em [baseline E2E](E2E_FUNCTIONAL_BASELINE.md); instruções operacionais centralizadas no [README E2E](nextjs-frontend/e2e/README.md).
 
 **Concluída quando:** mudanças de contrato quebram testes de forma clara e as jornadas prioritárias são reproduzíveis.
+
+**Fechamento da fase 3 (09/10/2026):** contratos OpenAPI e 12 jornadas browser reproduzíveis validados; duas execuções da suíte passaram integralmente. A baseline é funcional, não de desempenho. A pendência transversal da fase 2 sobre validação integrada completa da 2.7 permanece registrada e não foi alterada por este fechamento. Próxima etapa: 4.1.
 
 ## Fase 4 — Dados sintéticos em escala
 
 **Objetivo:** produzir cargas realistas e reproduzíveis sem prejudicar o banco de desenvolvimento cotidiano.
 
-- [ ] 4.1 Definir perfis `small`, `medium` e `large`, contagens, seed aleatória fixa e limites de execução.
+- [~] 4.1 Definir perfis `small`, `medium` e `large`, contagens, seed aleatória fixa e limites de execução.
 - [ ] 4.2 Modelar distribuição desigual de sellers, produtos populares, compras repetidas, carrinhos abandonados, falhas de pagamento, pressão de estoque, entregas, refunds e reviews.
 - [ ] 4.3 Gerar e inserir em lotes; medir duração e volume; validar invariantes e relações depois da carga.
 
@@ -170,4 +172,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 2.7: concluir o smoke integrado das jornadas v2 nos três papéis após iniciar PostgreSQL, backend e frontend locais. A consolidação 2.8 também aguarda smoke de regressão no mesmo ambiente. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 4.1: definir perfis de dados sintéticos, contagens, seed repetível e limites. A pendência transversal da 2.7 continua documentada para validação integrada futura; a baseline 3.3 não a substitui. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.

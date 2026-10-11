@@ -12,6 +12,22 @@ type ProxyOptions = {
 
 const responseHeadersToPreserve = ["Content-Type"] as const;
 
+async function hasRequestContent(request: NextRequest): Promise<boolean> {
+  if (!request.body) return false;
+
+  const reader = request.clone().body?.getReader();
+  if (!reader) return false;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) return false;
+    if (value.byteLength > 0) {
+      void reader.cancel();
+      return true;
+    }
+  }
+}
+
 function backendBaseUrl(): string {
   const value = process.env.BACKEND_API_URL;
   if (!value) {
@@ -78,7 +94,11 @@ async function readRequestBody(
   request: NextRequest,
   headers: Headers,
 ): Promise<BodyInit | undefined | NextResponse> {
-  if (request.body === null || ["GET", "HEAD"].includes(request.method)) {
+  if (["GET", "HEAD"].includes(request.method)) {
+    return undefined;
+  }
+
+  if (!(await hasRequestContent(request))) {
     return undefined;
   }
 

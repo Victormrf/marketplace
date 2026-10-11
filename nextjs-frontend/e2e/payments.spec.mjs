@@ -51,10 +51,38 @@ test("payment: integral UI creation and real simulated callback capture persist"
   await expect(
     page.getByRole("button", { name: "Iniciar tentativa", exact: true }),
   ).toBeDisabled();
+  const reloadResponses = [];
+  const onReloadResponse = (response) => {
+    const path = new URL(response.url()).pathname;
+    const url = new URL(response.url());
+    if (
+      path === `/api/orders/${orderId}` ||
+      (path === `/api/orders/${orderId}/payment-attempts` &&
+        !url.searchParams.has("status"))
+    ) {
+      reloadResponses.push(response);
+    }
+  };
+  page.on("response", onReloadResponse);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "PIX · CAPTURED", exact: true }),
   ).toBeVisible();
+  page.off("response", onReloadResponse);
+  const orderResponse = reloadResponses.find(
+    (response) => new URL(response.url()).pathname === `/api/orders/${orderId}`,
+  );
+  const attemptsResponse = reloadResponses.find((response) =>
+    new URL(response.url()).pathname.endsWith("/payment-attempts"),
+  );
+  expect(orderResponse?.status()).toBe(200);
+  expect(attemptsResponse?.status()).toBe(200);
+  const persistedAttempts = await attemptsResponse.json();
+  expect(persistedAttempts.data).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: attempt.id, status: "CAPTURED" }),
+    ]),
+  );
   await expect(
     page.getByRole("button", { name: "Iniciar tentativa", exact: true }),
   ).toHaveCount(0);
