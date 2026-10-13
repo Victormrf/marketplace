@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 09/10/2026
-Estado atual: **Fase 3 concluída; 4.1 próxima; validação integrada final da 2.7 permanece pendente**
+Última atualização: 11/10/2026
+Estado atual: **Fase 3 concluída; 4.1 concluída; 4.2 próxima; validação integrada final da 2.7 permanece pendente**
 
 ## Objetivo
 
@@ -91,8 +91,8 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 **Objetivo:** produzir cargas realistas e reproduzíveis sem prejudicar o banco de desenvolvimento cotidiano.
 
-- [~] 4.1 Definir perfis `small`, `medium` e `large`, contagens, seed aleatória fixa e limites de execução.
-- [ ] 4.2 Modelar distribuição desigual de sellers, produtos populares, compras repetidas, carrinhos abandonados, falhas de pagamento, pressão de estoque, entregas, refunds e reviews.
+- [x] 4.1 Definir perfis `small`, `medium` e `large`, contagens, seed aleatória fixa e limites de execução. Contagem física corrigida para 29.725/406.150/2.150.650 registros; captura é subconjunto de pagamentos e não é somada de novo. Contabilizados User, CustomerAddress, OrderAddress e IdempotencyKey; apenas adminUsers tem zero explicitamente justificado. `npm run test:scale-profiles` passou 5/5 sem banco. Tamanhos hipotéticos: 0,1/0,75/2,5 GB; 4.3 exige medir `small` antes de autorizar `large`, com teto de 10 GiB, alvo 5 GiB e duração máxima de 30 min. Nenhuma carga ou banco foi acessado. Resumo: `STEP_4_1_SCALE_DATA_PROFILES_SUMMARY.md`.
+- [~] 4.2 Modelar distribuição desigual de sellers, produtos populares, compras repetidas, carrinhos abandonados, falhas de pagamento, pressão de estoque, entregas, refunds e reviews.
 - [ ] 4.3 Gerar e inserir em lotes; medir duração e volume; validar invariantes e relações depois da carga.
 
 **Concluída quando:** o mesmo perfil gera cenários comparáveis, com contagens e tempo de geração documentados.
@@ -172,4 +172,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 4.1: definir perfis de dados sintéticos, contagens, seed repetível e limites. A pendência transversal da 2.7 continua documentada para validação integrada futura; a baseline 3.3 não a substitui. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 4.2: modelar a distribuição dos dados sintéticos respeitando as relações e constraints do schema. A pendência transversal da 2.7 continua documentada para validação integrada futura; a baseline 3.3 não a substitui. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
