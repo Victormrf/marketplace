@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 11/10/2026
-Estado atual: **Fase 3 concluída; 4.1 concluída; 4.2 próxima; validação integrada final da 2.7 permanece pendente**
+Última atualização: 15/10/2026
+Estado atual: **Fase 3 concluída; 4.2 concluída; 4.3 próxima; validação integrada final da 2.7 permanece pendente**
 
 ## Objetivo
 
@@ -91,9 +91,11 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 **Objetivo:** produzir cargas realistas e reproduzíveis sem prejudicar o banco de desenvolvimento cotidiano.
 
-- [x] 4.1 Definir perfis `small`, `medium` e `large`, contagens, seed aleatória fixa e limites de execução. Contagem física corrigida para 29.725/406.150/2.150.650 registros; captura é subconjunto de pagamentos e não é somada de novo. Contabilizados User, CustomerAddress, OrderAddress e IdempotencyKey; apenas adminUsers tem zero explicitamente justificado. `npm run test:scale-profiles` passou 5/5 sem banco. Tamanhos hipotéticos: 0,1/0,75/2,5 GB; 4.3 exige medir `small` antes de autorizar `large`, com teto de 10 GiB, alvo 5 GiB e duração máxima de 30 min. Nenhuma carga ou banco foi acessado. Resumo: `STEP_4_1_SCALE_DATA_PROFILES_SUMMARY.md`.
-- [~] 4.2 Modelar distribuição desigual de sellers, produtos populares, compras repetidas, carrinhos abandonados, falhas de pagamento, pressão de estoque, entregas, refunds e reviews.
-- [ ] 4.3 Gerar e inserir em lotes; medir duração e volume; validar invariantes e relações depois da carga.
+- [x] 4.1 Definir perfis `small`, `medium` e `large`, contagens, seed aleatória fixa e limites de execução. Em 13/10/2026, `npm.cmd run test:scale-profiles` passou 5/5; os testes calculam as contagens físicas por modelo e verificam 29.725/406.150/2.150.650 registros. Captura é subconjunto de pagamentos e não é somada novamente. Contabilizados User, CustomerAddress, OrderAddress e IdempotencyKey; apenas adminUsers tem zero explicitamente justificado. Tamanhos hipotéticos: 0,1/0,75/2,5 GB; 4.3 exige medir `small` antes de autorizar `large`, com teto de 10 GiB, alvo 5 GiB e duração máxima de 30 min. Nenhuma carga ou banco foi acessado. Resumo: `STEP_4_1_SCALE_DATA_PROFILES_SUMMARY.md`.
+- [x] 4.2 Distribuições compartilhadas e cenários relacionados definidos no JSON: sellers/produtos populares, compras repetidas, carrinhos, pagamentos/retries, estoque, entregas, refunds e reviews. Em 15/10/2026, `npm.cmd run test:scale-profiles` passou 5/5 e `npm.cmd run test:scale-distributions` 7/7, sem banco. Entregas/históricos revisados por caminhos de status: totais atuais 30.349/403.330/2.176.580, dentro dos limites. Snapshots históricos de SellerOrder e reservas ACTIVE refletem limites atuais dos services, documentados em `nodejs-backend/docs/SCALE_DATA_DISTRIBUTIONS.md`. Resumo: `STEP_4_2_SCALE_DISTRIBUTIONS_SUMMARY.md`.
+- [~] 4.3 Gerar e inserir em lotes; primeiras cargas exclusivamente `small`. `medium` e `large` exigem autorização posterior, sem avanço automático. Medir duração e volume; validar invariantes e relações depois da carga.
+
+**Requisitos obrigatórios da 4.3:** banco exclusivo `marketplace_scale`, separado de dev/E2E/produção; orçamento total 5–10 GB (dados, índices, WAL, temporários) com margem e interrupção controlada por armazenamento/tempo/registros. Relatar registros por tabela e total, duração e armazenamento antes/depois, distinguindo tamanho do banco de ocupação do ambiente. Identificar container, banco, volume/bind mount, caminho interno e localização no host quando identificável; explicar armazenamento em disco virtual Docker Desktop sem inventar pasta Windows. Limpeza só no destino de escala explicitamente validado, sem reutilizar cleaner E2E. Implementar esses mecanismos na 4.3; detalhes em `nodejs-backend/docs/SCALE_DATA_DISTRIBUTIONS.md`.
 
 **Concluída quando:** o mesmo perfil gera cenários comparáveis, com contagens e tempo de geração documentados.
 
@@ -172,4 +174,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 4.2: modelar a distribuição dos dados sintéticos respeitando as relações e constraints do schema. A pendência transversal da 2.7 continua documentada para validação integrada futura; a baseline 3.3 não a substitui. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 4.3: implementar geração/carga em lotes no ambiente exclusivo de escala, começando somente com `small` e cumprindo os requisitos acima. `medium`/`large` dependem de autorização posterior explícita. A pendência transversal da 2.7 continua documentada para validação integrada futura; a baseline 3.3 não a substitui. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.

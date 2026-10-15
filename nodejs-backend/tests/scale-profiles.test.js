@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { planSellerOrderScenarios } = require("./helpers/scale-planning");
 
 const configPath = path.join(
   __dirname,
@@ -11,6 +12,11 @@ const configPath = path.join(
 );
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 const profileNames = ["small", "medium", "large"];
+const expectedTotals = {
+  small: 30349,
+  medium: 403330,
+  large: 2176580,
+};
 
 function roundedProduct(value, rate) {
   return Math.round(value * rate);
@@ -34,10 +40,7 @@ function estimateProfile(profile) {
     exact.orders,
     derivation.capturedOrdersRate
   );
-  const deliveries = roundedProduct(
-    sellerOrders,
-    derivation.deliveryCoverageRate
-  );
+  const scenarios = planSellerOrderScenarios(profile, config.distributions);
   const inventoryReservations = orderItems;
   const inventoryMovements =
     inventoryReservations +
@@ -68,20 +71,11 @@ function estimateProfile(profile) {
       capturedPaymentAttempts,
       derivation.refundsPerCapturedAttemptAverage
     ),
-    deliveries,
+    deliveries: scenarios.deliveries,
     orderAddresses: exact.orders,
-    orderStatusHistories: roundedProduct(
-      exact.orders,
-      derivation.orderHistoryEntriesPerOrderAverage
-    ),
-    sellerOrderStatusHistories: roundedProduct(
-      sellerOrders,
-      derivation.sellerOrderHistoryEntriesPerSellerOrderAverage
-    ),
-    deliveryStatusHistories: roundedProduct(
-      deliveries,
-      derivation.deliveryHistoryEntriesPerDeliveryAverage
-    ),
+    orderStatusHistories: exact.orders + capturedPaymentAttempts,
+    sellerOrderStatusHistories: scenarios.sellerOrderStatusHistories,
+    deliveryStatusHistories: scenarios.deliveryStatusHistories,
     inventoryReservations,
     inventoryMovements,
     idempotencyKeys: roundedProduct(
@@ -186,13 +180,31 @@ test("keeps counts, relation parameters and derived volumes valid", () => {
         derivation.itemsPerSellerOrderMaximum
     );
     assert.ok(derivation.capturedOrdersRate <= 1);
-    assert.ok(derivation.deliveryCoverageRate <= 1);
+    const scenarioCounts = planSellerOrderScenarios(profile, config.distributions);
+
+    assert.equal(
+      profile.indicators.paidSellerOrders,
+      scenarioCounts.paidSellerOrders
+    );
+    assert.equal(
+      profile.indicators.deliveredSellerOrders,
+      scenarioCounts.quotas.delivered
+    );
 
     const calculated = estimateProfile(profile);
 
     assert.deepEqual(estimated, calculated.estimates, `${name}: estimates`);
     assert.equal(profile.totalRows, calculated.totalRows, `${name}: total rows`);
+    assert.equal(
+      profile.totalRows,
+      expectedTotals[name],
+      `${name}: reviewed total`
+    );
     assert.equal(estimated.users, exact.customers + exact.sellers);
+    assert.equal(
+      profile.indicators.capturedPaymentAttempts,
+      roundedProduct(exact.orders, derivation.capturedOrdersRate)
+    );
     assert.equal(profile.notGenerated.adminUsers.count, 0);
     assert.ok(profile.notGenerated.adminUsers.reason.length > 0);
     assert.equal(estimated.orderAddresses, exact.orders);
@@ -229,7 +241,9 @@ test("keeps counts, relation parameters and derived volumes valid", () => {
     );
     assert.ok(estimated.sellerOrders <= exact.orders * exact.sellers);
     assert.ok(estimated.orderItems >= estimated.sellerOrders);
-    assert.ok(profile.indicators.capturedPaymentAttempts <= estimated.paymentAttempts);
+    assert.ok(
+      profile.indicators.capturedPaymentAttempts <= estimated.paymentAttempts
+    );
     assert.ok(estimated.refunds <= profile.indicators.capturedPaymentAttempts);
     assert.ok(estimated.deliveries <= estimated.sellerOrders);
     assert.ok(estimated.productReviews <= exact.customers * exact.products);

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "randomSeed": 410401,
   "baseDateUtc": "2026-01-01T00:00:00.000Z",
   "executionPolicy": {
@@ -12,7 +12,10 @@
     "hardStorageLimitBytes": 10737418240,
     "largeRequiresSmallMeasurement": true,
     "largeRequiresExplicitApproval": true,
-    "storeImageReferencesOnly": true
+    "storeImageReferencesOnly": true,
+    "firstLoadProfile": "small",
+    "mediumRequiresExplicitApproval": true,
+    "automaticProfileAdvance": false
   },
   "profiles": {
     "small": {
@@ -35,10 +38,6 @@
         "paymentAttemptsPerOrderAverage": 1.15,
         "capturedOrdersRate": 0.7,
         "refundsPerCapturedAttemptAverage": 0.15,
-        "deliveryCoverageRate": 0.8,
-        "orderHistoryEntriesPerOrderAverage": 2,
-        "sellerOrderHistoryEntriesPerSellerOrderAverage": 2,
-        "deliveryHistoryEntriesPerDeliveryAverage": 3,
         "additionalInventoryMovementsPerProduct": 5,
         "idempotencyKeysPerOrder": 1
       },
@@ -53,17 +52,19 @@
         "sellerReviews": 100,
         "paymentAttempts": 1150,
         "refunds": 105,
-        "deliveries": 1120,
+        "deliveries": 784,
         "orderAddresses": 1000,
-        "orderStatusHistories": 2000,
-        "sellerOrderStatusHistories": 2800,
-        "deliveryStatusHistories": 3360,
+        "orderStatusHistories": 1700,
+        "sellerOrderStatusHistories": 4106,
+        "deliveryStatusHistories": 3314,
         "inventoryReservations": 3500,
         "inventoryMovements": 6000,
         "idempotencyKeys": 1000
       },
       "indicators": {
-        "capturedPaymentAttempts": 700
+        "capturedPaymentAttempts": 700,
+        "paidSellerOrders": 980,
+        "deliveredSellerOrders": 343
       },
       "notGenerated": {
         "adminUsers": {
@@ -71,7 +72,7 @@
           "reason": "Perfis administrativos são operacionais e não participam dos cenários de escala do marketplace."
         }
       },
-      "totalRows": 29725,
+      "totalRows": 30349,
       "limits": {
         "maxRecords": 50000,
         "maxDurationMs": 300000,
@@ -98,10 +99,6 @@
         "paymentAttemptsPerOrderAverage": 1.25,
         "capturedOrdersRate": 0.75,
         "refundsPerCapturedAttemptAverage": 0.18,
-        "deliveryCoverageRate": 0.8,
-        "orderHistoryEntriesPerOrderAverage": 2.2,
-        "sellerOrderHistoryEntriesPerSellerOrderAverage": 2.5,
-        "deliveryHistoryEntriesPerDeliveryAverage": 3.5,
         "additionalInventoryMovementsPerProduct": 8,
         "idempotencyKeysPerOrder": 1
       },
@@ -116,17 +113,19 @@
         "sellerReviews": 1200,
         "paymentAttempts": 12500,
         "refunds": 1350,
-        "deliveries": 12800,
+        "deliveries": 9600,
         "orderAddresses": 10000,
-        "orderStatusHistories": 22000,
-        "sellerOrderStatusHistories": 40000,
-        "deliveryStatusHistories": 44800,
+        "orderStatusHistories": 17500,
+        "sellerOrderStatusHistories": 49120,
+        "deliveryStatusHistories": 40560,
         "inventoryReservations": 56000,
         "inventoryMovements": 96000,
         "idempotencyKeys": 10000
       },
       "indicators": {
-        "capturedPaymentAttempts": 7500
+        "capturedPaymentAttempts": 7500,
+        "paidSellerOrders": 12000,
+        "deliveredSellerOrders": 4200
       },
       "notGenerated": {
         "adminUsers": {
@@ -134,7 +133,7 @@
           "reason": "Perfis administrativos são operacionais e não participam dos cenários de escala do marketplace."
         }
       },
-      "totalRows": 406150,
+      "totalRows": 403330,
       "limits": {
         "maxRecords": 500000,
         "maxDurationMs": 900000,
@@ -161,10 +160,6 @@
         "paymentAttemptsPerOrderAverage": 1.3,
         "capturedOrdersRate": 0.8,
         "refundsPerCapturedAttemptAverage": 0.2,
-        "deliveryCoverageRate": 0.75,
-        "orderHistoryEntriesPerOrderAverage": 2.5,
-        "sellerOrderHistoryEntriesPerSellerOrderAverage": 2.5,
-        "deliveryHistoryEntriesPerDeliveryAverage": 3.5,
         "additionalInventoryMovementsPerProduct": 8,
         "idempotencyKeysPerOrder": 1
       },
@@ -179,17 +174,19 @@
         "sellerReviews": 5000,
         "paymentAttempts": 65000,
         "refunds": 8000,
-        "deliveries": 67500,
+        "deliveries": 57600,
         "orderAddresses": 50000,
-        "orderStatusHistories": 125000,
-        "sellerOrderStatusHistories": 225000,
-        "deliveryStatusHistories": 236250,
+        "orderStatusHistories": 90000,
+        "sellerOrderStatusHistories": 288720,
+        "deliveryStatusHistories": 243360,
         "inventoryReservations": 315000,
         "inventoryMovements": 475000,
         "idempotencyKeys": 50000
       },
       "indicators": {
-        "capturedPaymentAttempts": 40000
+        "capturedPaymentAttempts": 40000,
+        "paidSellerOrders": 72000,
+        "deliveredSellerOrders": 25200
       },
       "notGenerated": {
         "adminUsers": {
@@ -197,12 +194,341 @@
           "reason": "Perfis administrativos são operacionais e não participam dos cenários de escala do marketplace."
         }
       },
-      "totalRows": 2150650,
+      "totalRows": 2176580,
       "limits": {
         "maxRecords": 2500000,
         "maxDurationMs": 1800000,
         "estimatedStorageGbHypothesis": 2.5
       }
+    }
+  },
+  "distributions": {
+    "rounding": {
+      "categories": "largest-remainder",
+      "ties": "declaration-order",
+      "averages": "nearest-integer",
+      "groups": "ceil-at-least-one"
+    },
+    "sellerConcentration": {
+      "base": "sellers",
+      "leadingSellerFraction": 0.2,
+      "productShare": 0.6,
+      "sellerOrderShare": 0.6
+    },
+    "productPopularity": {
+      "base": "products-per-seller",
+      "popularFraction": 0.1,
+      "orderItemShare": 0.7
+    },
+    "customerPurchases": {
+      "base": "customers",
+      "finalCategories": {
+        "never": 0.1,
+        "single": 0.3,
+        "repeat": 0.6
+      },
+      "allocation": "one-order-per-single-remaining-orders-to-repeat"
+    },
+    "carts": {
+      "base": "carts",
+      "finalStates": {
+        "ACTIVE": 0.6,
+        "ABANDONED": 0.4,
+        "CONVERTED": 0
+      }
+    },
+    "orders": {
+      "base": "orders",
+      "paidFractionParameter": "capturedOrdersRate",
+      "paymentPaths": {
+        "CREATED": [
+          "CREATED"
+        ],
+        "PROCESSING": [
+          "CREATED",
+          "PROCESSING"
+        ],
+        "AUTHORIZED": [
+          "CREATED",
+          "PROCESSING",
+          "AUTHORIZED"
+        ],
+        "CAPTURED": [
+          "CREATED",
+          "PROCESSING",
+          "AUTHORIZED",
+          "CAPTURED"
+        ],
+        "FAILED": [
+          "CREATED",
+          "PROCESSING",
+          "FAILED"
+        ],
+        "CANCELLED": [
+          "CREATED",
+          "CANCELLED"
+        ]
+      },
+      "scenarios": {
+        "paid": {
+          "orderPath": [
+            "PENDING_PAYMENT",
+            "CONFIRMED"
+          ],
+          "paymentPath": [
+            "CREATED",
+            "PROCESSING",
+            "AUTHORIZED",
+            "CAPTURED"
+          ],
+          "reservationStatus": "ACTIVE"
+        },
+        "unpaid": {
+          "orderPath": [
+            "PENDING_PAYMENT"
+          ],
+          "sellerOrderPath": [
+            "PENDING"
+          ],
+          "reservationStatus": "ACTIVE",
+          "paymentFinalStates": {
+            "CREATED": 0.4,
+            "PROCESSING": 0.2,
+            "AUTHORIZED": 0.2,
+            "FAILED": 0.1,
+            "CANCELLED": 0.1
+          }
+        }
+      }
+    },
+    "sellerOrders": {
+      "base": "paidSellerOrders",
+      "allocation": "same-seller-orders-average-for-paid-and-unpaid",
+      "scenarios": {
+        "awaitingPreparation": {
+          "share": 0.2,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED"
+          ],
+          "deliveryPath": []
+        },
+        "separated": {
+          "share": 0.1,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED",
+            "PROCESSING"
+          ],
+          "deliveryPath": [
+            "SEPARATED"
+          ]
+        },
+        "processing": {
+          "share": 0.1,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED",
+            "PROCESSING"
+          ],
+          "deliveryPath": [
+            "SEPARATED",
+            "PROCESSING"
+          ]
+        },
+        "shipped": {
+          "share": 0.1,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED",
+            "PROCESSING",
+            "SHIPPED"
+          ],
+          "deliveryPath": [
+            "SEPARATED",
+            "PROCESSING",
+            "SHIPPED"
+          ]
+        },
+        "collected": {
+          "share": 0.05,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED",
+            "PROCESSING",
+            "SHIPPED"
+          ],
+          "deliveryPath": [
+            "SEPARATED",
+            "PROCESSING",
+            "SHIPPED",
+            "COLLECTED"
+          ]
+        },
+        "atCenter": {
+          "share": 0.05,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED",
+            "PROCESSING",
+            "SHIPPED"
+          ],
+          "deliveryPath": [
+            "SEPARATED",
+            "PROCESSING",
+            "SHIPPED",
+            "COLLECTED",
+            "ARRIVED_AT_CENTER"
+          ]
+        },
+        "delivered": {
+          "share": 0.35,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED",
+            "PROCESSING",
+            "SHIPPED",
+            "DELIVERED"
+          ],
+          "deliveryPath": [
+            "SEPARATED",
+            "PROCESSING",
+            "SHIPPED",
+            "COLLECTED",
+            "ARRIVED_AT_CENTER",
+            "DELIVERED"
+          ]
+        },
+        "deliveryFailed": {
+          "share": 0.03,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED",
+            "PROCESSING"
+          ],
+          "deliveryPath": [
+            "SEPARATED",
+            "PROCESSING",
+            "FAILED"
+          ]
+        },
+        "returned": {
+          "share": 0.02,
+          "sellerOrderPath": [
+            "PENDING",
+            "CONFIRMED",
+            "PROCESSING",
+            "SHIPPED",
+            "DELIVERED",
+            "RETURNED"
+          ],
+          "deliveryPath": [
+            "SEPARATED",
+            "PROCESSING",
+            "SHIPPED",
+            "COLLECTED",
+            "ARRIVED_AT_CENTER",
+            "DELIVERED",
+            "RETURNED"
+          ]
+        }
+      }
+    },
+    "events": {
+      "paymentRetries": {
+        "base": "extraPaymentAttempts",
+        "count": "paymentAttempts-minus-orders",
+        "eligibleOrderScenario": "paid",
+        "maximumPerOrder": 1,
+        "priorAttemptFinalStates": {
+          "FAILED": 0.8,
+          "CANCELLED": 0.2
+        }
+      },
+      "checkoutReplay": {
+        "base": "orders",
+        "probability": 0.1,
+        "additionalPhysicalRows": 0
+      }
+    },
+    "inventory": {
+      "base": "products",
+      "finalCategories": {
+        "outOfStock": 0.1,
+        "lowStock": 0.15,
+        "reserved": 0.3,
+        "available": 0.45
+      },
+      "lowStockAvailableRange": [
+        1,
+        3
+      ],
+      "reservedAvailableRange": [
+        0,
+        3
+      ],
+      "availableMinimum": 4,
+      "purchaseEligibleCategory": "reserved",
+      "reservationStatus": "ACTIVE",
+      "reservationQuantityRange": [
+        1,
+        3
+      ],
+      "additionalMovementTypes": [
+        "RESTOCK",
+        "MANUAL_CORRECTION"
+      ]
+    },
+    "refunds": {
+      "base": "capturedPaymentAttempts",
+      "countParameter": "refundsPerCapturedAttemptAverage",
+      "maximumPerPayment": 2,
+      "maximumAmountFractionPerRefund": 0.25,
+      "finalStates": {
+        "REQUESTED": 0.1,
+        "PROCESSING": 0.1,
+        "COMPLETED": 0.6,
+        "DECLINED": 0.1,
+        "FAILED": 0.1
+      }
+    },
+    "reviews": {
+      "base": "deliveredSellerOrders",
+      "countBase": "orders",
+      "productCountParameter": "productReviewsPerOrderAverage",
+      "sellerCountParameter": "sellerReviewsPerOrderAverage",
+      "ratings": {
+        "1": 0.05,
+        "2": 0.1,
+        "3": 0.15,
+        "4": 0.3,
+        "5": 0.4
+      },
+      "eligibleSellerOrderStatus": "DELIVERED"
+    },
+    "chronology": {
+      "base": "baseDateUtc",
+      "windowDays": 365,
+      "minimumEventGapSeconds": 60,
+      "deliveryFirstStageHours": 4,
+      "deliveryFollowingStageHours": 24
+    },
+    "relationships": {
+      "distinctSellerPerOrder": true,
+      "productSellerMatchesSellerOrder": true,
+      "snapshotTotalsInCents": true,
+      "fullPaymentPerAttempt": true,
+      "maximumActivePaymentsPerOrder": 1,
+      "maximumCapturedPaymentsPerOrder": 1,
+      "refundsOnlyAfterCapture": true,
+      "maximumDeliveryPerSellerOrder": 1,
+      "reviewExactlyOneTarget": true,
+      "uniqueReviewPerAuthorAndTarget": true,
+      "maximumActiveCartPerCustomer": 1,
+      "maximumDefaultAddressPerCustomer": 1,
+      "automaticOrderSellerOrderDeliverySync": false,
+      "automaticReservationCommitOrRelease": false,
+      "historicalSellerOrderSnapshots": true
     }
   }
 }
