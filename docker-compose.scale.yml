@@ -1,0 +1,43 @@
+name: marketplace-scale
+
+services:
+  postgres-scale:
+    image: postgres:16-alpine
+    container_name: marketplace-scale-postgres
+    labels:
+      com.marketplace.environment: scale-v1
+    environment:
+      POSTGRES_DB: marketplace_scale
+      POSTGRES_USER: marketplace_scale
+      POSTGRES_PASSWORD: scale_local_only
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - marketplace_scale_data:/var/lib/postgresql/data
+      - ./nodejs-backend/scripts/scale/bootstrap.sql:/docker-entrypoint-initdb.d/scale.sql:ro
+    command:
+      - postgres
+      - -c
+      - max_wal_size=256MB
+      - -c
+      - min_wal_size=80MB
+      - -c
+      - temp_file_limit=128MB
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U marketplace_scale -d marketplace_scale"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  marketplace_scale_data:
+    name: marketplace_scale_data
+    labels:
+      com.marketplace.environment: scale-v1
