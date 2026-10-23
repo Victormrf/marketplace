@@ -113,6 +113,7 @@ async function prepare() {
   const host = hostStorage();
   if (host.windowsFreeBytes < 3 * 1024 ** 3)
     throw new Error("Insufficient Windows space to provision scale");
+  console.log(JSON.stringify({ provisioningTarget: TARGET, host }, null, 2));
   console.log(
     command("docker", [
       "compose",
@@ -251,7 +252,10 @@ async function load(db, options) {
 
               await db.$transaction(
                 async (tx) => {
-                  await tx[model].createMany({ data: batch });
+                  const inserted = await tx[model].createMany({ data: batch });
+                  if (inserted.count !== batch.length) {
+                    throw new Error(`Incomplete batch for ${table}`);
+                  }
                   await database.saveReport(tx, next);
                 },
                 { timeout: 20000 },
@@ -281,6 +285,14 @@ async function load(db, options) {
             durationMs: Date.now() - started,
             finishedAt: new Date().toISOString(),
             storageAfter: after,
+            storagePeakBytes: Math.max(
+              report.storagePeakBytes,
+              after.postgresDirectoryBytes,
+            ),
+            minimumWindowsFreeBytes: Math.min(
+              report.minimumWindowsFreeBytes,
+              after.windowsFreeBytes,
+            ),
             invariants: verified.checked,
           };
           await database.saveReport(db, report, "completed");

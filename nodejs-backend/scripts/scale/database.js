@@ -110,7 +110,9 @@ async function status(db) {
 }
 
 function effectiveState(persistedState, active) {
-  return persistedState === "loading" && !active ? "interrupted" : persistedState;
+  return persistedState === "loading" && !active
+    ? "interrupted"
+    : persistedState;
 }
 
 async function purge(db) {

@@ -15,7 +15,11 @@ const {
   auditPlan,
   checkoutDto,
 } = require("../scripts/scale/records");
-const { assertReady, exclusive } = require("../scripts/scale/database");
+const {
+  assertReady,
+  exclusive,
+  effectiveState,
+} = require("../scripts/scale/database");
 const { BATCH_SIZE, batches, parseArguments } = require("../scripts/scale/cli");
 
 test("destination guards reject dev, E2E, remote, wrong identity and extra URL parameters", () => {
@@ -54,6 +58,16 @@ test("a consumed, interrupted or nonempty state cannot authorize another load", 
   }
 
   assert.throws(() => assertReady({ state: "ready" }, { user: 1 }));
+});
+
+test("an abrupt stop leaves authorization consumed and reports interruption", () => {
+  assert.equal(effectiveState("loading", false), "interrupted");
+  assert.equal(effectiveState("loading", true), "loading");
+  assert.equal(effectiveState("completed", false), "completed");
+  assert.throws(() => assertReady({ state: "loading" }, { user: 0 }));
+  assert.throws(() =>
+    assertReady({ state: effectiveState("loading", false) }, { user: 0 }),
+  );
 });
 
 test("load and purge use the same exclusive PostgreSQL lock contract", async () => {

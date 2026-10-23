@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "tool": { "name": "k6", "version": "1.3.0", "image": "grafana/k6:1.3.0" },
+  "apiUrl": "http://127.0.0.1:8051",
+  "profile": "small",
+  "dashboardRange": { "from": "2026-01-01", "to": "2026-11-30" },
+  "http": { "timeoutSeconds": 10, "thinkSeconds": 1, "automaticRetries": 0 },
+  "stages": {
+    "smoke": { "vus": 1, "operations": 5, "maxDurationSeconds": 30 },
+    "low": { "vus": 2, "operations": 40, "maxDurationSeconds": 90 },
+    "gradual": { "vus": 5, "operations": 100, "maxDurationSeconds": 180 }
+  },
+  "writeStages": {
+    "smoke": { "vus": 1, "operations": 2, "maxDurationSeconds": 30 },
+    "low": { "vus": 2, "operations": 10, "maxDurationSeconds": 90 },
+    "gradual": { "vus": 4, "operations": 20, "maxDurationSeconds": 180 }
+  },
+  "hypotheses": { "p95Ms": 1000, "p99Ms": 2000, "unexpectedRate": 0.01 },
+  "stopPolicy": {
+    "sampleSeconds": 5,
+    "hostCpuPercent": 85,
+    "cpuSustainedSeconds": 15,
+    "minimumAvailableMemoryBytes": 2147483648,
+    "maximumDbConnections": 20,
+    "lockWaitSeconds": 10,
+    "firstUnexpectedWriteResultStops": true
+  },
+  "fixtures": {
+    "maxCustomersPerRound": 20,
+    "maxProductsPerRound": 21,
+    "writesEnabled": false
+  },
+  "scenarios": {
+    "catalog": {
+      "mode": "read",
+      "requestsPerOperation": 1,
+      "paths": ["GET /products"],
+      "successStatuses": [200]
+    },
+    "product": {
+      "mode": "read",
+      "requestsPerOperation": 1,
+      "paths": ["GET /products/:productIds"],
+      "successStatuses": [200]
+    },
+    "cart": {
+      "mode": "write",
+      "requestsPerOperation": 2,
+      "paths": ["POST /cart/items", "PUT /cart/items/:productId"],
+      "successStatuses": [201, 200]
+    },
+    "checkout": {
+      "mode": "write",
+      "requestsPerOperation": 1,
+      "paths": ["POST /checkout"],
+      "successStatuses": [201],
+      "expectedConflicts": ["Cart stock is insufficient"]
+    },
+    "idempotency": {
+      "mode": "write",
+      "requestsPerOperation": 1,
+      "paths": ["POST /checkout"],
+      "successStatuses": [200, 201],
+      "expectedConflicts": ["Idempotency key is processing"]
+    },
+    "payment": {
+      "mode": "write",
+      "requestsPerOperation": 1,
+      "paths": ["POST /orders/:orderId/payment-attempts"],
+      "successStatuses": [201],
+      "expectedConflicts": [
+        "Order already has an active or captured payment attempt"
+      ]
+    },
+    "dashboard": {
+      "mode": "read",
+      "requestsPerOperation": 8,
+      "paths": [
+        "GET /dashboard/seller/summary",
+        "GET /dashboard/seller/orders",
+        "GET /dashboard/seller/orders/by-status",
+        "GET /dashboard/seller/sales/timeseries",
+        "GET /dashboard/seller/sales/by-category",
+        "GET /dashboard/seller/products/top",
+        "GET /dashboard/seller/customers/new",
+        "GET /dashboard/seller/ratings"
+      ],
+      "successStatuses": [200]
+    }
+  }
+}
