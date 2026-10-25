@@ -59,7 +59,13 @@ test("seven scenarios have finite HTTP budgets and conservative stages", () => {
     plan.scenarios.dashboard.requestsPerOperation,
     plan.scenarios.dashboard.paths.length,
   );
+  assert.equal(plan.stopPolicy.minimumStartAvailableMemoryBytes, 2 * 1024 ** 3);
   assert.equal(plan.stopPolicy.minimumAvailableMemoryBytes, 2 * 1024 ** 3);
+  assert.equal(
+    plan.readSmokeMemory.minimumStartAvailableMemoryBytes,
+    1.25 * 1024 ** 3,
+  );
+  assert.equal(plan.readSmokeMemory.minimumAvailableMemoryBytes, 1024 ** 3);
 });
 
 test("all write scenarios are blocked and read operation caps include dashboard fan-out", async () => {
@@ -218,13 +224,43 @@ test("script operations use only bounded GETs with normalized tags and no login 
   for (const scenario of ["catalog", "product", "dashboard"]) {
     const calls = [];
     const sample = manifest();
+    const request =
+      scenario === "catalog"
+        ? {
+            path: "/products?page=1&limit=20",
+            tag: "catalog/all",
+            expected: { data: [], pagination: { total: 0 } },
+          }
+        : scenario === "product"
+          ? {
+              path: "/products/p0",
+              tag: "product/popular",
+              expected: { id: "p0", priceInCents: 100, currency: "BRL" },
+            }
+          : {
+              path: "/dashboard/seller/summary",
+              tag: "dashboard/high/summary",
+              sellerIndex: 0,
+              expected: { grossRevenueInCents: 0, currency: "BRL" },
+            };
     const metric = class {
       add() {}
     };
     const context = vm.createContext({
       ...imported,
-      __ENV: { SCENARIO: scenario, AUTHORIZE_READ: "marketplace_scale-small" },
-      open: (file) => JSON.stringify(file === "./plan.json" ? plan : sample),
+      __ENV: {
+        SCENARIO: scenario,
+        AUTHORIZE_READ: "marketplace_scale-small",
+        SUPERVISED_READ: "verified-local-run",
+      },
+      open: (file) =>
+        JSON.stringify(
+          file === "./plan.json"
+            ? plan
+            : file === "./.local/read-oracle.json"
+              ? [request]
+              : sample,
+        ),
       Counter: metric,
       Rate: metric,
       sleep: () => {},
@@ -250,7 +286,11 @@ test("script operations use only bounded GETs with normalized tags and no login 
       },
     });
     vm.runInContext(`${source}\nrun();`, context);
-    assert.equal(calls.length, plan.scenarios[scenario].requestsPerOperation);
+    assert.equal(
+      calls.length,
+      1,
+      "Each measured iteration targets a single endpoint/variant",
+    );
     for (const call of calls) {
       assert.ok(call.url.startsWith(plan.apiUrl));
       assert.equal(call.params.timeout, "10s");

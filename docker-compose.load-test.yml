@@ -1,0 +1,49 @@
+name: marketplace-load-fixtures
+services:
+  postgres-load-test:
+    image: postgres:16-alpine
+    container_name: marketplace-load-test-postgres
+    labels:
+      com.marketplace.environment: load-fixture-test-v1
+    environment:
+      POSTGRES_DB: marketplace_load_test
+      POSTGRES_USER: marketplace_load_test
+      POSTGRES_PASSWORD: load_fixture_test_only
+    ports:
+      - "127.0.0.1:5436:5432"
+    volumes:
+      - marketplace_load_fixture_test_data:/var/lib/postgresql/data
+      - ./nodejs-backend/load/fixture-bootstrap.sql:/docker-entrypoint-initdb.d/fixtures.sql:ro
+    command:
+      [
+        "postgres",
+        "-c",
+        "shared_buffers=16MB",
+        "-c",
+        "max_connections=20",
+        "-c",
+        "min_wal_size=32MB",
+        "-c",
+        "max_wal_size=64MB",
+        "-c",
+        "temp_file_limit=16MB",
+      ]
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U marketplace_load_test -d marketplace_load_test",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  marketplace_load_fixture_test_data:
+    name: marketplace_load_fixture_test_data
+    labels:
+      com.marketplace.environment: load-fixture-test-v1

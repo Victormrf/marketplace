@@ -7,12 +7,16 @@ import {
   assertManifest,
   classifyResult,
   selectRun,
+  containsExpected,
 } from "./rules.mjs";
 
 const plan = JSON.parse(open("./plan.json"));
-if (__ENV.AUTHORIZE_READ !== "marketplace_scale-small") {
+if (
+  __ENV.AUTHORIZE_READ !== "marketplace_scale-small" ||
+  __ENV.SUPERVISED_READ !== "verified-local-run"
+) {
   throw new Error(
-    "Explicit AUTHORIZE_READ=marketplace_scale-small is required; do not run in 5.1",
+    "Use the supervised load:read runner; direct unsupervised execution is disabled",
   );
 }
 const scenario = __ENV.SCENARIO || "catalog";
@@ -21,6 +25,10 @@ const limits = selectRun(plan, scenario, stage);
 const api = assertApiUrl(__ENV.API_URL || plan.apiUrl);
 const manifest = JSON.parse(open("./.local/read-manifest.json"));
 assertManifest(manifest);
+const prepared = JSON.parse(open("./.local/read-oracle.json"));
+if (!Array.isArray(prepared) || prepared.length < 1 || prepared.length > 5) {
+  throw new Error("Missing or invalid bounded SQL oracle");
+}
 
 const unexpected = new Rate("unexpected_results");
 const business = new Counter("business_results");
@@ -79,57 +87,13 @@ function get(path, name, cookie, valid) {
 
 export default function () {
   const iteration = exec.scenario.iterationInTest;
-  const product = manifest.products[iteration % manifest.products.length];
-  if (scenario === "catalog") {
-    const queries = [
-      "page=1&limit=20",
-      `search=Scale&sellerId=${encodeURIComponent(product.sellerId)}&category=${product.category}&inStock=true&page=1&limit=5`,
-      `search=Scale&sellerId=${encodeURIComponent(product.sellerId)}&category=${product.category}&inStock=true&page=2&limit=5`,
-      "inStock=false&page=1&limit=20",
-    ];
-    get(
-      `/products?${queries[iteration % queries.length]}`,
-      "catalog/list",
-      null,
-      (body) => {
-        return (
-          Array.isArray(body?.data) && Number.isInteger(body.pagination?.total)
-        );
-      },
-    );
-  } else if (scenario === "product") {
-    get(`/products/${product.id}`, "product/detail", null, (body) => {
-      return (
-        body?.id === product.id &&
-        Number.isInteger(body.priceInCents) &&
-        body.currency === "BRL"
-      );
-    });
-  } else if (scenario === "dashboard") {
-    const seller = manifest.sellers[iteration % manifest.sellers.length];
-    const range = `from=${plan.dashboardRange.from}&to=${plan.dashboardRange.to}`;
-    for (const definition of plan.scenarios.dashboard.paths) {
-      const path = definition.slice(4);
-      const extra = path.endsWith("/orders")
-        ? "&page=1&limit=20&status=DELIVERED"
-        : "";
-      get(`${path}?${range}${extra}`, path, seller.cookie, (body) => {
-        if (path.endsWith("/summary")) {
-          return (
-            Number.isInteger(body?.grossRevenueInCents) &&
-            body.currency === "BRL"
-          );
-        }
-        if (path.endsWith("/ratings")) {
-          return (
-            Number.isInteger(body?.totalReviews) && body.distribution != null
-          );
-        }
-        return path.endsWith("/orders")
-          ? Array.isArray(body?.data)
-          : Array.isArray(body);
-      });
-    }
-  }
+  const request = prepared[iteration % prepared.length];
+  const cookie =
+    request.sellerIndex === undefined
+      ? null
+      : manifest.sellers[request.sellerIndex].cookie;
+  get(request.path, request.tag, cookie, (body) =>
+    containsExpected(body, request.expected),
+  );
   sleep(plan.http.thinkSeconds);
 }

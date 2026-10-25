@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 23/10/2026
-Estado atual: **Fases 3 e 4 concluídas; 5.1 concluída; 5.2 próxima; validação integrada final da 2.7 permanece pendente**
+Última atualização: 25/10/2026
+Estado atual: **Fases 3 e 4 concluídas; 5.1 concluída; 5.2 parcial: smokes de leitura aprovados e recuperação de fixtures testada; baixa/gradual e escritas reais aguardam autorização; validação integrada final da 2.7 permanece pendente**
 
 ## Objetivo
 
@@ -104,7 +104,7 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 **Objetivo:** localizar gargalos com números antes de otimizar.
 
 - [x] 5.1 Planejamento validado em 23/10/2026: k6 1.3.0 local, API compilada exclusiva 8051 sobre marketplace_scale small, sete cenários com quotas/timeout/retry/resultados explícitos. Runner-base GET e descoberta/sessões separadas preparados; escritas bloqueadas até fixtures/recuperação próprias na 5.2. Testes estáticos 8/8 e regressões 4.x 20/20, sem banco, sessões, carga ou purge. Progressão manual: leitura 1/2/5 VUs e 5/40/100 operações; escrita futura 1/2/4 VUs e 2/10/20 operações, teto 30/90/180 s. Não é baseline executada. Antes da 5.2: verificar k6/recursos (RAM livre observada abaixo de 2 GiB), preparar supervisão de recursos/oráculos e testar recuperação experimental. Plano: `nodejs-backend/docs/LOAD_TEST_PLAN.md`; resumo: `STEP_5_1_LOAD_TEST_PLANNING_SUMMARY.md`.
-- [ ] 5.2 Medir throughput, latências p50/p95/p99, erros, conexões, CPU/memória e consultas lentas; registrar tamanho do dataset e concorrência.
+- [~] 5.2 Atualização de 25/10/2026: 21 smokes adicionais de leitura (1 VU × 5 GETs = 105 requests), todos corretos pelo oráculo: busca, filtros/páginas, indisponíveis, produtos populares e oito endpoints do dashboard separados para sellers high/low. Somam-se aos dois smokes gerais anteriores, sem misturar rodadas. Observador revisado: stream Docker/IPC/SQL periódico, custo máximo 380,645 ms versus 7,381 s anterior; detalhadas antes/depois fora da janela. RAM mínima 1,225 GiB nas rodadas aprovadas; pico CPU amostrado 97,504%, sem evidência de sustentação por 15 s. Relaxamento 1,25 GiB inicial/1 GiB durante vale APENAS read/smoke; demais mantêm 2 GiB e novo aceite. Falha inicial do parser e recusa por memória foram registradas; busca repetida somente com autorização explícita. Small completed, 30.349 registros, hashes das 22 tabelas e 18 invariantes preservados, sem geração/purge. Fixtures exclusivas marketplace_load_test:5436, manifesto persistente e recuperação transacional: 12/12 testes reais aprovados; cinco cenários de escrita preparados com HTTP simulado (11/11), bloqueados para escala. Plano 8/8, supervisor 17/17, parser 2/2, regressões 4.x 20/20, typecheck/build aprovados. Baixa/gradual e cenários reais de escrita permanecem pendentes; não fechar 5.2 nem iniciar 5.3. Evidências: `STEP_5_2_LOAD_BASELINE_SUMMARY.md` e `nodejs-backend/docs/LOAD_BASELINE_REPORT.md`.
 - [ ] 5.3 Produzir um relatório curto com os principais gargalos e hipóteses para a fase seguinte.
 
 **Concluída quando:** existe uma execução reproduzível que permita comparar antes e depois de cada ajuste.
@@ -174,4 +174,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 5.2: executar a progressão conservadora do plano de carga sobre small, somente após instalar/verificar k6, confirmar recursos suficientes, preparar supervisão/oráculos e implementar/testar fixtures/recuperação antes das escritas. Não gerar dados nem fazer purge automaticamente; `medium`/`large` dependem de autorização posterior explícita. A pendência transversal da 2.7 continua documentada para validação integrada futura; a baseline 3.3 não a substitui. A conectividade de `BACKEND_API_URL` em produção segue como verificação de deploy na fase 11; SSR autenticado está adiado até uma tela justificar sua implementação.
+Fase 5.2: solicitar autorização para UMA rodada de catálogo geral low, 2 VUs/40 GETs, pausa 1 s, timeout 10 s, teto 90 s, RAM >=2 GiB antes e durante, mantendo CPU/disco/conexões/locks; sem retry, escritas ou avanço automático. Os smokes de leitura estão aprovados; picos amostrados de CPU e percentis com cinco operações ainda exigem cautela. Recuperação de fixtures validada somente em marketplace_load_test; execução real sobre escala requer aceite posterior e adaptação explícita do destino/transporte/supervisão. Não gerar dados nem fazer purge; medium/large seguem reservados. A pendência transversal da 2.7 permanece; baseline 3.3 não a substitui. BACKEND_API_URL em produção segue como verificação de deploy na fase 11; SSR autenticado adiado até uma tela justificar.

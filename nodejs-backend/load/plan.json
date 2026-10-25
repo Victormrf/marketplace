@@ -3,6 +3,11 @@
   "tool": { "name": "k6", "version": "1.3.0", "image": "grafana/k6:1.3.0" },
   "apiUrl": "http://127.0.0.1:8051",
   "profile": "small",
+  "currentAuthorization": {
+    "readScenarios": ["catalog", "product", "dashboard"],
+    "stages": ["smoke"],
+    "automaticAdvance": false
+  },
   "dashboardRange": { "from": "2026-01-01", "to": "2026-11-30" },
   "http": { "timeoutSeconds": 10, "thinkSeconds": 1, "automaticRetries": 0 },
   "stages": {
@@ -20,10 +25,15 @@
     "sampleSeconds": 5,
     "hostCpuPercent": 85,
     "cpuSustainedSeconds": 15,
+    "minimumStartAvailableMemoryBytes": 2147483648,
     "minimumAvailableMemoryBytes": 2147483648,
     "maximumDbConnections": 20,
     "lockWaitSeconds": 10,
     "firstUnexpectedWriteResultStops": true
+  },
+  "readSmokeMemory": {
+    "minimumStartAvailableMemoryBytes": 1342177280,
+    "minimumAvailableMemoryBytes": 1073741824
   },
   "fixtures": {
     "maxCustomersPerRound": 20,

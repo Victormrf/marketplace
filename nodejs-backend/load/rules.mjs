@@ -16,6 +16,20 @@ export function selectRun(plan, scenario, stage) {
   };
 }
 
+export function assertAuthorizedRead(plan, scenario, variant, stage) {
+  const allowed = plan.currentAuthorization;
+  if (
+    !allowed ||
+    allowed.automaticAdvance !== false ||
+    !allowed.readScenarios.includes(scenario) ||
+    !allowed.stages.includes(stage)
+  ) {
+    throw new Error(
+      "Only read smokes are currently authorized; low, gradual and writes require new approval",
+    );
+  }
+}
+
 export function assertApiUrl(value) {
   if (value !== "http://127.0.0.1:8051") {
     throw new Error(
@@ -23,6 +37,13 @@ export function assertApiUrl(value) {
     );
   }
   return value;
+}
+
+export function memoryPolicy(plan, scenario, stage) {
+  if (stage === "smoke" && plan.scenarios[scenario]?.mode === "read") {
+    return { ...plan.stopPolicy, ...plan.readSmokeMemory };
+  }
+  return { ...plan.stopPolicy };
 }
 
 export function classifyResult(plan, scenario, status, body) {
@@ -59,4 +80,26 @@ export function assertManifest(manifest, now = Date.now()) {
       "Missing, invalid or expired read/session manifest; prepare it again",
     );
   }
+}
+
+// SQL oracles specify the relevant public fields; unexpected extra DTO fields
+// are not performance failures, but every expected field and array position is checked.
+export function containsExpected(actual, expected) {
+  if (expected === null || typeof expected !== "object") {
+    return actual === expected;
+  }
+  if (Array.isArray(expected)) {
+    return (
+      Array.isArray(actual) &&
+      actual.length === expected.length &&
+      expected.every((value, index) => containsExpected(actual[index], value))
+    );
+  }
+  return (
+    actual !== null &&
+    typeof actual === "object" &&
+    Object.entries(expected).every(([key, value]) =>
+      containsExpected(actual[key], value),
+    )
+  );
 }

@@ -13,6 +13,7 @@ const {
 } = require("../scripts/scale/environment");
 const { config } = require("../scripts/scale/planner");
 const plan = require("./plan.json");
+const { assertMemory, processSample } = require("./supervisor");
 const BACKEND = path.resolve(__dirname, "..");
 
 function machine() {
@@ -40,7 +41,8 @@ function assertBaseline(control) {
   }
 }
 
-async function preflight(db) {
+async function preflight(db, policy) {
+  assertMemory(undefined, policy);
   inspectContainer();
   const control = await database.identify(db);
   assertBaseline(control);
@@ -52,27 +54,24 @@ async function preflight(db) {
       );
     }
   }
+  const storageSnapshot = await measureStorage(db);
   assertBudget(
-    await measureStorage(db),
+    storageSnapshot,
     config.executionPolicy,
     config.profiles.small.limits,
     0,
     0,
     0,
   );
-  if (os.freemem() < plan.stopPolicy.minimumAvailableMemoryBytes) {
-    throw new Error(
-      "Less than 2 GiB host memory available; postpone the experiment",
-    );
-  }
-  return control;
+  assertMemory(undefined, policy);
+  return { ...control, storageSnapshot };
 }
 
 async function prepareReadManifest(db, control) {
   const discovered = await db.$transaction(async (tx) => {
     await tx.$executeRaw`SET TRANSACTION READ ONLY`;
     const products = await tx.$queryRaw`
-      SELECT p.id, p."sellerId", p.category, count(oi.id)::integer AS "historicalLines"
+      SELECT p.id, p.name, p."sellerId", p.category, count(oi.id)::integer AS "historicalLines"
       FROM product p LEFT JOIN order_item oi ON oi."productId"=p.id
       WHERE p."isActive"=true
       GROUP BY p.id ORDER BY count(oi.id) DESC,p.id ASC LIMIT 5
@@ -160,18 +159,55 @@ function serve() {
     CLOUDINARY_API_KEY: "scale-disabled",
     CLOUDINARY_API_SECRET: "scale-disabled",
   };
-  const child = spawn(process.execPath, [entry], {
-    cwd: BACKEND,
-    env,
-    stdio: "inherit",
-    windowsHide: true,
-  });
+  const child = spawn(
+    process.execPath,
+    [path.join(__dirname, "api-entry.js")],
+    {
+      cwd: BACKEND,
+      env,
+      stdio: ["inherit", "inherit", "inherit", "ipc"],
+      windowsHide: true,
+    },
+  );
   const stop = () => child.kill("SIGINT");
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
   child.on("error", (error) => {
     console.error(error.message);
     process.exitCode = 1;
+  });
+  child.on("message", (message) => {
+    try {
+      if (
+        !["ready", "metrics"].includes(message.type) ||
+        message.metrics?.pid !== child.pid
+      ) {
+        return;
+      }
+      const directory = path.join(__dirname, ".local");
+      fs.mkdirSync(directory, { recursive: true });
+      const temporary = path.join(directory, "api-metrics.tmp");
+      fs.writeFileSync(temporary, JSON.stringify(message.metrics));
+      fs.renameSync(temporary, path.join(directory, "api-metrics.json"));
+      if (message.type !== "ready") {
+        return;
+      }
+      const identity = processSample(child.pid);
+      fs.writeFileSync(
+        path.join(directory, "api-process.json"),
+        JSON.stringify({
+          pid: identity.pid,
+          startedAt: identity.startedAt,
+        }),
+      );
+      console.log(
+        "Dedicated compiled API ready on 127.0.0.1:8051; IPC metrics active.",
+      );
+    } catch (error) {
+      child.kill("SIGINT");
+      console.error(error.message);
+      process.exitCode = 1;
+    }
   });
   child.on("exit", (code) => {
     process.off("SIGINT", stop);
@@ -204,9 +240,14 @@ async function main() {
     );
   }
   assertTarget(process.env.SCALE_DATABASE_URL || DEFAULT_URL);
+  const { memoryPolicy } = await import("./rules.mjs");
+  const policy = process.argv.includes("--read-smoke")
+    ? memoryPolicy(plan, "catalog", "smoke")
+    : plan.stopPolicy;
+  assertMemory(undefined, policy);
   const db = database.client();
   try {
-    const control = await preflight(db);
+    const control = await preflight(db, policy);
     if (operation === "sessions") {
       await prepareReadManifest(db, control);
     }
@@ -225,4 +266,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { assertBaseline, machine };
+module.exports = { assertBaseline, machine, preflight };
