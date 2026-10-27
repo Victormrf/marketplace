@@ -4,7 +4,6 @@ const assert = require("node:assert/strict");
 const target = require("./fixture-db");
 const { TABLES } = require("../scripts/scale/records");
 const { fingerprint, fingerprintRows } = require("./fingerprint");
-const LOCK = 5521052;
 const SCENARIOS = [
   "cart",
   "checkout-shared",
@@ -17,7 +16,7 @@ const password = bcrypt.hashSync(
   "$2b$06$C6UzMDM.H6dfI/f/IKcEe.",
 );
 
-function planFixture(scenario, participants) {
+function planFixture(scenario, participants, reference = false) {
   if (
     !SCENARIOS.includes(scenario) ||
     !Number.isInteger(participants) ||
@@ -39,7 +38,9 @@ function planFixture(scenario, participants) {
       scenario === "cart"
         ? 4
         : scenario === "checkout-shared"
-          ? 2
+          ? reference
+            ? 1
+            : 2
           : scenario === "payment"
             ? 2
             : 1,
@@ -47,6 +48,7 @@ function planFixture(scenario, participants) {
   return {
     namespace,
     scenario,
+    reference,
     requestedOperations: participants,
     participants: count,
     at: new Date().toISOString(),
@@ -83,22 +85,29 @@ function address(customer) {
 }
 
 async function lock(db, operation) {
-  await target.identify(db); // Hard-coded test-only environment, including SQL/container markers.
+  target.assertWrite(db);
+  await target.identify(db);
+  const key = target.descriptor(db).lockKey;
   return db.$transaction(
     async (tx) => {
       const [row] =
-        await tx.$queryRaw`SELECT pg_try_advisory_xact_lock(${LOCK}::bigint) AS acquired`;
+        await tx.$queryRaw`SELECT pg_try_advisory_xact_lock(${key}::bigint) AS acquired`;
       if (!row.acquired) {
         throw new Error("Another fixture preparation/run/recovery is active");
       }
       return operation();
     },
-    { timeout: 60000 },
+    { timeout: 300000 },
   );
 }
 
 async function status(db) {
   await target.identify(db);
+  const [table] =
+    await db.$queryRaw`SELECT to_regclass('scale_ops.load_experiments')::text AS name`;
+  if (!table.name) {
+    return { state: "UNINITIALIZED" };
+  }
   const [row] =
     await db.$queryRaw`SELECT * FROM scale_ops.load_experiments WHERE singleton=true`;
   return row;
@@ -309,7 +318,7 @@ async function seed(db, manifest, hooks) {
             reservedDelta: 1,
             onHandAfter: product.onHand,
             reservedAfter: 1,
-            createdAt: at,
+            createdAt: new Date(at.getTime() + 1),
           },
         });
         await tx.inventory.update({
@@ -323,18 +332,31 @@ async function seed(db, manifest, hooks) {
 }
 
 async function prepare(db, scenario, participants, hooks = {}) {
+  const reference = target.descriptor(db).reference;
+  target.assertReference(db, scenario, participants, reference);
   return lock(db, async () => {
     const previous = await status(db);
-    if (!["EMPTY", "RECOVERED"].includes(previous.state)) {
+    if (!["EMPTY", "RECOVERED", "UNINITIALIZED"].includes(previous.state)) {
       throw new Error(
         "Previous fixture is not reconciled/recovered; refusing preparation",
       );
     }
-    const manifest = planFixture(scenario, participants);
+    await target.guardStorage(db);
+    const invariants = await target.baselineInvariants(db);
+    if (previous.state === "UNINITIALIZED") {
+      await target.ensureControl(db);
+    }
+    const manifest = planFixture(scenario, participants, reference);
+    manifest.environment = target.descriptor(db).mode;
+    manifest.baselineInvariants = invariants.checked;
     const baseline = await fingerprint(db);
-    await save(db, "PREPARING", manifest, baseline);
+    await db.$transaction(async (tx) => {
+      await target.claimReference(db, tx, manifest);
+      await save(tx, "PREPARING", manifest, baseline);
+    });
     try {
       await seed(db, manifest, hooks);
+      await target.currentInvariants(db);
       await save(db, "READY", manifest, baseline);
       return manifest;
     } catch (error) {
@@ -678,6 +700,12 @@ async function recover(db, acknowledgement, hooks = {}) {
     if (["EMPTY", "RECOVERED"].includes(control.state)) {
       throw new Error("No recoverable fixture");
     }
+    target.assertReference(
+      db,
+      control.manifest.scenario,
+      control.manifest.requestedOperations,
+      control.manifest.reference,
+    );
     return db.$transaction(
       async (tx) => {
         const [sessions] =
@@ -710,6 +738,7 @@ async function recover(db, acknowledgement, hooks = {}) {
           control.baseline,
           "Historical signature did not recover",
         );
+        const invariants = await target.baselineInvariants(db, tx);
         await save(
           tx,
           "RECOVERED",
@@ -717,7 +746,12 @@ async function recover(db, acknowledgement, hooks = {}) {
           control.baseline,
           effects,
         );
-        return { state: "RECOVERED", effects, baselineIntact: true };
+        return {
+          state: "RECOVERED",
+          effects,
+          baselineIntact: true,
+          invariants,
+        };
       },
       { timeout: 30000, isolationLevel: "Serializable" },
     );
@@ -727,16 +761,42 @@ async function recover(db, acknowledgement, hooks = {}) {
 async function runTest(db, operation) {
   return lock(db, async () => {
     const control = await status(db);
-    if (control.state !== "READY") {
+    if (control.state !== "READY" || control.effects?.execution) {
       throw new Error("Fixture is not ready for an explicit test run");
     }
+    target.assertReference(
+      db,
+      control.manifest.scenario,
+      control.manifest.requestedOperations,
+      control.manifest.reference,
+    );
     await save(db, "RUNNING", control.manifest, control.baseline);
     try {
       const result = await operation(control.manifest);
       const observed = await db.$transaction((tx) =>
         graph(tx, control.manifest),
       );
-      await save(db, "READY", control.manifest, control.baseline, observed);
+      await db.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+          const excluded = Object.fromEntries(
+            TABLES.map(([model, table]) => [table, observed[model]]),
+          );
+          assert.deepEqual(
+            await fingerprintRows(tx, excluded),
+            control.baseline,
+            "Historical rows changed during experiment",
+          );
+        },
+        { timeout: 30000, isolationLevel: "RepeatableRead" },
+      );
+      await save(db, "READY", control.manifest, control.baseline, {
+        ...observed,
+        execution: {
+          completedAt: new Date().toISOString(),
+          result: "completed",
+        },
+      });
       return result;
     } catch (error) {
       try {

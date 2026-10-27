@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 25/10/2026
-Estado atual: **Fases 3 e 4 concluídas; 5.1 concluída; 5.2 parcial: smokes de leitura aprovados e recuperação de fixtures testada; baixa/gradual e escritas reais aguardam autorização; validação integrada final da 2.7 permanece pendente**
+Última atualização: 26/10/2026
+Estado atual: **Fases 3, 4 e 5 concluídas, fase 5 no escopo exploratório reduzido aprovado; próxima 6.1; pendências transversais preservadas**
 
 ## Objetivo
 
@@ -104,16 +104,18 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 **Objetivo:** localizar gargalos com números antes de otimizar.
 
 - [x] 5.1 Planejamento validado em 23/10/2026: k6 1.3.0 local, API compilada exclusiva 8051 sobre marketplace_scale small, sete cenários com quotas/timeout/retry/resultados explícitos. Runner-base GET e descoberta/sessões separadas preparados; escritas bloqueadas até fixtures/recuperação próprias na 5.2. Testes estáticos 8/8 e regressões 4.x 20/20, sem banco, sessões, carga ou purge. Progressão manual: leitura 1/2/5 VUs e 5/40/100 operações; escrita futura 1/2/4 VUs e 2/10/20 operações, teto 30/90/180 s. Não é baseline executada. Antes da 5.2: verificar k6/recursos (RAM livre observada abaixo de 2 GiB), preparar supervisão de recursos/oráculos e testar recuperação experimental. Plano: `nodejs-backend/docs/LOAD_TEST_PLAN.md`; resumo: `STEP_5_1_LOAD_TEST_PLANNING_SUMMARY.md`.
-- [~] 5.2 Atualização de 25/10/2026: 21 smokes adicionais de leitura (1 VU × 5 GETs = 105 requests), todos corretos pelo oráculo: busca, filtros/páginas, indisponíveis, produtos populares e oito endpoints do dashboard separados para sellers high/low. Somam-se aos dois smokes gerais anteriores, sem misturar rodadas. Observador revisado: stream Docker/IPC/SQL periódico, custo máximo 380,645 ms versus 7,381 s anterior; detalhadas antes/depois fora da janela. RAM mínima 1,225 GiB nas rodadas aprovadas; pico CPU amostrado 97,504%, sem evidência de sustentação por 15 s. Relaxamento 1,25 GiB inicial/1 GiB durante vale APENAS read/smoke; demais mantêm 2 GiB e novo aceite. Falha inicial do parser e recusa por memória foram registradas; busca repetida somente com autorização explícita. Small completed, 30.349 registros, hashes das 22 tabelas e 18 invariantes preservados, sem geração/purge. Fixtures exclusivas marketplace_load_test:5436, manifesto persistente e recuperação transacional: 12/12 testes reais aprovados; cinco cenários de escrita preparados com HTTP simulado (11/11), bloqueados para escala. Plano 8/8, supervisor 17/17, parser 2/2, regressões 4.x 20/20, typecheck/build aprovados. Baixa/gradual e cenários reais de escrita permanecem pendentes; não fechar 5.2 nem iniciar 5.3. Evidências: `STEP_5_2_LOAD_BASELINE_SUMMARY.md` e `nodejs-backend/docs/LOAD_BASELINE_REPORT.md`.
-- [ ] 5.3 Produzir um relatório curto com os principais gargalos e hipóteses para a fase seguinte.
+- [x] 5.2 Concluída em 26/10/2026 no escopo mínimo aprovado: quatro experimentos reais uma vez cada em marketplace_scale small/API compilada 8051, Node HTTP. Produto e summary: cinco GETs corretos cada, medianas 12,240/11,789 ms. Checkout compartilhado: duas chamadas sobrepostas, um pedido e um 409 de estoque; idempotência: uma criação e um replay integralmente idêntico, efeitos únicos. Recuperação explícita após cada escrita: hashes das 22 tabelas, 30.349 registros e 18 invariantes preservados, manifesto RECOVERED, sem fixtures restantes. Usuário autorizou retirada do piso de RAM apenas reference; mínima medida 4,013 GiB, CPU/disco/duração preservados. 28 testes puros nesta entrega, build/typecheck aprovados; três testes PostgreSQL dedicados da entrega anterior preservados. Perfil suspenso, tickets consumidos, API/container próprios encerrados. Relatório/plano/resumo atualizados; sem novos cenários, geração, purge ou alterações de negócio/schema. Valores exploratórios locais, sem conclusão de capacidade.
+- [x] 5.3 Análise curta concluída em 26/10/2026: números conferidos nos quatro agregados Node HTTP e artefatos finais da 5.2; resultados observados, hipótese e limitações separados. Produto/summary com cinco respostas válidas e medianas 12,24/11,79 ms; checkouts sem estoque excedente/duplicação e recuperação dos 30.349 registros/18 invariantes. Matriz de reutilização futura definida sem novas cargas, banco, fixtures, otimizações ou reativação de autorizações. Ver [análise](nodejs-backend/docs/LOAD_BASELINE_ANALYSIS.md) e [resumo da 5.3](STEP_5_3_LOAD_BASELINE_ANALYSIS_SUMMARY.md).
 
 **Concluída quando:** existe uma execução reproduzível que permita comparar antes e depois de cada ajuste.
+
+**Fechamento da fase 5 (26/10/2026):** concluída no escopo exploratório reduzido aprovado: quatro experimentos reais, oráculos, integridade/recuperação e análise documentados. Não comprova capacidade de produção, concorrência sustentada ou um gargalo específico. Medições Node separadas das antigas do k6; exceção de RAM restrita à execução autorizada, sem extensão futura. Perfis suspensos e tickets consumidos preservados; cenários adicionais exigem pergunta e autorização próprias. Próxima 6.1; pendências transversais mantidas.
 
 ## Fase 6 — Observabilidade
 
 **Objetivo:** entender cada requisição e job durante falhas e testes de carga.
 
-- [ ] 6.1 Adicionar logs estruturados e request/correlation ID, com cuidado para não registrar segredos.
+- [~] 6.1 Adicionar logs estruturados e request/correlation ID, com cuidado para não registrar segredos. Próxima etapa; implementação ainda não iniciada.
 - [ ] 6.2 Instrumentar métricas HTTP, PostgreSQL, filas/jobs e indicadores de negócio relevantes.
 - [ ] 6.3 Adicionar tracing, health/readiness checks e painéis locais; repetir um cenário da baseline para verificar a visibilidade.
 
@@ -174,4 +176,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Fase 5.2: solicitar autorização para UMA rodada de catálogo geral low, 2 VUs/40 GETs, pausa 1 s, timeout 10 s, teto 90 s, RAM >=2 GiB antes e durante, mantendo CPU/disco/conexões/locks; sem retry, escritas ou avanço automático. Os smokes de leitura estão aprovados; picos amostrados de CPU e percentis com cinco operações ainda exigem cautela. Recuperação de fixtures validada somente em marketplace_load_test; execução real sobre escala requer aceite posterior e adaptação explícita do destino/transporte/supervisão. Não gerar dados nem fazer purge; medium/large seguem reservados. A pendência transversal da 2.7 permanece; baseline 3.3 não a substitui. BACKEND_API_URL em produção segue como verificação de deploy na fase 11; SSR autenticado adiado até uma tela justificar.
+Etapa 6.1 — logs estruturados e request/correlation ID, sem registrar segredos. A fase 5 foi concluída no escopo exploratório reduzido aprovado; usar a análise da 5.3 como referência para futuras comparações, sem executar automaticamente novas cargas, repetir tickets ou estender a exceção de RAM. Operação/evidências em LOAD_TEST_PLAN.md e LOAD_BASELINE_REPORT.md; interpretação em LOAD_BASELINE_ANALYSIS.md. Pendência transversal 2.7, recuperação de reviews próprias e verificação BACKEND_API_URL em produção na fase 11 preservadas; SSR autenticado continua adiado.

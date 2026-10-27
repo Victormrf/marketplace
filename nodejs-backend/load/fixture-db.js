@@ -3,6 +3,12 @@ const { spawnSync } = require("node:child_process");
 const { PrismaClient } = require("@prisma/client");
 const { command, hostStorage } = require("../scripts/scale/environment");
 const { assertMemory } = require("./supervisor");
+const scale = require("../scripts/scale/environment");
+const scaleDatabase = require("../scripts/scale/database");
+const { config } = require("../scripts/scale/planner");
+const { validate } = require("../scripts/scale/validate");
+const contexts = new WeakMap();
+const SCALE_CONFIRMATION = `${scale.TARGET.confirmation}:fixtures`;
 const TARGET = Object.freeze({
   database: "marketplace_load_test",
   user: "marketplace_load_test",
@@ -34,15 +40,206 @@ function assertTestTarget(raw) {
   return raw;
 }
 
-function client() {
-  const raw = assertTestTarget(process.env.LOAD_FIXTURE_DATABASE_URL || URL);
-  return new PrismaClient({
+function client(options = {}) {
+  const mode = options.mode || "fixture-test";
+  if (!["fixture-test", "scale"].includes(mode)) {
+    throw new Error("Unknown fixture environment");
+  }
+  if (mode === "scale" && options.confirmation !== SCALE_CONFIRMATION) {
+    throw new Error("Explicit scale fixtures confirmation required");
+  }
+  const raw =
+    mode === "scale"
+      ? scale.assertTarget(process.env.SCALE_DATABASE_URL || scale.DEFAULT_URL)
+      : assertTestTarget(process.env.LOAD_FIXTURE_DATABASE_URL || URL);
+  const db = new PrismaClient({
     datasources: {
       db: {
         url: `${raw}?connection_limit=4&pool_timeout=5&application_name=load-fixture-controller`,
       },
     },
   });
+  contexts.set(db, {
+    mode,
+    confirmation: options.confirmation,
+    reference: options.reference === true,
+  });
+  return db;
+}
+
+function context(db) {
+  return contexts.get(db) || { mode: "fixture-test" };
+}
+
+function assertWrite(db) {
+  if (
+    context(db).reference &&
+    !require("./plan.json").reducedBaseline.enabled
+  ) {
+    throw new Error(
+      "Reference experiments are suspended pending an environment decision",
+    );
+  }
+  if (
+    context(db).mode === "scale" &&
+    !require("./plan.json").fixtures.writesEnabled &&
+    !context(db).reference
+  ) {
+    throw new Error(
+      "Scale fixture writes are administratively disabled pending explicit authorization",
+    );
+  }
+  if (
+    context(db).mode === "scale" &&
+    context(db).confirmation !== SCALE_CONFIRMATION
+  ) {
+    throw new Error("Scale fixture writes require explicit confirmation");
+  }
+  assertMemory(undefined, policy(db));
+}
+
+function policy(db) {
+  const plan = require("./plan.json");
+  return context(db).reference
+    ? {
+        ...plan.stopPolicy,
+        minimumStartAvailableMemoryBytes:
+          plan.reducedBaseline.minimumStartAvailableMemoryBytes,
+        minimumAvailableMemoryBytes:
+          plan.reducedBaseline.minimumAvailableMemoryBytes,
+      }
+    : plan.stopPolicy;
+}
+
+function assertReference(db, scenario, operations, reference) {
+  if (!context(db).reference) {
+    return;
+  }
+  const plan = require("./plan.json");
+  if (
+    !plan.reducedBaseline.enabled ||
+    !reference ||
+    operations !== 2 ||
+    !plan.reducedBaseline.writeScenarios.includes(scenario)
+  ) {
+    throw new Error(
+      "Only the two authorized reference checkouts are permitted",
+    );
+  }
+}
+
+async function claimReference(db, tx, manifest) {
+  if (!context(db).reference || context(db).mode !== "scale") {
+    return;
+  }
+  await tx.$executeRaw`CREATE TABLE IF NOT EXISTS scale_ops.reference_authorizations (
+    id text PRIMARY KEY, namespace text NOT NULL UNIQUE, consumed_at timestamptz NOT NULL DEFAULT now()
+  )`;
+  const id = `${require("./plan.json").reducedBaseline.id}:${manifest.scenario}`;
+  const changed =
+    await tx.$executeRaw`INSERT INTO scale_ops.reference_authorizations (id,namespace)
+    VALUES (${id},${manifest.namespace}) ON CONFLICT (id) DO NOTHING`;
+  if (changed !== 1) {
+    throw new Error(
+      "Reference experiment already consumed; no repeat is allowed",
+    );
+  }
+}
+
+function descriptor(db) {
+  const description =
+    context(db).mode === "scale"
+      ? {
+          mode: "scale",
+          apiUrl: "http://127.0.0.1:8051",
+          container: scale.TARGET.container,
+          dataPath: "/var/lib/postgresql/data/pgdata",
+          lockKey: 49314301,
+        }
+      : {
+          mode: "fixture-test",
+          apiUrl: "http://127.0.0.1:8052",
+          container: TARGET.container,
+          dataPath: "/var/lib/postgresql/data",
+          lockKey: 5521052,
+        };
+  return { ...description, reference: context(db).reference === true };
+}
+
+function apiEnvironment(db) {
+  const mode = context(db).mode;
+  const raw =
+    mode === "scale"
+      ? scale.assertTarget(process.env.SCALE_DATABASE_URL || scale.DEFAULT_URL)
+      : assertTestTarget(process.env.LOAD_FIXTURE_DATABASE_URL || URL);
+  return {
+    PORT: mode === "scale" ? "8051" : "8052",
+    DATABASE_URL: `${raw}?connection_limit=5&pool_timeout=10&application_name=load-fixture-api`,
+  };
+}
+
+async function storage(db) {
+  await identify(db);
+  if (context(db).mode === "scale") {
+    return scale.measureStorage(db);
+  }
+  const [row] =
+    await db.$queryRaw`SELECT pg_database_size(current_database())::float8 AS "databaseBytes"`;
+  const sizes = command("docker", [
+    "exec",
+    TARGET.container,
+    "sh",
+    "-c",
+    "du -sk /var/lib/postgresql/data; du -sk /var/lib/postgresql/data/pg_wal",
+  ])
+    .split(/\r?\n/)
+    .map((line) => Number(line.split(/\s+/)[0]) * 1024);
+  if (sizes.length !== 2 || sizes.some((size) => !Number.isFinite(size))) {
+    throw new Error("Fixture storage measurements unavailable");
+  }
+  return {
+    ...hostStorage(),
+    databaseBytes: row.databaseBytes,
+    postgresDirectoryBytes: sizes[0],
+    walDirectoryBytes: sizes[1],
+    writableLayerBytes: 1024 * 1024,
+    boundedLogBytes: 10 * 1024 * 1024,
+  };
+}
+
+async function guardStorage(db) {
+  const snapshot = await storage(db);
+  scale.assertBudget(
+    snapshot,
+    config.executionPolicy,
+    config.profiles.small.limits,
+    0,
+    500,
+    0,
+  );
+  return snapshot;
+}
+
+async function baselineInvariants(db, transaction = db) {
+  const control = await identify(db);
+  return context(db).mode === "scale"
+    ? validate(transaction, control.report.inserted, config.baseDateUtc)
+    : validate(transaction);
+}
+
+async function ensureControl(db) {
+  assertWrite(db);
+  await db.$executeRaw`CREATE TABLE IF NOT EXISTS scale_ops.load_experiments (
+    singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+    namespace text,
+    state text NOT NULL CHECK (state IN ('EMPTY','PREPARING','READY','RUNNING','UNKNOWN','RECOVERED')),
+    manifest jsonb NOT NULL DEFAULT '{}'::jsonb,
+    baseline jsonb NOT NULL DEFAULT '{}'::jsonb,
+    effects jsonb NOT NULL DEFAULT '{}'::jsonb,
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`;
+  await db.$executeRaw`INSERT INTO scale_ops.load_experiments (state)
+    VALUES ('EMPTY') ON CONFLICT (singleton) DO NOTHING`;
 }
 
 function containerIdentity(requireRunning = true) {
@@ -64,6 +261,19 @@ function containerIdentity(requireRunning = true) {
 }
 
 async function identify(db) {
+  if (context(db).mode === "scale") {
+    scale.assertTarget(process.env.SCALE_DATABASE_URL || scale.DEFAULT_URL);
+    scale.inspectContainer();
+    const control = await scaleDatabase.identify(db);
+    if (
+      control.state !== "completed" ||
+      control.report?.profile !== "small" ||
+      control.report.insertedTotal !== config.profiles.small.totalRows
+    ) {
+      throw new Error("Completed small scale environment required");
+    }
+    return control;
+  }
   assertTestTarget(process.env.LOAD_FIXTURE_DATABASE_URL || URL);
   containerIdentity();
   const [row] =
@@ -81,7 +291,18 @@ async function identify(db) {
 
 async function prepareTestEnvironment() {
   const url = assertTestTarget(process.env.LOAD_FIXTURE_DATABASE_URL || URL);
-  assertMemory(); // Test writes do not inherit the read-smoke relaxation.
+  const reference = process.argv.includes("--reference");
+  const plan = require("./plan.json");
+  assertMemory(
+    undefined,
+    reference
+      ? {
+          ...plan.stopPolicy,
+          minimumStartAvailableMemoryBytes:
+            plan.reducedBaseline.minimumStartAvailableMemoryBytes,
+        }
+      : plan.stopPolicy,
+  );
   if (hostStorage().windowsFreeBytes < 3 * 1024 ** 3) {
     throw new Error(
       "Insufficient Windows storage for the dedicated fixture tests",
@@ -168,4 +389,15 @@ module.exports = {
   identify,
   assertTestTarget,
   prepareTestEnvironment,
+  descriptor,
+  assertWrite,
+  guardStorage,
+  baselineInvariants,
+  currentInvariants: validate,
+  ensureControl,
+  SCALE_CONFIRMATION,
+  apiEnvironment,
+  policy,
+  assertReference,
+  claimReference,
 };

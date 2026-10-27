@@ -1,6 +1,7 @@
 export function selectRun(plan, scenario, stage) {
   const entry = plan.scenarios[scenario];
-  const limits = plan.stages[stage];
+  const limits =
+    stage === "reference" ? plan.reducedBaseline.read : plan.stages[stage];
 
   if (!entry || !limits) {
     throw new Error("Unknown scenario or stage");
@@ -12,12 +13,32 @@ export function selectRun(plan, scenario, stage) {
   }
   return {
     ...limits,
-    maxRequests: limits.operations * entry.requestsPerOperation,
+    maxRequests:
+      stage === "reference"
+        ? limits.operations
+        : limits.operations * entry.requestsPerOperation,
   };
 }
 
-export function assertAuthorizedRead(plan, scenario, variant, stage) {
+export function assertAuthorizedRead(plan, scenario, variant, stage, endpoint) {
   const allowed = plan.currentAuthorization;
+  const single = allowed?.singleReads?.find(
+    (item) =>
+      item.scenario === scenario &&
+      item.variant === variant &&
+      item.stage === stage &&
+      item.endpoint === endpoint,
+  );
+  if (
+    allowed?.automaticAdvance === false &&
+    single?.scenario === scenario &&
+    single.variant === variant &&
+    single.stage === stage &&
+    (stage !== "reference" || plan.reducedBaseline.enabled) &&
+    /^[a-zA-Z0-9.-]+$/.test(single.id)
+  ) {
+    return single.id;
+  }
   if (
     !allowed ||
     allowed.automaticAdvance !== false ||
@@ -25,7 +46,7 @@ export function assertAuthorizedRead(plan, scenario, variant, stage) {
     !allowed.stages.includes(stage)
   ) {
     throw new Error(
-      "Only read smokes are currently authorized; low, gradual and writes require new approval",
+      "Read round is not explicitly authorized; no automatic advance is allowed",
     );
   }
 }
@@ -40,6 +61,21 @@ export function assertApiUrl(value) {
 }
 
 export function memoryPolicy(plan, scenario, stage) {
+  if (
+    stage === "reference" &&
+    plan.reducedBaseline.enabled &&
+    ["product", "dashboard", ...plan.reducedBaseline.writeScenarios].includes(
+      scenario,
+    )
+  ) {
+    return {
+      ...plan.stopPolicy,
+      minimumStartAvailableMemoryBytes:
+        plan.reducedBaseline.minimumStartAvailableMemoryBytes,
+      minimumAvailableMemoryBytes:
+        plan.reducedBaseline.minimumAvailableMemoryBytes,
+    };
+  }
   if (stage === "smoke" && plan.scenarios[scenario]?.mode === "read") {
     return { ...plan.stopPolicy, ...plan.readSmokeMemory };
   }

@@ -17,6 +17,49 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const GIB = 1024 ** 3;
 
+test("a read authorization is consumed atomically and cannot be repeated", () => {
+  const directory = fs.mkdtempSync(
+    path.join(require("node:os").tmpdir(), "load-read-permit-"),
+  );
+  const { consumeReadAuthorization } = require("../load/run-read");
+  try {
+    consumeReadAuthorization(directory, "unit-catalog-low", "round-one");
+    assert.throws(() =>
+      consumeReadAuthorization(directory, "unit-catalog-low", "round-two"),
+    );
+    assert.throws(() =>
+      consumeReadAuthorization(directory, "../another-path", "round-two"),
+    );
+    assert.equal(
+      JSON.parse(
+        fs.readFileSync(path.join(directory, "unit-catalog-low.consumed.json")),
+      ).runId,
+      "round-one",
+    );
+    const { readInterruptedMetrics } = require("../load/run-read");
+    const record = { authorization: "unit-catalog-low", measuredRequests: 0 };
+    readInterruptedMetrics(
+      record,
+      path.join(directory, "missing-summary.json"),
+    );
+    assert.equal(record.measuredRequests, null);
+    assert.equal(record.executedOperations, null);
+    assert.match(record.metricsUnavailable, /unknown/);
+    const partial = path.join(directory, "partial-summary.json");
+    fs.writeFileSync(partial, '{"metrics":');
+    readInterruptedMetrics(record, partial);
+    assert.equal(record.measuredRequests, null);
+  } finally {
+    assert.ok(
+      path
+        .resolve(directory)
+        .startsWith(path.resolve(require("node:os").tmpdir()) + path.sep),
+    );
+    assert.ok(path.basename(directory).startsWith("load-read-permit-"));
+    fs.rmSync(directory, { recursive: true });
+  }
+});
+
 function watch(process, initial, gather, interval) {
   return supervisedWatch(process, initial, gather, interval, () => 4 * GIB, {
     ...require("../load/plan.json").stopPolicy,
@@ -93,29 +136,55 @@ test("k6 child cannot inherit external outputs or option overrides", () => {
   );
 });
 
-test("only read smokes are unlocked and memory relaxation is scoped", async () => {
+test("only the two reference reads are authorized and memory relaxation stays scoped", async () => {
   const { assertAuthorizedRead, memoryPolicy } =
     await import("../load/rules.mjs");
-  const plan = require("../load/plan.json");
+  const actual = require("../load/plan.json");
+  const plan = structuredClone(actual);
+  plan.reducedBaseline.enabled = true;
+  const inactive = structuredClone(plan);
+  inactive.reducedBaseline.enabled = false;
+  assert.throws(() =>
+    assertAuthorizedRead(inactive, "product", "popular-one", "reference"),
+  );
   assert.doesNotThrow(() =>
-    assertAuthorizedRead(plan, "catalog", "all", "smoke"),
+    assertAuthorizedRead(plan, "product", "popular-one", "reference"),
+  );
+  assert.doesNotThrow(() =>
+    assertAuthorizedRead(
+      plan,
+      "dashboard",
+      "high",
+      "reference",
+      "/dashboard/seller/summary",
+    ),
   );
   for (const values of [
-    ["catalog", "all", "low"],
+    ["catalog", "all", "smoke"],
+    ["catalog", "filtered1", "low"],
+    ["product", "popular", "low"],
+    ["dashboard", "high", "low"],
     ["catalog", "all", "gradual"],
     ["payment", "all", "smoke"],
+    ["catalog", "all", "low"],
+    ["dashboard", "high", "reference", "/dashboard/seller/orders"],
+    ["product", "popular", "reference"],
   ]) {
     assert.throws(
       () => assertAuthorizedRead(plan, ...values),
-      /currently authorized/,
+      /not explicitly authorized/,
     );
   }
-  assert.doesNotThrow(() =>
+  assert.throws(() =>
     assertAuthorizedRead(plan, "product", "popular", "smoke"),
   );
   assert.equal(
     memoryPolicy(plan, "catalog", "smoke").minimumStartAvailableMemoryBytes,
     1.25 * GIB,
+  );
+  assert.equal(
+    memoryPolicy(plan, "product", "reference").minimumAvailableMemoryBytes,
+    0,
   );
   for (const pair of [
     ["catalog", "low"],
@@ -172,6 +241,7 @@ test("CPU deltas are normalized and sustained CPU triggers interruption", () => 
   const cpu = evaluate(measurement(1), measurement(), {});
   assert.ok(Math.abs(cpu.hostCpuPercent - 20) < 1e-10);
   assert.equal(cpu.apiCpuCorePercent, 5);
+  assert.equal(cpu.highCpuDurationMs, 0);
   const state = {};
   let previous = measurement();
   for (let index = 1; index <= 3; index += 1) {

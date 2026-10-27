@@ -12,10 +12,52 @@ const { requests, prepareOracle } = require("./oracles");
 const { fingerprint } = require("./fingerprint");
 const plan = require("./plan.json");
 const { openCollector } = require("./live-collector");
+const { validate } = require("../scripts/scale/validate");
+const { config } = require("../scripts/scale/planner");
 const LOCAL = path.join(__dirname, ".local");
 const RESULTS = path.join(__dirname, "results");
 const EXPECTED_SHA =
   "06a15d69869efb9261e6c132af64078731ad7d048095eaca05198daacb17686d";
+
+function consumeReadAuthorization(directory, authorization, runId) {
+  if (!authorization) {
+    return;
+  }
+  if (!/^[a-zA-Z0-9.-]+$/.test(authorization)) {
+    throw new Error("Invalid read authorization identifier");
+  }
+  fs.writeFileSync(
+    path.join(directory, `${authorization}.consumed.json`),
+    JSON.stringify({ runId, at: new Date().toISOString() }),
+    { flag: "wx", mode: 0o600 },
+  );
+}
+
+function readInterruptedMetrics(record, filename) {
+  if (!record.authorization) {
+    return;
+  }
+  try {
+    const { metrics } = JSON.parse(fs.readFileSync(filename));
+    const requests = metrics.http_reqs?.count;
+    const operations = metrics.iterations?.count;
+    if (
+      ![requests, operations].every(
+        (value) => Number.isInteger(value) && value >= 0,
+      )
+    ) {
+      throw new Error("Incomplete k6 summary");
+    }
+    record.metrics = metrics;
+    record.measuredRequests = requests;
+    record.executedOperations = operations;
+  } catch {
+    record.measuredRequests = null;
+    record.executedOperations = null;
+    record.metricsUnavailable =
+      "k6 did not leave a valid summary; executed requests are unknown";
+  }
+}
 
 function k6() {
   const archive = path.join(LOCAL, "k6.zip");
@@ -186,9 +228,34 @@ async function watch(
 async function main() {
   // Fail before connecting to PostgreSQL, starting processes or opening a run lock.
   const [scenario, variant, stage, endpoint] = process.argv.slice(2);
+  if (
+    stage === "reference" &&
+    plan.reducedBaseline.executor === "node-http-minimal"
+  ) {
+    return require("./minimal-read").run({
+      scenario,
+      variant,
+      stage,
+      endpoint,
+    });
+  }
   const { selectRun, assertManifest, assertAuthorizedRead, memoryPolicy } =
     await import("./rules.mjs");
-  assertAuthorizedRead(plan, scenario, variant, stage);
+  const authorization = assertAuthorizedRead(
+    plan,
+    scenario,
+    variant,
+    stage,
+    endpoint,
+  );
+  if (
+    authorization &&
+    fs.existsSync(path.join(LOCAL, `${authorization}.consumed.json`))
+  ) {
+    throw new Error(
+      "Read authorization already consumed; new approval required before any HTTP",
+    );
+  }
   const policy = memoryPolicy(plan, scenario, stage);
   monitor.assertMemory(undefined, policy);
   const limits = selectRun(plan, scenario, stage);
@@ -242,6 +309,12 @@ async function main() {
         );
         record.api = api;
         const before = await fingerprint(db);
+        record.baselineFingerprint = before;
+        record.invariantsBefore = await validate(
+          db,
+          control.report.inserted,
+          config.baseDateUtc,
+        );
         if (manifest.runId !== (await database.identify(db)).run_id) {
           throw new Error("Session manifest belongs to another dataset");
         }
@@ -287,12 +360,16 @@ async function main() {
             storage: detailedBefore.storage,
           };
           monitor.evaluate(detailedBefore, null, {}, policy);
+          consumeReadAuthorization(LOCAL, authorization, id);
+          record.authorization = authorization;
+          fs.mkdirSync(RESULTS, { recursive: true });
+          // Refresh after filesystem work; it can block for noticeable time on Windows.
+          await new Promise(setImmediate);
           const initial = await collector.sample();
           monitor.assertMemory(initial.freeMemoryBytes, policy);
           record.observer.initialFreeMemoryBytes = initial.freeMemoryBytes;
           monitor.evaluate(initial, null, {}, policy);
           record.preparationMs = Date.now() - preparationStart;
-          fs.mkdirSync(RESULTS, { recursive: true });
           const summaryFile = path.join(RESULTS, `${id}-k6.json`);
           const measuredStart = Date.now();
           const child = spawn(
@@ -310,6 +387,7 @@ async function main() {
               env: k6Environment(scenario, stage),
             },
           );
+          record.launchMs = Date.now() - measuredStart;
           const abort = () => child.kill("SIGINT");
           process.on("SIGINT", abort);
           process.on("SIGTERM", abort);
@@ -356,6 +434,11 @@ async function main() {
           );
           record.verificationMs = Date.now() - verificationStarted;
           record.integrity = { before, after: checks, equal: true };
+          record.invariantsAfter = await validate(
+            db,
+            control.report.inserted,
+            config.baseDateUtc,
+          );
           const detailedAfter = await collector.detailed();
           monitor.evaluate(detailedAfter, null, {}, policy);
           record.observer.detailedAfter = {
@@ -374,6 +457,21 @@ async function main() {
     record.result = "interrupted";
     record.reason = error.message;
     record.resources ??= error.resourceSummary;
+    try {
+      readInterruptedMetrics(record, path.join(RESULTS, `${id}-k6.json`));
+      if (record.baselineFingerprint) {
+        const after = await fingerprint(db);
+        record.integrity = {
+          before: record.baselineFingerprint,
+          after,
+          equal:
+            JSON.stringify(after) ===
+            JSON.stringify(record.baselineFingerprint),
+        };
+      }
+    } catch {
+      record.reconciliationUnavailable = true;
+    }
     throw error;
   } finally {
     fs.mkdirSync(RESULTS, { recursive: true });
@@ -394,4 +492,10 @@ if (require.main === module) {
   });
 }
 
-module.exports = { watch, k6, k6Environment };
+module.exports = {
+  watch,
+  k6,
+  k6Environment,
+  consumeReadAuthorization,
+  readInterruptedMetrics,
+};

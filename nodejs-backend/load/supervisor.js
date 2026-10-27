@@ -113,7 +113,12 @@ function evaluate(current, previous, state, policy = plan.stopPolicy) {
   } else {
     state.highCpuSince = null;
   }
-  return { hostCpuPercent, apiCpuCorePercent };
+  return {
+    hostCpuPercent,
+    apiCpuCorePercent,
+    highCpuDurationMs:
+      state.highCpuSince == null ? 0 : current.at - state.highCpuSince,
+  };
 }
 
 function aggregate() {
@@ -122,6 +127,7 @@ function aggregate() {
     minHostFreeBytes: null,
     minWindowsFreeBytes: null,
     maxHostCpuPercent: 0,
+    maxHighCpuDurationMs: 0,
     maxApiCpuCorePercent: 0,
     maxApiWorkingSetBytes: 0,
     maxApiPrivateBytes: null,
@@ -156,6 +162,7 @@ function accumulate(result, current, cpu) {
   );
   const values = {
     maxHostCpuPercent: cpu.hostCpuPercent || 0,
+    maxHighCpuDurationMs: cpu.highCpuDurationMs || 0,
     maxApiCpuCorePercent: cpu.apiCpuCorePercent || 0,
     maxApiWorkingSetBytes: current.process.workingSetBytes,
     maxApiHeapUsedBytes: current.process.heapUsedBytes || 0,

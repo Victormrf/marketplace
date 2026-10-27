@@ -7,13 +7,13 @@ const { performance } = require("node:perf_hooks");
 const { memoryBytes, cpuClock } = require("./supervisor");
 const execute = promisify(execFile);
 
-function statsLine(raw) {
+function statsLine(raw, expectedContainer = "marketplace-scale-postgres") {
   const line = raw.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").trim();
   if (!line) {
     return null;
   }
   const row = JSON.parse(line);
-  if (row.Name !== "marketplace-scale-postgres") {
+  if (row.Name !== expectedContainer) {
     throw new Error("Unexpected container in resource stream");
   }
   const cpu = Number(row.CPUPerc.replace("%", ""));
@@ -35,14 +35,28 @@ function fresh(at, now = Date.now()) {
   }
 }
 
-async function openCollector(db, api, baseline) {
+async function openCollector(db, api, baseline, options = {}) {
+  const container = options.container || "marketplace-scale-postgres";
+  const dataPath = options.dataPath || "/var/lib/postgresql/data/pgdata";
+  const metricsFile =
+    options.metricsFile || path.join(__dirname, ".local/api-metrics.json");
+  if (
+    !["marketplace-scale-postgres", "marketplace-load-test-postgres"].includes(
+      container,
+    ) ||
+    !["/var/lib/postgresql/data", "/var/lib/postgresql/data/pgdata"].includes(
+      dataPath,
+    )
+  ) {
+    throw new Error("Resource collection target is not allowed");
+  }
   let latest;
   let failure;
   let stopped = false;
   let buffer = "";
   const child = spawn(
     "docker",
-    ["stats", "marketplace-scale-postgres", "--format", "{{json .}}"],
+    ["stats", container, "--format", "{{json .}}"],
     {
       stdio: ["ignore", "pipe", "ignore"],
       windowsHide: true,
@@ -73,7 +87,7 @@ async function openCollector(db, api, baseline) {
         continue;
       }
       try {
-        const parsed = statsLine(line);
+        const parsed = statsLine(line, container);
         if (parsed) {
           latest = parsed;
           readyResolve();
@@ -119,10 +133,10 @@ async function openCollector(db, api, baseline) {
         "docker",
         [
           "exec",
-          "marketplace-scale-postgres",
+          container,
           "sh",
           "-c",
-          "du -sk /var/lib/postgresql/data; du -sk /var/lib/postgresql/data/pgdata/pg_wal",
+          `du -sk /var/lib/postgresql/data; du -sk ${dataPath}/pg_wal`,
         ],
         {
           encoding: "utf8",
@@ -154,12 +168,7 @@ async function openCollector(db, api, baseline) {
         throw failure;
       }
       fresh(latest?.at);
-      const process = JSON.parse(
-        fs.readFileSync(
-          path.join(__dirname, ".local/api-metrics.json"),
-          "utf8",
-        ),
-      );
+      const process = JSON.parse(fs.readFileSync(metricsFile, "utf8"));
       fresh(process.at);
       if (
         !Number.isFinite(Date.parse(process.startedAt)) ||

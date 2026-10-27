@@ -4,9 +4,37 @@
   "apiUrl": "http://127.0.0.1:8051",
   "profile": "small",
   "currentAuthorization": {
-    "readScenarios": ["catalog", "product", "dashboard"],
-    "stages": ["smoke"],
-    "automaticAdvance": false
+    "readScenarios": [],
+    "stages": [],
+    "automaticAdvance": false,
+    "singleReads": [
+      {
+        "id": "5.2-minimal-product-2026-10-26",
+        "scenario": "product",
+        "variant": "popular-one",
+        "stage": "reference"
+      },
+      {
+        "id": "5.2-minimal-dashboard-2026-10-26",
+        "scenario": "dashboard",
+        "variant": "high",
+        "stage": "reference",
+        "endpoint": "/dashboard/seller/summary"
+      }
+    ]
+  },
+  "reducedBaseline": {
+    "id": "5.2-minimal-2026-10-26",
+    "enabled": false,
+    "executionStatus": "completed-four-scale-experiments-fixtures-recovered",
+    "executor": "node-http-minimal",
+    "memoryPolicyAuthorization": "Direct user authorization 2026-10-26: execute the four pending minimal experiments with available memory, without a minimum RAM floor; retain measurement and other guards",
+    "read": { "vus": 1, "operations": 5, "maxDurationSeconds": 60 },
+    "write": { "vus": 2, "operations": 2, "maxDurationSeconds": 60 },
+    "writeScenarios": ["checkout-shared", "idempotency"],
+    "sharedStock": 1,
+    "minimumStartAvailableMemoryBytes": 0,
+    "minimumAvailableMemoryBytes": 0
   },
   "dashboardRange": { "from": "2026-01-01", "to": "2026-11-30" },
   "http": { "timeoutSeconds": 10, "thinkSeconds": 1, "automaticRetries": 0 },

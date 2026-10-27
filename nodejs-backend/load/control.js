@@ -193,11 +193,15 @@ function serve() {
         return;
       }
       const identity = processSample(child.pid);
+      const memoryPhases = process.argv.includes("--reference")
+        ? require("./minimal").recordMemory("scale", "api")
+        : undefined;
       fs.writeFileSync(
         path.join(directory, "api-process.json"),
         JSON.stringify({
           pid: identity.pid,
           startedAt: identity.startedAt,
+          memoryPhases,
         }),
       );
       console.log(
@@ -241,9 +245,11 @@ async function main() {
   }
   assertTarget(process.env.SCALE_DATABASE_URL || DEFAULT_URL);
   const { memoryPolicy } = await import("./rules.mjs");
-  const policy = process.argv.includes("--read-smoke")
-    ? memoryPolicy(plan, "catalog", "smoke")
-    : plan.stopPolicy;
+  const policy = process.argv.includes("--reference")
+    ? memoryPolicy(plan, "product", "reference")
+    : process.argv.includes("--read-smoke")
+      ? memoryPolicy(plan, "catalog", "smoke")
+      : plan.stopPolicy;
   assertMemory(undefined, policy);
   const db = database.client();
   try {

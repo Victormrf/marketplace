@@ -16,7 +16,11 @@ function metrics() {
   };
 }
 
-const server = app.listen(8051, "127.0.0.1", () => {
+const port = Number(process.env.PORT || 8051);
+if (![8051, 8052].includes(port)) {
+  throw new Error("Only dedicated load API ports are allowed");
+}
+const server = app.listen(port, "127.0.0.1", () => {
   process.send?.({ type: "ready", metrics: metrics() });
   timer = setInterval(
     () => process.send?.({ type: "metrics", metrics: metrics() }),

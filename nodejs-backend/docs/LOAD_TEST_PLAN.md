@@ -1,10 +1,201 @@
-# Planejamento dos testes de carga — 5.1
+# Referência exploratória mínima — etapa 5.2
+
+## Estado vigente após execução em 26/10/2026
+
+**Quatro experimentos concluídos em escala, uma execução por experimento**, com recuperação explícita após cada escrita, 30.349 registros históricos preservados e 18 invariantes aprovadas. Resultados em `LOAD_BASELINE_REPORT.md`; próxima etapa 5.3. O bloqueio de memória descrito no histórico abaixo foi superado por autorização direta e nova disponibilidade de recursos.
+
+O responsável autorizou **monitorar RAM sem piso mínimo**, exclusivamente nos quatro experimentos reference. A configuração conserva mínimos zero nesse perfil; isso não garante segurança nem altera guardas dos outros estágios. Memória mínima medida 4,013 GiB. CPU sustentada 85%/15 s, armazenamento e limites de operações/tempo continuam obrigatórios.
+
+`load:api` e `load:sessions --reference` agora selecionam a mesma política reference dos executores. Testes da guarda usam um piso explícito ao validar interrupção; a política sem piso possui regressão própria. Autorização não libera outros cenários.
+
+Ao terminar: `reducedBaseline.enabled=false`, `executionStatus=completed-four-scale-experiments-fixtures-recovered`; ambos os tickets de leitura consumidos e duas autorizações operacionais de escrita persistentes. **Os comandos de execução abaixo são históricos/referência e não autorizam repetir rodadas concluídas.** Não apagar tickets, criar outro namespace ou habilitar o perfil para contornar a restrição. Nova rodada requer decisão explícita e identificação própria.
+
+Inspeção somente leitura: `npm.cmd run scale:verify`, `npm.cmd run scale:status` e `npm.cmd run load:fixture -- status --reference --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures`, com banco exclusivo disponível. Container e API próprios encerrados após inspeção final; volume/dataset mantidos. Não usar purge para recuperar experimentos.
+
+## Histórico operacional — políticas e bloqueios substituídos
+
+## Execução mínima vigente em 26/10/2026
+
+O objetivo é referência funcional pequena, **não estresse, capacidade ou percentis confiáveis**. Substitui o plano anterior de 20 GETs/2 VUs e a matriz de 59. Scripts adicionais continuam opcionais; não ampliar agora.
+
+| Experimento            | Executor/limite                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| Produto popular        | Node HTTP, 1 usuário, 5 GETs seriais ao mesmo produto, pausa de 1 s entre chamadas   |
+| Dashboard summary      | Node HTTP, 1 usuário, 5 GETs seriais do mesmo seller, pausa de 1 s                   |
+| Checkout compartilhado | Node HTTP, 2 customers/carrinhos próprios,1 unidade,2 chamadas coordenadas sem pausa |
+| Idempotência           | Node HTTP, uma identidade/chave/payload,2 chamadas coordenadas sem pausa             |
+
+Teto de 60 s, timeout de 10 s/request, sem retry automático. Leituras fazem **cinco GETs totais ao alvo**, sem sexto request de aquecimento. Login/identidade e descoberta SQL são preparação separada. O executor agora é node-http-minimal; **não misturar números com k6 anterior**.
+
+### Fases independentes e resultado real
+
+1. Build/typecheck/testes sem banco concluídos antes de serviços/experimentos.
+2. Banco dedicado iniciado separadamente, memória registrada antes/PG/API; três testes PostgreSQL pendentes passaram um por vez. Falha parcial foi recuperada explicitamente; histórico preservado; recursos próprios encerrados.
+3. Pré-inicialização de escala: **513.331.200 bytes =489,6 MiB**, com PostgreSQL/API de escala parados. A guarda de 512 MiB bloqueou antes do banco. Não houve retry nem início dos quatro experimentos.
+
+Preparação/testes dedicados estão concluídos; não dependem mais da liberação do executor de carga. Só a fase de escala está bloqueada. Não há fixture de escala a recuperar.
+
+### Guarda emergencial e custo do harness
+
+512 MiB disponíveis antes e durante, exclusivamente modo reference. **Não é recomendação geral nem garantia de segurança.** Interromper também por instabilidade, CPU >85% sustentada por 15 s, tempo/operações e orçamento/disco. Não reduzir novamente por iniciativa do executor.
+
+O coletor mínimo usa somente os.freemem, contadores de CPU do host e statfs do Windows a cada 100 ms, sem sobreposição. Não executa Docker, PowerShell ou SQL durante requests. Medidas detalhadas de banco/PGDATA/WAL/Windows ficam antes/depois. As margens 5/10 GiB, logs e temporários da 4.3 permanecem. Poucas amostras não estabelecem picos por processo ou histórico SQL; CPU sem intervalo é null, nunca zero inventado.
+
+No teste dedicado, fases observadas: 1067,1 MiB parados;987,2 MiB após PG;832,1–849,6 MiB após API. Esses deltas não são atribuição exclusiva a um processo. O coletor periódico custou até 0,791 ms; detalhes antes/depois2,717–2,812 s, **fora** da janela. A idempotência terminou antes de 100 ms, sem intervalo CPU representativo.
+
+### Comandos operacionais — após intervenção de memória
+
+Não refazer testes aprovados sem mudança que justifique regressão. Os três PostgreSQL já passaram. Para reprodução futura independente:
+
+```powershell
+npm.cmd run test:load-minimal
+npm.cmd run test:load-reference
+npx.cmd tsc --noEmit
+npm.cmd run build
+
+# Depois de encerrar build/testes sem banco, preparar só o banco dedicado:
+npm.cmd run load:minimal-memory -- fixture-test stopped
+npm.cmd run load:fixture-test:prepare -- --reference
+npm.cmd run load:minimal-memory -- fixture-test postgres
+# Confirmar  >=512 MiB antes de cada etapa; o teste valida de novo após a API.
+$previousReferenceTest = $env:TEST_REFERENCE_POSTGRES
+try {
+  $env:TEST_REFERENCE_POSTGRES = "yes"
+  npm.cmd run test:load-reference
+} finally {
+  $env:TEST_REFERENCE_POSTGRES = $previousReferenceTest
+}
+docker stop marketplace-load-test-postgres
+```
+
+Testes atuais:53 puros e3 PostgreSQL aprovados, incluindo proteção de destino, falha parcial e recuperação. O flag TEST_REFERENCE_POSTGRES usa somente marketplace_load_test:5436/API 8052, nunca o small. Não executa cleanup em falha.
+
+**Retomada de escala:** disponibilizar RAM suficiente no host para sustentar 512 MiB **depois** de PG/API, com margem adicional. Nesta entrega o host estava abaixo do piso antes deles; nenhum processo próprio foi a causa dessa falta inicial. O responsável pode reduzir voluntariamente consumo de aplicativos que escolher ou disponibilizar outro host; o agente não encerra aplicativos/serviços nem altera Docker/pagefile/durabilidade.
+
+Após essa intervenção, habilitar conscientemente reducedBaseline.enabled, preservando quotas e tickets. Não pedir aceite entre sucessos já autorizados, mas parar em qualquer falha/ambiguidade; não repetir aprovados:
+
+```powershell
+npm.cmd run load:minimal-memory -- scale stopped
+docker start marketplace-scale-postgres
+npm.cmd run load:minimal-memory -- scale postgres
+npm.cmd run scale:verify
+# Terminal dedicado; memória após API é registrada automaticamente:
+npm.cmd run load:api -- --confirm-scale --reference
+# Preparação separada e depois somente as duas leituras:
+npm.cmd run load:sessions -- --confirm-scale --reference
+npm.cmd run load:read -- product popular-one reference
+npm.cmd run load:read -- dashboard high reference /dashboard/seller/summary
+```
+
+Só iniciar cada comando de execução depois de conferir a guarda. Parar a API de leitura própria antes dos checkouts; cada checkout inicia/encerra a própria API compilada 8051. Contexto de fixture reference só aceita dois participantes/operações e os dois cenários:
+
+```powershell
+# Escolher checkout-shared, recuperar com sucesso; depois idempotency.
+npm.cmd run load:fixture -- prepare CENARIO 2 --reference --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+npm.cmd run load:fixture -- run reference NAMESPACE:CENARIO:reference --reference --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+npm.cmd run load:fixture -- reconcile --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+npm.cmd run load:fixture -- recover API_AND_RUNNER_STOPPED --reference --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+```
+
+Manifesto e tickets persistentes impedem repetir; confirmação de destino inclui usuário/porta/marcador SQL/container/volume, não só localhost. Preparação verifica contagens/invariantes/hashes. Resultado desconhecido: consultar por leitura, preservar chave, não preparar outro conjunto. Recuperação é separada, explícita e transacional só do grafo experimental; sem purge da 4.3, liberação fictícia de reservas ou alteração de históricos. Se a memória bloquear após preparar e nenhuma operação foi iniciada/ambígua, conferir isso por leitura e recuperar explicitamente.
+
+Leituras devem registrar cinco latências individuais, min/mediana/max, duração e validação. Checkouts priorizam contagens/ownership/saldos: um pedido, uma reserva/movimento e uma chave concluída; 409 pelo motivo exato. Replay também é comparado integralmente em memória, sem gravar bodies. Relatórios limitados ficam ignorados em load/results; memória por fase em load/.local/minimal-memory-\*.json.
+
+**Estado atual:** reducedBaseline.enabled=false, aguardando intervenção de memória; 5.2 parcial. Contagens/invariantes atuais de escala não foram reconfirmadas com seu banco parado; nenhum dado histórico foi modificado. Concluir só após os quatro resultados reais e recuperações; 5.3 fica como análise curta de limitações/repetições, sem exigir gargalos/otimizações.
+
+## Histórico anterior — critérios substituídos
+
+O texto abaixo permanece apenas para rastreabilidade. As quotas e guardas vigentes são as da seção mínima acima.
+
+# Plano da baseline reduzida — etapa 5.2
+
+## Decisão vigente — 26/10/2026
+
+Este handoff **substitui a matriz anterior de 59 combinações**. O fechamento requer somente os quatro experimentos abaixo, com conteúdo/resultados corretos e integridade comprovada. Smokes/baixo/gradual completos, carrinho, pagamento, checkout distribuído e outros endpoints ficam **opcionais**, sem expansão agora. Não se busca capacidade máxima nem se exige descobrir gargalos.
+
+| Experimento obrigatório | Quota                                                                                 | Verificação                                                |
+| ----------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Produto popular         | Um produto descoberto da base, 2 VUs, 20 GETs                                         | Oráculo SQL, conteúdo, latência de referência              |
+| Dashboard               | Seller high, somente /dashboard/seller/summary, 2 VUs, 20 GETs                        | Agregação e latência corretas                              |
+| Checkout compartilhado  | 2 customers próprios, carrinhos prontos, estoque de 1 unidade, 2 chamadas coordenadas | Um pedido, um 409 pelo motivo exato, uma reserva           |
+| Idempotência            | Uma identidade/carrinho, mesma chave/endereço, 2 chamadas coordenadas                 | Um pedido, uma chave concluída, reservas/movimentos únicos |
+
+Para todos: teto de **60 s**, timeout de **10 s/request**, nenhum retry automático. Leituras pausam 1 s por operação; checkouts não pausam entre as duas chamadas. Não é preciso novo aceite entre sucessos dos quatro experimentos autorizados, mas falha/resultado desconhecido/violação interrompe a sequência; não repetir aprovados nem escalar quotas. No máximo um diagnóstico explicitamente limitado com a mesma chave/payload, fora da medição, se necessário; não gerar outra chave.
+
+### Guardas proporcionais e estado desta entrega
+
+Somente o modo `reference` dos quatro experimentos usa início >=**1,25 GiB**, com API e observador prontos, e interrupção <**1 GiB**. CPU >85% por 15 s, conexões/locks, alvo preventivo de 5 GiB, teto de 10 GiB e margens reais do Windows continuam. Coleta serial leve com timestamps/custo; configuração estática e detalhes antes/depois fora da janela. CPU por processo/queries são amostras auxiliares, não atribuição completa; nenhuma exigência de tracing ou observabilidade adicional. Rodada curta pode não produzir amostras representativas.
+
+**Bloqueado antes de começar:** RAM disponível chegou a **838.131.712 bytes (0,781 GiB)**, abaixo do início, sem API/observador iniciados. Nenhum container, conexão SQL, fixture ou experimento foi iniciado nesta entrega. Não insistir em nova tentativa nem encerrar aplicativos/alterar configuração global. `reducedBaseline.enabled=false` e executionStatus=blocked-before-start-memory suspendem o perfil até decisão do responsável.
+
+As contagens/invariantes atuais de escala não foram reconfirmadas com PostgreSQL parado; valores da entrega anterior são históricos. Nenhum dado foi alterado. Os novos três testes PostgreSQL do modo reference ficaram pendentes; testes anteriores de falha parcial/recuperação (12) e HTTP real (6) não substituem a validação das novas adaptações.
+
+### Reutilização implementada
+
+- Produto popular-one seleciona só o primeiro produto descoberto; dashboard fixa seller high e endpoint summary. A allowlist verifica variante, estágio e endpoint. Tickets de leitura são individuais e consumidos atomicamente.
+- Fixtures reference só permitem checkout-shared/idempotency, duas operações; estoque compartilhado é 1. Contexto explicitamente reference isola a política de memória dos scripts opcionais, que preservam suas quotas.
+- Em escala, confirmações de ambiente e namespace continuam obrigatórias. O modo reference não habilita globalmente writesEnabled. Autorização persistente em scale_ops.reference_authorizations impede repetir um checkout mesmo após recuperar seu grafo; só é criada pela preparação explicitamente autorizada, nunca pelo start da aplicação.
+- Pós-condições conferem uma reserva ACTIVE de quantidade1, um movimento RESERVATION de delta1, uma chave COMPLETED e saldos corretos; 409 precisa do motivo exato. Despacho coordenado e requests sobrepostas não equivalem a medir contenção de banco em escala.
+- Recuperação separada e explícita verifica grafo/FKs, hashes e invariantes. Sem cleanup em falha, purge da 4.3 ou liberação artificial de saldo. Campos/status de negócio não foram alterados.
+
+### Validação e retomada futura — não executar enquanto bloqueado
+
+Sem banco: `npm.cmd run test:load-reference` executa **3 testes puros**. Regressões: test:load-plan, test:load-baseline, test:load-writes, test:load-write-executor e test:load-resources. Typecheck e build permanecem pertinentes. Nenhuma dependência adicionada.
+
+Depois de decisão sobre ambiente/recursos, testar primeiro no destino dedicado:
+
+```powershell
+npm.cmd run load:fixture-test:prepare -- --reference
+$previousReferenceTest = $env:TEST_REFERENCE_POSTGRES
+try {
+  $env:TEST_REFERENCE_POSTGRES = "yes"
+  npm.cmd run test:load-reference
+} finally {
+  $env:TEST_REFERENCE_POSTGRES = $previousReferenceTest
+}
+```
+
+Esse opt-in usa só marketplace_load_test:5436 e API 8052, valida os dois checkouts e falha parcial, com recuperação explícita. Sem esse opt-in, a suíte não registra/executa os testes PostgreSQL e seus três testes puros não comprovam integração.
+
+Somente após validar o modo no teste dedicado e reconfirmar memória/identidade/contagens/invariantes/disco do small, habilitar conscientemente reducedBaseline.enabled para a decisão de retomada, preservando quotas:
+
+```powershell
+npm.cmd run build
+# Iniciar apenas o container de escala existente; sem geração/purge.
+docker start marketplace-scale-postgres
+npm.cmd run scale:verify
+# Terminal próprio, API compilada 8051. Não iniciar Next/jobs.
+npm.cmd run load:api -- --confirm-scale --reference
+# Preparação separada:
+npm.cmd run load:sessions -- --confirm-scale --reference
+npm.cmd run load:read -- product popular-one reference
+# Só após sucesso íntegro:
+npm.cmd run load:read -- dashboard high reference /dashboard/seller/summary
+```
+
+Parar a API de leitura própria antes dos checkouts; o executor gerencia sua própria API 8051. Escolher checkout-shared primeiro e idempotency depois de sucesso e recuperação:
+
+```powershell
+# Exemplos futuros: trocar CENARIO por checkout-shared ou idempotency e NAMESPACE pelo manifesto.
+npm.cmd run load:fixture -- prepare CENARIO 2 --reference --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+npm.cmd run load:fixture -- run reference NAMESPACE:CENARIO:reference --reference --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+npm.cmd run load:fixture -- reconcile --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+npm.cmd run load:fixture -- recover API_AND_RUNNER_STOPPED --reference --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+```
+
+Cada escrita bem-sucedida deve terminar recuperada e com históricos preservados antes da próxima. Falha não dispara limpeza nem uma nova preparação. Sessões e relatórios continuam ignorados pelo Git, sem cookies/tokens/bodies por request.
+
+**Fechamento:** marcar 5.2 concluída só com os quatro resultados válidos e recuperação. Por hardware, apresentar fechamento parcial ao responsável. A 5.3 será análise curta dos resultados/limitações e dos experimentos a repetir depois de melhorias; otimizar ou descobrir gargalo não é requisito da 5.2.
+
+## Histórico e scripts opcionais do plano anterior
+
+Os trechos abaixo preservam decisões e comandos anteriores. Suas autorizações/matrizes extensas foram substituídas pelo escopo acima e não são requisitos atuais de fechamento.
 
 ## Autorização atual — 25/10/2026
 
 Somente para smokes de leitura: exigir **1,25 GiB (1.342.177.280 bytes) disponíveis com API, banco e observador iniciados**, interrompendo abaixo de **1 GiB**. Para baixa, gradual e escritas, permanece o mínimo original de **2 GiB**. Esses são limites de RAM do host; a margem de espaço livre Windows da política de armazenamento não mudou. CPU >85% por 15 s, timeout HTTP 10 s, orçamento de disco, conexões/locks e duração máxima permanecem inalterados.
 
-Estão autorizados apenas smokes de catálogo, produto e dashboard: **1 VU, 5 operações por rodada**, um cenário/variante/endpoint/seller por vez, sem escritas. Conferir resultado, oráculo, integridade e recursos antes de escolher manualmente o próximo. Baixa/gradual e qualquer escrita sobre escala continuam bloqueados. Não repetir uma falha automaticamente; mesmo falhas de preparação ficam registradas e exigem decisão explícita.
+A autorização mais recente foi exclusivamente `catalog/all/low`: **2 VUs, 40 GETs, pausa de 1 s, timeout de 10 s e teto de 90 s**, RAM >=2 GiB antes/durante. Foi consumida em uma tentativa interrompida por memória; **não há nova rodada autorizada**. O ticket persistente em `.local/5.2-catalog-all-low-2026-10-25.consumed.json` impede repetição antes de qualquer HTTP. Outros baixos, gradual e escritas em escala exigem novo aceite; não remover o ticket para contornar a interrupção. Smokes anteriores aprovados são histórico, não autorização para novas execuções.
 
 O coletor anterior chegou a **7,381 s**. Agora a configuração estática é lida uma vez, fora da janela; a API envia CPU/RSS/heap por IPC a cada segundo e um único processo `docker stats` transmite métricas continuamente. A coleta periódica combina esses dados com uma consulta PostgreSQL limitada e espaço livre Windows via API nativa Node. Não há subprocessos por request. O supervisor coleta serialmente a cada segundo, sem sobreposição, e verifica RAM a cada **250 ms**. Fontes com mais de 4 s são recusadas. Instalação do observador, coletas detalhadas antes/depois, timestamps e custo de cada amostra são registrados separadamente.
 
@@ -16,7 +207,7 @@ Ferramenta: **k6 1.3.0 local**, sem cloud, navegador ou plataforma de observabil
 
 Referências oficiais: [instalação](https://grafana.com/docs/k6/latest/set-up/install-k6/), [release fixada](https://github.com/grafana/k6/releases/tag/v1.3.0), [iterações compartilhadas](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/shared-iterations/), [thresholds](https://grafana.com/docs/k6/latest/using-k6/thresholds/). `shared-iterations` limita o total, mas não divide trabalho igualmente entre VUs. Não é um teste de taxa de chegada fixa.
 
-Na 5.1 foram preparados configuração e contratos, sem execução. A atualização parcial da 5.2 acrescenta leituras medidas, supervisão e testes das fixtures. Scripts de escrita aceitam somente HTTP simulado ou o ambiente dedicado de teste; o destino de escala permanece recusado. Não há captura pública, gateway externo ou sucesso financeiro fictício.
+Na 5.1 foram preparados configuração e contratos, sem execução. A atualização parcial da 5.2 acrescenta leituras medidas, supervisão e testes das fixtures. O executor de escrita implementa destinos fixos de teste e escala, mas `fixtures.writesEnabled=false` mantém preparação/execução em escala administrativamente bloqueadas; confirmação do ambiente e aprovação por namespace/cenário/estágio também são obrigatórias. Não há captura pública, gateway externo ou sucesso financeiro fictício.
 
 ## Ambiente isolado
 
@@ -55,7 +246,7 @@ npm.cmd run test:load-plan
 npm.cmd run load:plan
 ```
 
-`load:plan` mostra configuração/recursos locais; não conecta banco nem inicia carga. `test:load-baseline` valida também os dois limiares de memória e o bloqueio dos estágios não autorizados.
+`load:plan` mostra configuração/recursos locais; não conecta banco nem inicia carga. `test:load-baseline` valida memória, autorização exata, consumo único e tratamento de sumário interrompido ausente como desconhecido, nunca como zero requests.
 
 **Preparação explícita para os smokes de leitura da 5.2:**
 
@@ -68,11 +259,11 @@ npm.cmd run load:api -- --confirm-scale --read-smoke
 npm.cmd run load:sessions -- --confirm-scale --read-smoke
 ```
 
-`load:sessions` não cria carrinhos nem modifica estoque. Descobre cinco produtos mais comprados por agregação de OrderItem, ordenação `count DESC,id ASC`; descobre sellers de maior/menor volume por contagem de SellerOrder, sem IDs copiados. Valida a identidade retornada por `/users/me` contra a descoberta SQL. Logins são feitos **antes da medição**; o contrato atual só consulta credenciais, não grava lastLogin.
+`load:sessions` não cria carrinhos nem modifica estoque. Descobre cinco produtos mais comprados por agregação de OrderItem, ordenação `count DESC, id ASC`; descobre sellers de maior/menor volume por contagem de SellerOrder, sem IDs copiados. Valida a identidade retornada por `/users/me` contra a descoberta SQL. Logins são feitos **antes da medição**; o contrato atual só consulta credenciais, não grava lastLogin.
 
 Cookies são obtidos de `Set-Cookie`, nunca do body; k6 envia somente `Cookie: token=...` explicitamente por seller. Em produção o cookie é Secure; este harness de protocolo encaminha o header explicitamente por HTTP loopback local, não é uma validação de segurança de browser/TLS. `.local/read-manifest.json` contém cookies e não deve ser versionado/compartilhado. Expira conservadoramente em 45 minutos (JWT 1 h), precisa ser recriado após reiniciar a API. O modo POSIX 0600 não substitui ACLs no Windows: usar perfil de usuário privado. Não imprimir tokens, fazer login por iteração ou salvar credenciais reais.
 
-**Leituras autorizadas — escolher apenas uma rodada por vez:**
+**Referência dos comandos de leitura — não repetir autorização consumida:**
 
 ```powershell
 # Escolher UMA chamada, conferir resultado/recursos e decidir manualmente a próxima.
@@ -81,7 +272,7 @@ npm.cmd run load:read -- catalog all smoke
 # Exemplo alternativo: npm.cmd run load:read -- product popular smoke
 # Exemplo alternativo: npm.cmd run load:read -- dashboard high smoke /dashboard/seller/summary
 # Para menor volume, escolher low no lugar de high; um endpoint por rodada.
-# Nesta autorização, somente smoke. Low/gradual continuam bloqueados.
+# A autorização catalog/all/low foi consumida e interrompida; nova execução exige novo aceite.
 ```
 
 O comando passa pelo novo runner supervisionado: valida memória antes de conectar, recusa rodada concorrente, verifica k6/manifesto/identidade do dataset e prepara um oráculo SQL read-only. Faz um GET de validação/aquecimento por alvo (até cinco no produto), fora da janela medida; aborta se houver divergência. Cada execução futura recebe um identificador e resultados agregados limitados em `load/results/`, sem bodies/cookies/export HTTP linha a linha. Não executar o arquivo k6 diretamente: o modo não supervisionado foi desabilitado. Escritas continuam recusadas antes de HTTP.
@@ -102,18 +293,18 @@ Encerramento: Ctrl+C no k6 e no terminal da API; conferir que o processo filho N
 
 As variantes rodam separadamente, não misturadas em um único gráfico. Preparação e verificações finais ficam fora do tempo medido, mas seus custos são relatados à parte.
 
-| Cenário                | Entrada/preparação                                                                                       | Operação medida e resultado esperado                                                                                                                                                                                      | Efeito/limite                                                                                                                                                                                                                     |
-| ---------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Catálogo               | Dataset small intacto; seller/category descobertos                                                       | `GET /products` alterna listagem e combinação `search=Scale&sellerId=...&category=...&inStock=true&page=1/2&limit=5`, além de indisponíveis; 200, `{data,pagination}`. Filtros no banco, não filtrar a página em memória. | Sem escrita; 1 GET/operação. Totais/páginas e predicados devem ser comparados ao oráculo SQL antes/depois na 5.2.                                                                                                                 |
-| Produto                | Cinco IDs líderes por linhas históricas; janela fixa                                                     | `GET /products/:id`, round-robin sobre cinco produtos populares, 200 com centavos/currency/estoque.                                                                                                                       | Hot spot de leitura; 1 GET/operação, não exige dataset maior.                                                                                                                                                                     |
-| Carrinho               | Customers exclusivos de experimento, produto exclusivo por customer com onHand=4, reserved=0, cart vazio | `POST /cart/items {productId,quantity:1}` →201; `PUT /cart/items/:productId {quantity:2}` →200, conferir qty/total/estoque.                                                                                               | Até 2 requests/operação, cada customer usado uma vez; 1 Cart/CartItem por participante. Não usar `GET /cart` de customers-base: ele pode criar carrinho ACTIVE.                                                                   |
-| Checkout compartilhado | Customers/carts/endereço próprios, todos com 1 unidade do MESMO produto experimental; estoque total 2    | `POST /checkout {addressId}`, chave única por compra, 201; após duas reservas, 409 **Cart stock is insufficient**.                                                                                                        | Máximo 2 Orders; losers sem Order/reserva; estoque nunca negativo. Preparar todos os carrinhos antes da disputa.                                                                                                                  |
-| Checkout distribuído   | Um produto experimental por participante, estoque 1 cada                                                 | Mesmo POST com customer/endereço/chave distintos; todos 201.                                                                                                                                                              | Até 20 Orders/rodada. Comparar com estoque compartilhado, sem alterar produto-base.                                                                                                                                               |
-| Idempotência           | Um customer/cart/address experimental e uma chave fixa por grupo/rodada                                  | POST concorrente MESMA chave/body: uma criação 201, replays 200 com `Idempotency-Replayed: true`, ou 409 **Idempotency key is processing**.                                                                               | Exatamente 1 Order e uma chave concluída por grupo. Comparar TODOS os IDs, não só status. 409 divergente/estoque/vazio não é replay válido.                                                                                       |
-| Pagamento              | Order experimental PENDING_PAYMENT com total/ownership preparados, sem attempt ativo; sessão do customer | `POST /orders/:id/payment-attempts {method:"PIX"}` →201, valor integral/moeda da Order, CREATED e referência DEV_SIMULATOR; duplicatas 409 **Order already has an active or captured payment attempt**.                   | Uma tentativa ativa por Order. Variantes: participantes distintos ou concorrência na mesma Order. Nenhum amount/currency/status no payload; sem captura pública ou promessa de Order CONFIRMED.                                   |
-| Dashboard              | Sessões separadas dos sellers maior/menor volume e período fixo jan–nov/2026                             | Oito GETs `/dashboard/seller/{summary,orders,orders/by-status,sales/timeseries,sales/by-category,products/top,customers/new,ratings}`, 200; orders com page/limit/status, série diária padrão.                            | Sem escrita; **8 GETs/operação**. Comparar perfis em rodadas separadas na 5.2; runner-base alterna identidades. Receita usa DELIVERED/completedAt; contagem/lista usa createdAt; valores em centavos, reputação só seller direto. |
+| Cenário                | Entrada/preparação                                                                                       | Operação medida e resultado esperado                                                                                                                                                                                       | Efeito/limite                                                                                                                                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Catálogo               | Dataset small intacto; seller/category descobertos                                                       | `GET /products` alterna listagem e combinação `search=Scale&sellerId=...&category=...&inStock=true&page=1/2&limit=5`, além de indisponíveis; 200, `{data, pagination}`. Filtros no banco, não filtrar a página em memória. | Sem escrita; 1 GET/operação. Totais/páginas e predicados devem ser comparados ao oráculo SQL antes/depois na 5.2.                                                                                                                 |
+| Produto                | Cinco IDs líderes por linhas históricas; janela fixa                                                     | `GET /products/:id`, round-robin sobre cinco produtos populares, 200 com centavos/currency/estoque.                                                                                                                        | Hot spot de leitura; 1 GET/operação, não exige dataset maior.                                                                                                                                                                     |
+| Carrinho               | Customers exclusivos de experimento, produto exclusivo por customer com onHand=4, reserved=0, cart vazio | `POST /cart/items {productId, quantity:1}` →201; `PUT /cart/items/:productId {quantity:2}` →200, conferir qty/total/estoque.                                                                                               | Até 2 requests/operação, cada customer usado uma vez; 1 Cart/CartItem por participante. Não usar `GET /cart` de customers-base: ele pode criar carrinho ACTIVE.                                                                   |
+| Checkout compartilhado | Customers/carts/endereço próprios, todos com 1 unidade do MESMO produto experimental; estoque total 2    | `POST /checkout {addressId}`, chave única por compra, 201; após duas reservas, 409 **Cart stock is insufficient**.                                                                                                         | Máximo 2 Orders; losers sem Order/reserva; estoque nunca negativo. Preparar todos os carrinhos antes da disputa.                                                                                                                  |
+| Checkout distribuído   | Um produto experimental por participante, estoque 1 cada                                                 | Mesmo POST com customer/endereço/chave distintos; todos 201.                                                                                                                                                               | Até 20 Orders/rodada. Comparar com estoque compartilhado, sem alterar produto-base.                                                                                                                                               |
+| Idempotência           | Um customer/cart/address experimental e uma chave fixa por grupo/rodada                                  | POST concorrente MESMA chave/body: uma criação 201, replays 200 com `Idempotency-Replayed: true`, ou 409 **Idempotency key is processing**.                                                                                | Exatamente 1 Order e uma chave concluída por grupo. Comparar TODOS os IDs, não só status. 409 divergente/estoque/vazio não é replay válido.                                                                                       |
+| Pagamento              | Order experimental PENDING_PAYMENT com total/ownership preparados, sem attempt ativo; sessão do customer | `POST /orders/:id/payment-attempts {method:"PIX"}` →201, valor integral/moeda da Order, CREATED e referência DEV_SIMULATOR; duplicatas 409 **Order already has an active or captured payment attempt**.                    | Uma tentativa ativa por Order. Variantes: participantes distintos ou concorrência na mesma Order. Nenhum amount/currency/status no payload; sem captura pública ou promessa de Order CONFIRMED.                                   |
+| Dashboard              | Sessões separadas dos sellers maior/menor volume e período fixo jan–nov/2026                             | Oito GETs `/dashboard/seller/{summary, orders, orders/by-status, sales/timeseries, sales/by-category, products/top, customers/new, ratings}`, 200; orders com page/limit/status, série diária padrão.                      | Sem escrita; **8 GETs/operação**. Comparar perfis em rodadas separadas na 5.2; runner-base alterna identidades. Receita usa DELIVERED/completedAt; contagem/lista usa createdAt; valores em centavos, reputação só seller direto. |
 
-O runner supervisionado compara os campos relevantes/ordem de arrays ao oráculo SQL antes da medição e a cada GET, além de status; ainda depende da validação PostgreSQL real pendente. Campo inexistente ou enum incorreto é falha, não sucesso vazio. O catálogo tem também `/products/search?q=...` e rotas por seller/category; usa-se a listagem geral para manter uma comparação controlada com todos os filtros. Na matriz acima o fan-out/alternância do dashboard descreve o esboço 5.1; a execução 5.2 separa todos os endpoints/sellers, conforme atualização operacional.
+O runner supervisionado compara os campos relevantes/ordem de arrays ao oráculo SQL antes da medição e a cada GET, além de status; foi validado nos smokes PostgreSQL reais; o baixo interrompido não produziu um sumário válido. Campo inexistente ou enum incorreto é falha, não sucesso vazio. O catálogo tem também `/products/search?q=...` e rotas por seller/category; usa-se a listagem geral para manter uma comparação controlada com todos os filtros. Na matriz acima o fan-out/alternância do dashboard descreve o esboço 5.1; a execução 5.2 separa todos os endpoints/sellers, conforme atualização operacional.
 
 ## Preservação e repetibilidade das escritas (regras do grafo experimental)
 
@@ -127,7 +318,7 @@ Preparação deve registrar/validar: identidade exclusiva, baseline/counters/has
 
 Após recuperação: provar ausência do namespace, contagens/hash-base inalterados e invariantes 4.3 preservadas; só então autorizar rodada seguinte com manifesto limpo. Não implementar retry automático ou cleanup em `teardown` que esconda falhas. Se não for possível provar a desmontagem segura, **não executar cenários de escrita** até decisão do responsável.
 
-## Fixtures implementadas — exclusivamente teste dedicado
+## Fixtures e executor HTTP — validação realizada somente no teste dedicado
 
 `docker-compose.load-test.yml` define `marketplace-load-test-postgres`, usuário/banco `marketplace_load_test`, loopback **5436**, volume `marketplace_load_fixture_test_data`. A proteção exige URL exata, usuário/senha fictícia de teste, porta, label do container, volume e marcador SQL; localhost sozinho não autoriza. A baseline existente é aplicada por `migrate deploy`, sem alterar schema/migrations. Nunca usar desenvolvimento, E2E ou escala como banco descartável.
 
@@ -136,6 +327,8 @@ Após recuperação: provar ausência do namespace, contagens/hash-base inaltera
 npm.cmd run load:fixture-test:prepare
 npm.cmd run test:load-fixtures
 npm.cmd run test:load-writes
+npm.cmd run test:load-write-executor
+npm.cmd run test:load-write-http
 npm.cmd run test:load-resources
 
 # Operação manual do banco de TESTE; não é preparação do dataset small.
@@ -147,15 +340,32 @@ npm.cmd run load:fixture -- recover marketplace_load_test@127.0.0.1:5436 API_AND
 docker stop marketplace-load-test-postgres
 ```
 
-O manifesto persistente `scale_ops.load_experiments` registra namespace `load-<uuid>`, raízes, chaves estáveis e assinatura/contagem anterior por tabela. Estados: EMPTY → PREPARING → READY → RUNNING; erro deixa UNKNOWN e recuperação explícita deixa RECOVERED. PREPARING/RUNNING órfãos continuam bloqueando outra preparação após reinício. O advisory lock comum recusa preparação/rodada/recuperação simultâneas. Uma recuperação de estado órfão exige exclusão adquirida, confirmação de processos parados e ausência de clientes de API no banco.
+O manifesto persistente `scale_ops.load_experiments` registra namespace `load-<uuid>`, raízes, chaves estáveis e assinatura/contagem anterior por tabela. Estados: EMPTY → PREPARING → READY → RUNNING; erro deixa UNKNOWN e recuperação explícita deixa RECOVERED. PREPARING/RUNNING órfãos continuam bloqueando outra preparação após reinício. O advisory lock comum recusa preparação/rodada/recuperação simultâneas. Em escala usa a mesma chave 49314301 da geração/purge/leitura; em teste usa 5521052. O sucesso registra `effects.execution`, bloqueando nova execução mesmo que o estado seja READY: primeiro recuperar explicitamente. A tabela operacional só é inicializada por preparação expressamente confirmada; status/reconcile não a criam. Uma recuperação de estado órfão exige exclusão adquirida, confirmação de processos parados e ausência de clientes de API no banco.
 
 A preparação admite até 20 customers, um seller e no máximo 21 produtos; o planejador atual usa no máximo 20. Grafo limitado a 512 registros, consultas limitadas e manifesto/efeitos a 128 KiB. Produtos, usuários, inventários, movimentos, endereços, carrinhos e pedidos de pagamento pertencem apenas ao namespace. Não há ligação com usuários ou estoque históricos. Uma resposta perdida é reconciliada consultando FKs das raízes, sem inventar outro ID/chave. Pagamento CAPTURED/externo, refunds/deliveries/reviews inesperados ou FK cruzada impedem desmontagem.
 
 A recuperação verifica a assinatura histórica antes de qualquer delete, remove somente IDs enumerados na ordem das FKs e confirma a assinatura novamente na mesma transação Serializable. Reservas, movimentos e inventários experimentais são removidos juntos; isso não simula liberação comercial. Falha na limpeza reverte todos os deletes e mantém o manifesto. Não há cleanup em falha/teardown, TRUNCATE, CASCADE ou purge da 4.3. A suíte tem um usuário sentinela próprio que permanece no banco de teste para provar a preservação histórica.
 
-`write-scenarios.js` implementa os cinco contratos com transporte/inspeção injetados, barreira de despacho e orçamento finito (até 20 operações/4 participantes simultâneos). Somente simulação ou API de teste fixa `127.0.0.1:8052` são aceitas; não há launcher de escrita para escala. Os testes HTTP simulados validam requests, erros exatos e pós-condições, inclusive resposta perdida sem retry. Simulação de despacho concorrente não comprova disputa real por locks PostgreSQL. API de teste 8052 não é iniciada automaticamente e nenhum novo endpoint foi criado.
+`write-executor.js` inicia e encerra sua própria API compilada (8052 teste / 8051 escala), prepara logins e `/users/me` fora da janela, mantém cookies somente em memória e encaminha JSON aos cinco contratos reais. O transporte só admite as duas origens fixas, métodos/caminhos do manifesto e requests limitados; preserva a chave de idempotência. Timeout10 s, pausa de 1 s, barreira por lote, sem retry. Supervisão reutilizada verifica RAM 2 GiB, CPU sustentada, SQL/locks, PGDATA/WAL e disco Windows. Medições inválidas abortam requests e deixam UNKNOWN, sem cleanup automático. A observação ao vivo termina antes da verificação persistida: comandos síncronos de identidade Docker não pertencem à janela HTTP. Não foi criado endpoint novo.
 
-**Liberação futura ainda necessária:** adaptar explicitamente o controlador para namespace operacional no ambiente de escala, validar margens de armazenamento e supervisão na futura janela de escrita, conectar transporte autenticado real e obter autorização do responsável. Os testes de recuperação dedicados não autorizam escrita no small nem substituem suas invariantes. Não publicar os scripts preparados como resultados medidos.
+**Integração implementada, execução de escala ainda proibida:** URL, usuário, porta, marcador SQL, estado completed/small, label, volume e limites são verificados pelo controlador compartilhado. Preparação registra invariantes, contagens e SHA-256 anteriores; valida o grafo preparado; execução confere pós-condições e assinatura histórica; recuperação confere novamente os hashes e invariantes dentro da transação. A fixture de pagamento ordena reserva após reposição com timestamp posterior, evitando desempate lexical entre movimentos.
+
+Testes dedicados: 12 de falha/recuperação e seis de HTTP real, incluindo dois participantes concorrentes em checkout compartilhado/idempotência, pagamento integral e perda da resposta depois do checkout real. São testes funcionais do executor, não resultados de baseline em escala. Relatórios limitados em `load/results/write-*.json`, ignorados; sem cookies, tokens ou bodies por request.
+
+Apenas após aceite futuro: habilitar conscientemente `fixtures.writesEnabled`, confirmar o destino e fornecer aprovação específica. Não executar os comandos seguintes neste handoff:
+
+```powershell
+# EXEMPLOS FUTUROS — BLOQUEADOS agora por writesEnabled=false.
+# Antes: build, small íntegro, RAM >=2 GiB, porta 8051 livre e aceite humano.
+npm.cmd run load:fixture -- prepare cart 2 --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+# Substituir NAMESPACE pelo ID retornado; aprovação vale só para esse cenário/estágio.
+npm.cmd run load:fixture -- run smoke NAMESPACE:cart:smoke --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+npm.cmd run load:fixture -- reconcile --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+# API/runner próprios devem estar parados; não é purge da 4.3 nem liberação de reservas.
+npm.cmd run load:fixture -- recover API_AND_RUNNER_STOPPED --environment scale --confirm-scale-fixtures marketplace_scale@127.0.0.1:5435:fixtures
+```
+
+O executor encerra somente sua API. Recuperação é uma operação separada e explícita. Não iniciar `load:api` de leitura sobre fixtures: sua preflight exige contagens da base intactas. O executor de escrita faz a conferência do grafo experimental e inicia sua própria API corretamente.
 
 ## Progressão, métricas e interrupção
 
@@ -180,6 +390,6 @@ Na supervisão periódica de **1 s** (RAM a 250 ms), interromper se CPU host >85
 1. Revisar espaço/memória e registrar versões/recursos reais, confirmar small intacto, instalar/verificar k6 fixado e validar o script no runtime k6.
 2. Build isolada, API exclusiva, disponibilidade HTTP e sessões fora da medição. Preparar observação/abort de recursos e oráculos de leitura; delimitar aquecimento separado (até uma operação por cenário, registrado).
 3. Smoke de catálogo/produto/dashboard **um por vez**; baixa e gradual somente após autorização posterior explícita e disponibilidade >=2 GiB. Separar sellers de maior/menor volume e variantes de filtros/série para comparação.
-4. Manifesto, preparação e recuperação foram implementados/testados somente no banco dedicado. Ainda bloquear execução real de escrita e exigir novo aceite, adaptação explícita do destino e supervisão antes dessa janela. Não acessar estoque/pedidos-base para obter resultado positivo.
+4. Manifesto, preparação e recuperação foram implementados/testados somente no banco dedicado. A integração de destino/transporte/supervisão foi implementada e testada em marketplace_load_test. Manter preparação/execução real em escala bloqueadas e exigir novo aceite para cada rodada. Não acessar estoque/pedidos-base para obter resultado positivo.
 5. Futuramente, após novo aceite: smoke/baixa/gradual de cart, checkout compartilhado/distribuído, idempotência e pagamento. Conferir invariantes e recuperar explicitamente entre cenários; parar em resultado desconhecido. Não executar captura de pagamento.
 6. Relatar tamanho do dataset, concorrência, erros técnicos versus resultados de negócio, limites/picos de recursos e condições de máquina compartilhada; guardar apenas agregados em `load/results/` ignorado. Nenhuma conclusão de capacidade ou baseline foi produzida na 5.1.

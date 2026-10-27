@@ -21,8 +21,12 @@ function requests(manifest, scenario, variant, endpoint) {
       { path: `/products?${variants[variant]}`, tag: `catalog/${variant}` },
     ];
   }
-  if (scenario === "product" && variant === "popular") {
-    return manifest.products.map((p) => ({
+  if (scenario === "product" && ["popular", "popular-one"].includes(variant)) {
+    const products =
+      variant === "popular-one"
+        ? manifest.products.slice(0, 1)
+        : manifest.products;
+    return products.map((p) => ({
       path: `/products/${p.id}`,
       tag: "product/popular",
     }));

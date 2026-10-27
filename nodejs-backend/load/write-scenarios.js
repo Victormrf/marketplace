@@ -2,11 +2,25 @@ const assert = require("node:assert/strict");
 const { performance } = require("node:perf_hooks");
 const { validateManifest } = require("./fixture-manager");
 
-function assertMode(mode, destination) {
+function assertMode(mode, destination, approval, manifest, stage) {
   if (mode === "simulation" && destination === "simulation") {
     return;
   }
   if (mode === "fixture-test" && destination === "http://127.0.0.1:8052") {
+    return;
+  }
+  if (
+    mode === "scale" &&
+    destination === "http://127.0.0.1:8051" &&
+    manifest &&
+    (["smoke", "low", "gradual"].includes(stage) ||
+      (stage === "reference" &&
+        manifest.reference &&
+        require("./plan.json").reducedBaseline.writeScenarios.includes(
+          manifest.scenario,
+        ))) &&
+    approval === `${manifest.namespace}:${manifest.scenario}:${stage}`
+  ) {
     return;
   }
   throw new Error(
@@ -70,8 +84,12 @@ async function run({
   transport,
   inspect,
   paymentVariant = "duplicate",
+  approval,
+  stage,
+  signal,
+  pauseMs = 0,
 }) {
-  assertMode(mode, destination);
+  assertMode(mode, destination, approval, manifest, stage);
   validateManifest(manifest);
   if (
     !Number.isInteger(operations) ||
@@ -112,11 +130,13 @@ async function run({
     result: "running",
   };
   const orderIds = new Set();
+  const checkoutResults = new Map();
   const tasks = Array.from({ length: operations }, (_, index) => ({
     customer: manifest.customers[shared ? 0 : index],
     index,
   }));
   const send = async (customer, method, path, body, headers = {}) => {
+    signal?.throwIfAborted();
     summary.requests += 1;
     const started = performance.now();
     summary.firstDispatchAt ??= started;
@@ -129,6 +149,7 @@ async function run({
       body,
       headers,
       timeoutMs: 10000,
+      signal,
     });
     if (!response || !Number.isInteger(response.status)) {
       throw new Error(
@@ -139,6 +160,7 @@ async function run({
   };
   try {
     await coordinated(tasks, concurrency, async ({ customer }) => {
+      signal?.throwIfAborted();
       const product = manifest.products.find(
         (p) => p.id === customer.productId,
       );
@@ -202,7 +224,19 @@ async function run({
           response.status === 201 ||
           (manifest.scenario === "idempotency" && response.status === 200)
         ) {
-          orderIds.add(checkoutBody(response, customer, manifest));
+          const orderId = checkoutBody(response, customer, manifest);
+          orderIds.add(orderId);
+          if (manifest.reference && manifest.scenario === "idempotency") {
+            if (checkoutResults.has(orderId)) {
+              assert.deepEqual(
+                response.body,
+                checkoutResults.get(orderId),
+                "Idempotent replay result differs",
+              );
+            } else {
+              checkoutResults.set(orderId, structuredClone(response.body));
+            }
+          }
           if (response.status === 200) {
             assert.equal(response.headers?.["Idempotency-Replayed"], "true");
             summary.replays += 1;
@@ -221,6 +255,11 @@ async function run({
           );
           summary.expectedConflicts += 1;
         }
+      }
+      if (pauseMs) {
+        await require("node:timers/promises").setTimeout(pauseMs, undefined, {
+          signal,
+        });
       }
     });
     const state = await inspect(manifest); // Authoritative persisted postconditions, not HTTP status alone.
@@ -252,7 +291,7 @@ async function run({
         manifest.scenario === "idempotency"
           ? 1
           : manifest.scenario === "checkout-shared"
-            ? Math.min(operations, 2)
+            ? Math.min(operations, manifest.products[0].onHand)
             : operations;
       assert.equal(summary.success, expected);
       assert.equal(state.orders.length, expected);
@@ -264,6 +303,25 @@ async function run({
           (key) => key.status === "COMPLETED" && orderIds.has(key.orderId),
         ),
       );
+      if (manifest.reference) {
+        assert.equal(
+          state.reservations.reduce((sum, row) => sum + row.quantity, 0),
+          1,
+        );
+        assert.ok(state.reservations.every((row) => row.status === "ACTIVE"));
+        const reservationMovements = state.movements.filter(
+          (row) => row.movementType === "RESERVATION",
+        );
+        assert.equal(reservationMovements.length, 1);
+        assert.equal(reservationMovements[0].reservedDelta, 1);
+        assert.equal(
+          state.inventories.reduce((sum, row) => sum + row.reservedQuantity, 0),
+          1,
+        );
+        if (manifest.scenario === "checkout-shared") {
+          assert.equal(summary.expectedConflicts, 1);
+        }
+      }
       assert.ok(
         state.inventories.every(
           (row) =>
@@ -308,6 +366,9 @@ async function inspectTestDb(db, manifest) {
       }),
       reservations: await tx.inventoryReservation.findMany({
         where: { id: { in: ids.inventoryReservation } },
+      }),
+      movements: await tx.inventoryMovement.findMany({
+        where: { id: { in: ids.inventoryMovement } },
       }),
       keys: await tx.idempotencyKey.findMany({
         where: { id: { in: ids.idempotencyKey } },

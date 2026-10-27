@@ -3,29 +3,55 @@ const target = require("./fixture-db");
 const fixtures = require("./fixture-manager");
 
 async function main() {
-  const [operation, scenario, participants, confirmation] =
-    process.argv.slice(2);
-  if (!["status", "reconcile", "prepare", "recover"].includes(operation)) {
+  const values = process.argv.slice(2);
+  const referenceIndex = values.indexOf("--reference");
+  const reference = referenceIndex >= 0;
+  if (reference) {
+    values.splice(referenceIndex, 1);
+  }
+  const modeIndex = values.indexOf("--environment");
+  const mode = modeIndex >= 0 ? values.splice(modeIndex, 2)[1] : "fixture-test";
+  const confirmIndex = values.indexOf("--confirm-scale-fixtures");
+  const confirmation =
+    confirmIndex >= 0 ? values.splice(confirmIndex, 2)[1] : undefined;
+  const [operation, scenario, participants] = values;
+  if (
+    !["status", "reconcile", "prepare", "recover", "run"].includes(operation)
+  ) {
     throw new Error(
-      "Use status/reconcile, prepare <scenario> <participants> <confirmation>, or recover <confirmation> API_AND_RUNNER_STOPPED",
+      "Use status/reconcile, prepare <scenario> <operations> <test-confirmation>, run <stage> <scale-approval>, or recover <test-confirmation> API_AND_RUNNER_STOPPED; select scale explicitly with --environment and --confirm-scale-fixtures",
     );
   }
-  if (["prepare", "recover"].includes(operation)) {
+  if (["prepare", "recover", "run"].includes(operation)) {
     const accepted = "marketplace_load_test@127.0.0.1:5436";
-    if ((operation === "prepare" ? confirmation : scenario) !== accepted) {
+    if (
+      mode === "fixture-test" &&
+      operation !== "run" &&
+      (operation === "prepare" ? values[3] : scenario) !== accepted
+    ) {
       throw new Error(
         `Explicit dedicated-test confirmation ${accepted} required`,
       );
     }
-    assertMemory(); // 2 GiB; never the read-smoke relaxation.
+    if (!reference) {
+      assertMemory();
+    }
   }
-  const db = target.client();
+  const db = target.client({ mode, confirmation, reference });
   try {
     let result;
     if (operation === "prepare") {
       result = await fixtures.prepare(db, scenario, Number(participants));
+    } else if (operation === "run") {
+      result = await require("./write-executor").execute(db, {
+        stage: scenario,
+        approval: participants,
+      });
     } else if (operation === "recover") {
-      result = await fixtures.recover(db, participants);
+      result = await fixtures.recover(
+        db,
+        mode === "scale" ? participants || scenario : participants,
+      );
     } else {
       result = await fixtures[operation](db);
     }
