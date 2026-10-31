@@ -504,7 +504,9 @@ test("typed checkout conflict codes reach logs without changing public messages"
 
 test("repository assigns cart conflict codes at detection, preserving error messages", async (t) => {
   const originalDb = dbModule.default;
-  t.after(() => { dbModule.default = originalDb; });
+  t.after(() => {
+    dbModule.default = originalDb;
+  });
   const product = {
     id: "p",
     sellerId: "s",
@@ -610,7 +612,9 @@ test("repository assigns cart conflict codes at detection, preserving error mess
 
 test("repository derives idempotency codes from structured state without message matching", async (t) => {
   const originalDb = dbModule.default;
-  t.after(() => { dbModule.default = originalDb; });
+  t.after(() => {
+    dbModule.default = originalDb;
+  });
   const cases = [
     {
       row: null,
