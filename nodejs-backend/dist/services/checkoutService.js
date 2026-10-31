@@ -18,6 +18,7 @@ const customerRepository_1 = require("../repositories/customerRepository");
 const userRepository_1 = require("../repositories/userRepository");
 const customErrors_1 = require("../utils/customErrors");
 const logger_1 = require("../utils/logger");
+const metrics_1 = require("../observability/metrics");
 function toCheckoutDto(record) {
     return {
         id: record.id,
@@ -119,6 +120,12 @@ class CheckoutService {
                     serialize: toCheckoutDto,
                 });
                 logger_1.logger.info(execution.replayed ? "checkout.replayed" : "checkout.created");
+                if (execution.replayed) {
+                    metrics_1.metrics.checkoutReplayed();
+                }
+                else {
+                    metrics_1.metrics.checkoutCreated();
+                }
                 return { result: execution.result, replayed: execution.replayed };
             }
             catch (error) {
@@ -126,6 +133,7 @@ class CheckoutService {
                     throw new customErrors_1.ObjectNotFoundError(error.message.replace(" not found", ""));
                 if (error instanceof checkoutRepository_1.CheckoutConflictError) {
                     logger_1.logger.warn("checkout.conflict", { code: error.code });
+                    metrics_1.metrics.checkoutConflict(error.code);
                     throw new customErrors_1.ConflictError(error.message);
                 }
                 throw error;

@@ -20,9 +20,17 @@ import { checkoutRoutes } from "./controllers/checkoutController";
 import { refundRoutes } from "./controllers/refundController";
 import { requestLogging } from "./middlewares/requestLogging";
 import { logger } from "./utils/logger";
+import { metrics, metricsHandler } from "./observability/metrics";
+import {
+  createPostgresCollector,
+  readPostgresSnapshot,
+} from "./observability/postgresMetrics";
 
 const app = express();
 app.use(requestLogging());
+if (metrics.enabled) {
+  app.get("/metrics", metricsHandler());
+}
 app.use(express.json());
 
 const PORT = process.env.PORT || 8000;
@@ -78,15 +86,23 @@ app.use("/", deliveryRoutes);
 app.use("/inventory", inventoryRoutes);
 app.use("/checkout", checkoutRoutes);
 
-// Encerrar conexão do Prisma quando o servidor for interrompido
-process.on("SIGINT", async () => {
+const postgresCollector = createPostgresCollector(() =>
+  readPostgresSnapshot(prisma),
+);
+
+// Stop collection before closing Prisma; importing app does not start a poller.
+async function shutdown() {
+  await postgresCollector.stop();
   await prisma.$disconnect();
   logger.info("server.stopped");
   process.exit(0);
-});
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 if (require.main === module) {
   app.listen(PORT, () => {
+    postgresCollector.start();
     logger.info("server.started", { port: Number(PORT) });
   });
 }

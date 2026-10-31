@@ -35,9 +35,14 @@ const checkoutController_1 = require("./controllers/checkoutController");
 const refundController_1 = require("./controllers/refundController");
 const requestLogging_1 = require("./middlewares/requestLogging");
 const logger_1 = require("./utils/logger");
+const metrics_1 = require("./observability/metrics");
+const postgresMetrics_1 = require("./observability/postgresMetrics");
 const app = (0, express_1.default)();
 exports.app = app;
 app.use((0, requestLogging_1.requestLogging)());
+if (metrics_1.metrics.enabled) {
+    app.get("/metrics", (0, metrics_1.metricsHandler)());
+}
 app.use(express_1.default.json());
 const PORT = process.env.PORT || 8000;
 app.get("/", (req, res) => {
@@ -80,14 +85,21 @@ app.use("/dashboard", dashboardController_1.dashboardRoutes);
 app.use("/", deliveryController_1.deliveryRoutes);
 app.use("/inventory", inventoryController_1.inventoryRoutes);
 app.use("/checkout", checkoutController_1.checkoutRoutes);
-// Encerrar conexão do Prisma quando o servidor for interrompido
-process.on("SIGINT", () => __awaiter(void 0, void 0, void 0, function* () {
-    yield db_1.default.$disconnect();
-    logger_1.logger.info("server.stopped");
-    process.exit(0);
-}));
+const postgresCollector = (0, postgresMetrics_1.createPostgresCollector)(() => (0, postgresMetrics_1.readPostgresSnapshot)(db_1.default));
+// Stop collection before closing Prisma; importing app does not start a poller.
+function shutdown() {
+    return __awaiter(this, void 0, void 0, function* () {
+        yield postgresCollector.stop();
+        yield db_1.default.$disconnect();
+        logger_1.logger.info("server.stopped");
+        process.exit(0);
+    });
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 if (require.main === module) {
     app.listen(PORT, () => {
+        postgresCollector.start();
         logger_1.logger.info("server.started", { port: Number(PORT) });
     });
 }

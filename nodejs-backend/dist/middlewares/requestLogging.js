@@ -5,6 +5,7 @@ const node_crypto_1 = require("node:crypto");
 const node_perf_hooks_1 = require("node:perf_hooks");
 const logger_1 = require("../utils/logger");
 const requestContext_1 = require("../utils/requestContext");
+const metrics_1 = require("../observability/metrics");
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Only the application's literal mounts may appear in logs, never a dynamic baseUrl.
 const mounts = new Set([
@@ -55,13 +56,16 @@ function resultCode(status, closed) {
                     : undefined;
     }
 }
-function requestLogging(log = logger_1.logger) {
+function requestLogging(log = logger_1.logger, measurements = metrics_1.metrics) {
     return (req, res, next) => {
         const received = req.header("X-Request-ID");
         const requestId = received && uuid.test(received) ? received : (0, node_crypto_1.randomUUID)();
         req.requestId = requestId;
         res.setHeader("X-Request-ID", requestId);
         const started = node_perf_hooks_1.performance.now();
+        const finishMetrics = (0, metrics_1.isMetricsScrape)(req.method, req.path)
+            ? undefined
+            : measurements.startHttp();
         let completed = false;
         requestContext_1.requestContext.run({ requestId }, () => {
             const complete = (outcome) => {
@@ -71,6 +75,23 @@ function requestLogging(log = logger_1.logger) {
                 completed = true;
                 res.off("finish", finished);
                 res.off("close", closed);
+                const seconds = (node_perf_hooks_1.performance.now() - started) / 1000;
+                const method = [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE",
+                    "HEAD",
+                    "OPTIONS",
+                ].includes(req.method)
+                    ? req.method
+                    : "OTHER";
+                const route = routeTemplate(req);
+                const status = outcome === "connection_closed" && !res.headersSent
+                    ? null
+                    : res.statusCode;
+                finishMetrics === null || finishMetrics === void 0 ? void 0 : finishMetrics({ method, route, status, seconds, outcome });
                 // Re-enter explicitly: socket events can originate outside this ALS chain.
                 requestContext_1.requestContext.run({ requestId }, () => {
                     const level = outcome === "connection_closed" || res.statusCode >= 400
@@ -79,22 +100,10 @@ function requestLogging(log = logger_1.logger) {
                             : "warn"
                         : "info";
                     log[level]("http.completed", {
-                        method: [
-                            "GET",
-                            "POST",
-                            "PUT",
-                            "PATCH",
-                            "DELETE",
-                            "HEAD",
-                            "OPTIONS",
-                        ].includes(req.method)
-                            ? req.method
-                            : "OTHER",
-                        route: routeTemplate(req),
-                        status: outcome === "connection_closed" && !res.headersSent
-                            ? null
-                            : res.statusCode,
-                        durationMs: Math.round((node_perf_hooks_1.performance.now() - started) * 1000) / 1000,
+                        method,
+                        route,
+                        status,
+                        durationMs: Math.round(seconds * 1000000) / 1000,
                         outcome,
                         code: resultCode(res.statusCode, outcome === "connection_closed"),
                     });

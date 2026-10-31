@@ -10,6 +10,7 @@ import {
 } from "../utils/customErrors";
 import { logger } from "../utils/logger";
 import type { CheckoutFailureCode } from "../types/checkout";
+import { metrics } from "../observability/metrics";
 
 function failureCode(error: unknown): CheckoutFailureCode {
   const code =
@@ -62,7 +63,9 @@ checkoutRoutes.post("/", async (req: Request, res: Response) => {
       res.status(409).json({ error: error.message });
       return;
     }
-    logger.error("checkout.failed", { code: failureCode(error) });
+    const code = failureCode(error);
+    logger.error("checkout.failed", { code });
+    metrics.checkoutFailed(code);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });

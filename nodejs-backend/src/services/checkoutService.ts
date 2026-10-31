@@ -17,6 +17,7 @@ import {
 } from "../utils/customErrors";
 import type { CheckoutDto } from "../types/checkout";
 import { logger } from "../utils/logger";
+import { metrics } from "../observability/metrics";
 
 export function toCheckoutDto(record: CheckoutReadRecord): CheckoutDto {
   return {
@@ -122,12 +123,18 @@ export class CheckoutService {
       logger.info(
         execution.replayed ? "checkout.replayed" : "checkout.created",
       );
+      if (execution.replayed) {
+        metrics.checkoutReplayed();
+      } else {
+        metrics.checkoutCreated();
+      }
       return { result: execution.result, replayed: execution.replayed };
     } catch (error) {
       if (error instanceof CheckoutNotFoundError)
         throw new ObjectNotFoundError(error.message.replace(" not found", ""));
       if (error instanceof CheckoutConflictError) {
         logger.warn("checkout.conflict", { code: error.code });
+        metrics.checkoutConflict(error.code);
         throw new ConflictError(error.message);
       }
       throw error;

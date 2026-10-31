@@ -16,6 +16,7 @@ const authMiddleware_1 = require("../middlewares/authMiddleware");
 const checkoutService_1 = require("../services/checkoutService");
 const customErrors_1 = require("../utils/customErrors");
 const logger_1 = require("../utils/logger");
+const metrics_1 = require("../observability/metrics");
 function failureCode(error) {
     const code = error instanceof client_1.Prisma.PrismaClientKnownRequestError
         ? error.code
@@ -62,7 +63,9 @@ exports.checkoutRoutes.post("/", (req, res) => __awaiter(void 0, void 0, void 0,
             res.status(409).json({ error: error.message });
             return;
         }
-        logger_1.logger.error("checkout.failed", { code: failureCode(error) });
+        const code = failureCode(error);
+        logger_1.logger.error("checkout.failed", { code });
+        metrics_1.metrics.checkoutFailed(code);
         res.status(500).json({ message: "Internal Server Error" });
     }
 }));

@@ -4,6 +4,8 @@ import type { Request, RequestHandler } from "express";
 import { logger } from "../utils/logger";
 import type { Logger, LogCode } from "../utils/logger";
 import { requestContext } from "../utils/requestContext";
+import { isMetricsScrape, metrics } from "../observability/metrics";
+import type { Metrics } from "../observability/metrics";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Only the application's literal mounts may appear in logs, never a dynamic baseUrl.
@@ -57,13 +59,19 @@ function resultCode(status: number, closed: boolean): LogCode | undefined {
   }
 }
 
-export function requestLogging(log: Logger = logger): RequestHandler {
+export function requestLogging(
+  log: Logger = logger,
+  measurements: Metrics = metrics,
+): RequestHandler {
   return (req, res, next) => {
     const received = req.header("X-Request-ID");
     const requestId = received && uuid.test(received) ? received : randomUUID();
     req.requestId = requestId;
     res.setHeader("X-Request-ID", requestId);
     const started = performance.now();
+    const finishMetrics = isMetricsScrape(req.method, req.path)
+      ? undefined
+      : measurements.startHttp();
     let completed = false;
 
     requestContext.run({ requestId }, () => {
@@ -74,6 +82,24 @@ export function requestLogging(log: Logger = logger): RequestHandler {
         completed = true;
         res.off("finish", finished);
         res.off("close", closed);
+        const seconds = (performance.now() - started) / 1000;
+        const method = [
+          "GET",
+          "POST",
+          "PUT",
+          "PATCH",
+          "DELETE",
+          "HEAD",
+          "OPTIONS",
+        ].includes(req.method)
+          ? req.method
+          : "OTHER";
+        const route = routeTemplate(req);
+        const status =
+          outcome === "connection_closed" && !res.headersSent
+            ? null
+            : res.statusCode;
+        finishMetrics?.({ method, route, status, seconds, outcome });
         // Re-enter explicitly: socket events can originate outside this ALS chain.
         requestContext.run({ requestId }, () => {
           const level =
@@ -83,23 +109,10 @@ export function requestLogging(log: Logger = logger): RequestHandler {
                 : "warn"
               : "info";
           log[level]("http.completed", {
-            method: [
-              "GET",
-              "POST",
-              "PUT",
-              "PATCH",
-              "DELETE",
-              "HEAD",
-              "OPTIONS",
-            ].includes(req.method)
-              ? req.method
-              : "OTHER",
-            route: routeTemplate(req),
-            status:
-              outcome === "connection_closed" && !res.headersSent
-                ? null
-                : res.statusCode,
-            durationMs: Math.round((performance.now() - started) * 1000) / 1000,
+            method,
+            route,
+            status,
+            durationMs: Math.round(seconds * 1000000) / 1000,
             outcome,
             code: resultCode(res.statusCode, outcome === "connection_closed"),
           });
