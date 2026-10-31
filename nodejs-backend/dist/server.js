@@ -33,8 +33,11 @@ const inventoryController_1 = require("./controllers/inventoryController");
 const customerAddressController_1 = require("./controllers/customerAddressController");
 const checkoutController_1 = require("./controllers/checkoutController");
 const refundController_1 = require("./controllers/refundController");
+const requestLogging_1 = require("./middlewares/requestLogging");
+const logger_1 = require("./utils/logger");
 const app = (0, express_1.default)();
 exports.app = app;
+app.use((0, requestLogging_1.requestLogging)());
 app.use(express_1.default.json());
 const PORT = process.env.PORT || 8000;
 app.get("/", (req, res) => {
@@ -80,11 +83,11 @@ app.use("/checkout", checkoutController_1.checkoutRoutes);
 // Encerrar conexão do Prisma quando o servidor for interrompido
 process.on("SIGINT", () => __awaiter(void 0, void 0, void 0, function* () {
     yield db_1.default.$disconnect();
-    console.log("Prisma disconnected.");
+    logger_1.logger.info("server.stopped");
     process.exit(0);
 }));
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(`Server running at http://localhost:${PORT}`);
+        logger_1.logger.info("server.started", { port: Number(PORT) });
     });
 }

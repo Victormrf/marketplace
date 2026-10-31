@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
 Última atualização: 26/10/2026
-Estado atual: **Fases 3, 4 e 5 concluídas, fase 5 no escopo exploratório reduzido aprovado; próxima 6.1; pendências transversais preservadas**
+Estado atual: **Fases 3, 4 e 5 concluídas, fase 5 no escopo exploratório reduzido aprovado; 6.1 concluída, próxima 6.2; pendências transversais preservadas**
 
 ## Objetivo
 
@@ -115,8 +115,8 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 **Objetivo:** entender cada requisição e job durante falhas e testes de carga.
 
-- [~] 6.1 Adicionar logs estruturados e request/correlation ID, com cuidado para não registrar segredos. Próxima etapa; implementação ainda não iniciada.
-- [ ] 6.2 Instrumentar métricas HTTP, PostgreSQL, filas/jobs e indicadores de negócio relevantes.
+- [x] 6.1 Logs JSON centralizados nativos do Node e AsyncLocalStorage, LOG_LEVEL com padrão info, stdout/stderr e sem dependências novas. Middleware antes do parser gera/valida UUID e retorna X-Request-ID; conclusão HTTP única com template seguro, status/duração e conexão encerrada (status null antes dos headers). Checkout registra criação/replay/conflito/falha técnica com mesmo ID e códigos fixos, sem mensagens/stacks/dados sensíveis. Em 26/10/2026, typecheck, build e test:logging 14/14 passaram: concorrência, headers, 400/401/403/404/409/500, 204, abort antes/depois de headers, deduplicação, níveis e redação. HTTP real local com persistência substituída por doubles, sem bancos, fixtures PostgreSQL, cargas ou tickets. Logs legados fora do escopo não foram substituídos em massa; correlação limitada à chamada Express. Ver [resumo](STEP_6_1_STRUCTURED_LOGGING_SUMMARY.md) e [operação/política](nodejs-backend/docs/REQUEST_LOGGING.md).
+- [~] 6.2 Instrumentar métricas HTTP, PostgreSQL, filas/jobs e indicadores de negócio relevantes. Próxima etapa; não iniciada nesta entrega.
 - [ ] 6.3 Adicionar tracing, health/readiness checks e painéis locais; repetir um cenário da baseline para verificar a visibilidade.
 
 **Concluída quando:** um erro ou lentidão pode ser rastreado da entrada HTTP até banco, job ou integração correspondente.
@@ -176,4 +176,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Etapa 6.1 — logs estruturados e request/correlation ID, sem registrar segredos. A fase 5 foi concluída no escopo exploratório reduzido aprovado; usar a análise da 5.3 como referência para futuras comparações, sem executar automaticamente novas cargas, repetir tickets ou estender a exceção de RAM. Operação/evidências em LOAD_TEST_PLAN.md e LOAD_BASELINE_REPORT.md; interpretação em LOAD_BASELINE_ANALYSIS.md. Pendência transversal 2.7, recuperação de reviews próprias e verificação BACKEND_API_URL em produção na fase 11 preservadas; SSR autenticado continua adiado.
+Etapa 6.2 — métricas HTTP/PostgreSQL e indicadores relevantes, partindo dos logs/request ID da 6.1, sem confundi-los com tracing distribuído. Implementação ainda não iniciada. A fase 5 foi concluída no escopo exploratório reduzido aprovado; usar a análise da 5.3 como referência, sem executar automaticamente novas cargas, repetir tickets ou estender a exceção de RAM. Pendência transversal 2.7, recuperação de reviews próprias e verificação BACKEND_API_URL em produção na fase 11 preservadas; SSR autenticado continua adiado.

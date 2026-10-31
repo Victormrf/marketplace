@@ -18,8 +18,11 @@ import { inventoryRoutes } from "./controllers/inventoryController";
 import { customerAddressRoutes } from "./controllers/customerAddressController";
 import { checkoutRoutes } from "./controllers/checkoutController";
 import { refundRoutes } from "./controllers/refundController";
+import { requestLogging } from "./middlewares/requestLogging";
+import { logger } from "./utils/logger";
 
 const app = express();
+app.use(requestLogging());
 app.use(express.json());
 
 const PORT = process.env.PORT || 8000;
@@ -53,7 +56,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000", "https://v-market-one.vercel.app"], // frontend Next.js
     credentials: true,
-  })
+  }),
 );
 
 app.use(cookieParser());
@@ -78,13 +81,13 @@ app.use("/checkout", checkoutRoutes);
 // Encerrar conexão do Prisma quando o servidor for interrompido
 process.on("SIGINT", async () => {
   await prisma.$disconnect();
-  console.log("Prisma disconnected.");
+  logger.info("server.stopped");
   process.exit(0);
 });
 
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+    logger.info("server.started", { port: Number(PORT) });
   });
 }
 

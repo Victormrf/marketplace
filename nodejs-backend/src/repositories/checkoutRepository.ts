@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { randomUUID } from "crypto";
 import prisma from "../config/db";
+import type { CheckoutConflictCode } from "../types/checkout";
 
 const CHECKOUT_SELECT = {
   id: true,
@@ -99,7 +100,14 @@ type LockedInventory = {
 };
 
 export class CheckoutNotFoundError extends Error {}
-export class CheckoutConflictError extends Error {}
+export class CheckoutConflictError extends Error {
+  constructor(
+    message: string,
+    public readonly code: CheckoutConflictCode = "BUSINESS_CONFLICT",
+  ) {
+    super(message);
+  }
+}
 export type CheckoutTestHooks = {
   afterSharedLocks?: () => Promise<void>;
   afterLocks?: () => Promise<void>;
@@ -174,11 +182,17 @@ export class CheckoutRepository {
         )
           throw new CheckoutConflictError(
             "Idempotency key was used with a different request",
+            existing
+              ? "IDEMPOTENCY_FINGERPRINT_MISMATCH"
+              : "IDEMPOTENCY_STATE_CONFLICT",
           );
         if (existing.status === "COMPLETED" && existing.result !== null)
           return { result: existing.result as T, replayed: true };
         throw new CheckoutConflictError(
           `Idempotency key is ${existing.status.toLowerCase()}`,
+          existing.status === "PROCESSING"
+            ? "IDEMPOTENCY_PROCESSING"
+            : "IDEMPOTENCY_STATE_CONFLICT",
         );
       }
       const record = await this.createCheckoutInTransaction(
@@ -223,7 +237,7 @@ export class CheckoutRepository {
     })) as { id: string; items: CartCheckoutItem[] } | null;
     if (!cart) throw new CheckoutNotFoundError("Active cart not found");
     if (cart.items.length === 0)
-      throw new CheckoutConflictError("Cart is empty");
+      throw new CheckoutConflictError("Cart is empty", "CART_EMPTY");
 
     const addresses = await tx.$queryRaw<
       Array<{
@@ -259,7 +273,10 @@ export class CheckoutRepository {
         FOR SHARE
       `);
     if (lockedProducts.length !== productIds.length)
-      throw new CheckoutConflictError("Cart contains a missing product");
+      throw new CheckoutConflictError(
+        "Cart contains a missing product",
+        "PRODUCT_NOT_FOUND",
+      );
     const productById = new Map(
       lockedProducts.map((product) => [product.id, product]),
     );
@@ -274,20 +291,29 @@ export class CheckoutRepository {
         FOR SHARE
       `);
     if (lockedSellers.length !== sellerIds.length)
-      throw new CheckoutConflictError("Cart contains a missing seller");
+      throw new CheckoutConflictError(
+        "Cart contains a missing seller",
+        "SELLER_NOT_FOUND",
+      );
     const sellerById = new Map(
       lockedSellers.map((seller) => [seller.id, seller]),
     );
     const productFor = (productId: string): LockedProduct => {
       const product = productById.get(productId);
       if (!product)
-        throw new CheckoutConflictError("Cart contains a missing product");
+        throw new CheckoutConflictError(
+          "Cart contains a missing product",
+          "PRODUCT_NOT_FOUND",
+        );
       return product;
     };
     const sellerFor = (sellerId: string): LockedSeller => {
       const seller = sellerById.get(sellerId);
       if (!seller)
-        throw new CheckoutConflictError("Cart contains a missing seller");
+        throw new CheckoutConflictError(
+          "Cart contains a missing seller",
+          "SELLER_NOT_FOUND",
+        );
       return seller;
     };
 
@@ -309,7 +335,10 @@ export class CheckoutRepository {
 
     for (const item of cart.items) {
       if (!Number.isSafeInteger(item.quantity) || item.quantity <= 0)
-        throw new CheckoutConflictError("Cart quantity is invalid");
+        throw new CheckoutConflictError(
+          "Cart quantity is invalid",
+          "INVALID_QUANTITY",
+        );
       const product = productById.get(item.productId);
       const seller = product ? sellerById.get(product.sellerId) : undefined;
       const inventory = inventoryByProductId.get(item.productId);
@@ -320,13 +349,21 @@ export class CheckoutRepository {
         !seller.isActive ||
         !inventory
       ) {
-        throw new CheckoutConflictError("Cart contains an unavailable product");
+        throw new CheckoutConflictError(
+          "Cart contains an unavailable product",
+          !inventory ? "INVENTORY_UNAVAILABLE" : "PRODUCT_UNAVAILABLE",
+        );
       }
       if (
         product.currency !== Currency.BRL ||
         inventory.onHandQuantity - inventory.reservedQuantity < item.quantity
       ) {
-        throw new CheckoutConflictError("Cart stock is insufficient");
+        throw new CheckoutConflictError(
+          "Cart stock is insufficient",
+          product.currency !== Currency.BRL
+            ? "UNSUPPORTED_CURRENCY"
+            : "INSUFFICIENT_STOCK",
+        );
       }
     }
 
@@ -407,6 +444,7 @@ export class CheckoutRepository {
         if (!inventory)
           throw new CheckoutConflictError(
             "Inventory disappeared during checkout",
+            "INVENTORY_UNAVAILABLE",
           );
         const reservedAfter = inventory.reservedQuantity + item.quantity;
         await tx.inventory.update({

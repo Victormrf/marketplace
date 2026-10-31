@@ -80,6 +80,10 @@ class CheckoutNotFoundError extends Error {
 }
 exports.CheckoutNotFoundError = CheckoutNotFoundError;
 class CheckoutConflictError extends Error {
+    constructor(message, code = "BUSINESS_CONFLICT") {
+        super(message);
+        this.code = code;
+    }
 }
 exports.CheckoutConflictError = CheckoutConflictError;
 function lockCustomer(tx, customerId) {
@@ -123,10 +127,14 @@ class CheckoutRepository {
                     });
                     if (!existing ||
                         existing.requestFingerprint !== args.requestFingerprint)
-                        throw new CheckoutConflictError("Idempotency key was used with a different request");
+                        throw new CheckoutConflictError("Idempotency key was used with a different request", existing
+                            ? "IDEMPOTENCY_FINGERPRINT_MISMATCH"
+                            : "IDEMPOTENCY_STATE_CONFLICT");
                     if (existing.status === "COMPLETED" && existing.result !== null)
                         return { result: existing.result, replayed: true };
-                    throw new CheckoutConflictError(`Idempotency key is ${existing.status.toLowerCase()}`);
+                    throw new CheckoutConflictError(`Idempotency key is ${existing.status.toLowerCase()}`, existing.status === "PROCESSING"
+                        ? "IDEMPOTENCY_PROCESSING"
+                        : "IDEMPOTENCY_STATE_CONFLICT");
                 }
                 const record = yield this.createCheckoutInTransaction(tx, args.customerId, args.addressId);
                 const result = args.serialize(record);
@@ -164,7 +172,7 @@ class CheckoutRepository {
             if (!cart)
                 throw new CheckoutNotFoundError("Active cart not found");
             if (cart.items.length === 0)
-                throw new CheckoutConflictError("Cart is empty");
+                throw new CheckoutConflictError("Cart is empty", "CART_EMPTY");
             const addresses = yield tx.$queryRaw(client_1.Prisma.sql `
         SELECT "id", "recipientName", "postalCode", "street", "number", "complement", "neighborhood", "city", "state", "countryCode", "phone"
         FROM "customer_address"
@@ -185,7 +193,7 @@ class CheckoutRepository {
         FOR SHARE
       `);
             if (lockedProducts.length !== productIds.length)
-                throw new CheckoutConflictError("Cart contains a missing product");
+                throw new CheckoutConflictError("Cart contains a missing product", "PRODUCT_NOT_FOUND");
             const productById = new Map(lockedProducts.map((product) => [product.id, product]));
             const sellerIds = [
                 ...new Set(lockedProducts.map((product) => product.sellerId)),
@@ -198,18 +206,18 @@ class CheckoutRepository {
         FOR SHARE
       `);
             if (lockedSellers.length !== sellerIds.length)
-                throw new CheckoutConflictError("Cart contains a missing seller");
+                throw new CheckoutConflictError("Cart contains a missing seller", "SELLER_NOT_FOUND");
             const sellerById = new Map(lockedSellers.map((seller) => [seller.id, seller]));
             const productFor = (productId) => {
                 const product = productById.get(productId);
                 if (!product)
-                    throw new CheckoutConflictError("Cart contains a missing product");
+                    throw new CheckoutConflictError("Cart contains a missing product", "PRODUCT_NOT_FOUND");
                 return product;
             };
             const sellerFor = (sellerId) => {
                 const seller = sellerById.get(sellerId);
                 if (!seller)
-                    throw new CheckoutConflictError("Cart contains a missing seller");
+                    throw new CheckoutConflictError("Cart contains a missing seller", "SELLER_NOT_FOUND");
                 return seller;
             };
             // Checkpoint opcional após os locks compartilhados e antes do lock de Inventory.
@@ -226,7 +234,7 @@ class CheckoutRepository {
             yield ((_d = (_c = this.hooks).afterLocks) === null || _d === void 0 ? void 0 : _d.call(_c));
             for (const item of cart.items) {
                 if (!Number.isSafeInteger(item.quantity) || item.quantity <= 0)
-                    throw new CheckoutConflictError("Cart quantity is invalid");
+                    throw new CheckoutConflictError("Cart quantity is invalid", "INVALID_QUANTITY");
                 const product = productById.get(item.productId);
                 const seller = product ? sellerById.get(product.sellerId) : undefined;
                 const inventory = inventoryByProductId.get(item.productId);
@@ -235,11 +243,13 @@ class CheckoutRepository {
                     !product.isActive ||
                     !seller.isActive ||
                     !inventory) {
-                    throw new CheckoutConflictError("Cart contains an unavailable product");
+                    throw new CheckoutConflictError("Cart contains an unavailable product", !inventory ? "INVENTORY_UNAVAILABLE" : "PRODUCT_UNAVAILABLE");
                 }
                 if (product.currency !== client_1.Currency.BRL ||
                     inventory.onHandQuantity - inventory.reservedQuantity < item.quantity) {
-                    throw new CheckoutConflictError("Cart stock is insufficient");
+                    throw new CheckoutConflictError("Cart stock is insufficient", product.currency !== client_1.Currency.BRL
+                        ? "UNSUPPORTED_CURRENCY"
+                        : "INSUFFICIENT_STOCK");
                 }
             }
             const subtotalInCents = cart.items.reduce((sum, item) => sum + item.quantity * productFor(item.productId).priceInCents, 0);
@@ -306,7 +316,7 @@ class CheckoutRepository {
                         select: { id: true },
                     });
                     if (!inventory)
-                        throw new CheckoutConflictError("Inventory disappeared during checkout");
+                        throw new CheckoutConflictError("Inventory disappeared during checkout", "INVENTORY_UNAVAILABLE");
                     const reservedAfter = inventory.reservedQuantity + item.quantity;
                     yield tx.inventory.update({
                         where: { id: inventory.id },

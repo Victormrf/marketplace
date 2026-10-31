@@ -17,6 +17,7 @@ const checkoutRepository_1 = require("../repositories/checkoutRepository");
 const customerRepository_1 = require("../repositories/customerRepository");
 const userRepository_1 = require("../repositories/userRepository");
 const customErrors_1 = require("../utils/customErrors");
+const logger_1 = require("../utils/logger");
 function toCheckoutDto(record) {
     return {
         id: record.id,
@@ -117,13 +118,16 @@ class CheckoutService {
                     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
                     serialize: toCheckoutDto,
                 });
+                logger_1.logger.info(execution.replayed ? "checkout.replayed" : "checkout.created");
                 return { result: execution.result, replayed: execution.replayed };
             }
             catch (error) {
                 if (error instanceof checkoutRepository_1.CheckoutNotFoundError)
                     throw new customErrors_1.ObjectNotFoundError(error.message.replace(" not found", ""));
-                if (error instanceof checkoutRepository_1.CheckoutConflictError)
+                if (error instanceof checkoutRepository_1.CheckoutConflictError) {
+                    logger_1.logger.warn("checkout.conflict", { code: error.code });
                     throw new customErrors_1.ConflictError(error.message);
+                }
                 throw error;
             }
         });
