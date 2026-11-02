@@ -37,7 +37,7 @@ $response.Content
 
 `Ctrl+C` encerra a coleta antes de desconectar Prisma. Para desabilitar, definir `METRICS_ENABLED=false` e reiniciar; GET `/metrics` volta a ser inexistente (404). Flags inválidas não habilitam a instrumentação.
 
-**Endpoint somente local:** quando habilitado, aceita GET/HEAD em `/metrics` apenas de socket loopback; conexão direta remota recebe 403, sem confiar em X-Forwarded-For. Retorna `Cache-Control: no-store`; falha ao renderizar métricas retorna 503 genérico. Não publicar o caminho no proxy/ingress: um proxy local pode fazer uma requisição externa parecer loopback. Não há nova autenticação de negócio nem alteração dos contratos existentes.
+**Endpoint somente local:** quando habilitado, aceita GET/HEAD em `/metrics` de socket loopback por padrão; a exceção privada opt-in da 6.3 exige IP exato e credencial própria, conforme [operação local](OBSERVABILITY_LOCAL.md). Demais conexões remotas recebem 403, sem confiar em X-Forwarded-For. Retorna `Cache-Control: no-store`; falha ao renderizar métricas retorna 503 genérico. Não publicar o caminho no proxy/ingress: um proxy local pode fazer uma requisição externa parecer loopback. Não há nova autenticação de negócio nem alteração dos contratos existentes.
 
 ## Métricas disponíveis
 

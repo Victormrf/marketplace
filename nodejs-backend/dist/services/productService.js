@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductService = exports.ProductForbiddenError = void 0;
+const tracing_1 = require("../observability/tracing");
 const client_1 = require("@prisma/client");
 const productRepository_1 = require("../repositories/productRepository");
 const productRead_1 = require("../types/productRead");
@@ -124,7 +125,7 @@ class ProductService {
     }
     listProducts() {
         return __awaiter(this, arguments, void 0, function* (filters = {}, pagination = { page: productRead_1.DEFAULT_PAGE, limit: productRead_1.DEFAULT_LIMIT }) {
-            return this.readCollection(filters, pagination);
+            return (0, tracing_1.catalogSpan)("catalog.list", () => this.readCollection(filters, pagination));
         });
     }
     getProductReadById(productId) {

@@ -1,3 +1,4 @@
+import { catalogSpan } from "../observability/tracing";
 import { Prisma, ProductCategory } from "@prisma/client";
 import prisma from "../config/db";
 import { ProductReadFilters } from "../types/productRead";
@@ -105,7 +106,11 @@ function buildWhere(filters: ProductReadFilters): Prisma.ProductWhereInput {
 
 export class ProductRepository implements ProductRepositoryPort {
   async count(filters: ProductReadFilters): Promise<number> {
-    return prisma.product.count({ where: buildWhere(filters) });
+    return catalogSpan("repository.products.count", () =>
+      catalogSpan("prisma.product.count", () =>
+        prisma.product.count({ where: buildWhere(filters) }),
+      ),
+    );
   }
 
   async findMany(
@@ -113,13 +118,17 @@ export class ProductRepository implements ProductRepositoryPort {
     skip: number,
     take: number,
   ): Promise<ProductReadRecord[]> {
-    return prisma.product.findMany({
-      where: buildWhere(filters),
-      select: PRODUCT_READ_SELECT,
-      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-      skip,
-      take,
-    });
+    return catalogSpan("repository.products.findMany", () =>
+      catalogSpan("prisma.product.findMany", () =>
+        prisma.product.findMany({
+          where: buildWhere(filters),
+          select: PRODUCT_READ_SELECT,
+          orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+          skip,
+          take,
+        }),
+      ),
+    );
   }
 
   async findById(id: string): Promise<ProductReadRecord | null> {
@@ -135,11 +144,15 @@ export class ProductRepository implements ProductRepositoryPort {
     const grouped: Array<{
       productId: string | null;
       _avg: { rating: number | null };
-    }> = await prisma.review.groupBy({
-      by: ["productId"],
-      where: { productId: { in: productIds } },
-      _avg: { rating: true },
-    });
+    }> = await catalogSpan("repository.reviews.averageRatings", () =>
+      catalogSpan("prisma.review.groupBy", () =>
+        prisma.review.groupBy({
+          by: ["productId"],
+          where: { productId: { in: productIds } },
+          _avg: { rating: true },
+        }),
+      ),
+    );
 
     return new Map(
       grouped

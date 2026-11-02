@@ -280,7 +280,7 @@ test("endpoint refuses a non-loopback socket and exposes no error on registry fa
   });
   const remote = makeResponse();
   await metricsHandler(measured)(
-    { socket: { remoteAddress: "192.0.2.1" } },
+    { socket: { remoteAddress: "192.0.2.1" }, header: () => undefined },
     remote,
   );
   assert.equal(remote.status, 403);
@@ -289,7 +289,7 @@ test("endpoint refuses a non-loopback socket and exposes no error on registry fa
   });
   const unavailable = makeResponse();
   await metricsHandler(measured)(
-    { socket: { remoteAddress: "127.0.0.1" } },
+    { socket: { remoteAddress: "127.0.0.1" }, header: () => undefined },
     unavailable,
   );
   assert.equal(unavailable.status, 503);

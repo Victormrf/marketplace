@@ -6,6 +6,8 @@ import {
   collectDefaultMetrics,
 } from "prom-client";
 import type { RequestHandler } from "express";
+import { readFileSync } from "node:fs";
+import { timingSafeEqual } from "node:crypto";
 import { CHECKOUT_CONFLICT_CODES } from "../types/checkout";
 import type {
   CheckoutConflictCode,
@@ -223,6 +225,7 @@ export function isMetricsScrape(method: string, path: string): boolean {
 
 export function metricsHandler(
   measurements: Metrics = metrics,
+  remote: { addresses: string[]; token?: string } = remoteMetricsAccess(),
 ): RequestHandler {
   return async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -230,9 +233,18 @@ export function metricsHandler(
       res.sendStatus(404);
       return;
     }
+    const address = req.socket.remoteAddress ?? "";
+    const local = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(address);
+    const supplied = req.header("Authorization") ?? "";
+    const expected = remote.token ? `Bearer ${remote.token}` : "";
+    const authorized =
+      expected.length > 0 &&
+      Buffer.byteLength(supplied) === Buffer.byteLength(expected) &&
+      timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
     if (
-      !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
-        req.socket.remoteAddress ?? "",
+      !local &&
+      !(
+        remote.addresses.includes(address.replace(/^::ffff:/, "")) && authorized
       )
     ) {
       res.sendStatus(403);
@@ -245,4 +257,23 @@ export function metricsHandler(
       res.sendStatus(503);
     }
   };
+}
+
+function remoteMetricsAccess(): { addresses: string[]; token?: string } {
+  const addresses = (process.env.METRICS_REMOTE_ADDRESSES ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  try {
+    const token = readFileSync(
+      process.env.METRICS_REMOTE_TOKEN_FILE ?? "",
+      "utf8",
+    ).trim();
+    return {
+      addresses,
+      token: /^[a-f0-9]{64}$/.test(token) ? token : undefined,
+    };
+  } catch {
+    return { addresses: [] };
+  }
 }

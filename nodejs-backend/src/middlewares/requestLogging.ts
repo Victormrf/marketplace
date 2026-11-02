@@ -1,3 +1,4 @@
+import { context } from "@opentelemetry/api";
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import type { Request, RequestHandler } from "express";
@@ -68,6 +69,7 @@ export function requestLogging(
     const requestId = received && uuid.test(received) ? received : randomUUID();
     req.requestId = requestId;
     res.setHeader("X-Request-ID", requestId);
+    const traceContext = context.active();
     const started = performance.now();
     const finishMetrics = isMetricsScrape(req.method, req.path)
       ? undefined
@@ -101,22 +103,24 @@ export function requestLogging(
             : res.statusCode;
         finishMetrics?.({ method, route, status, seconds, outcome });
         // Re-enter explicitly: socket events can originate outside this ALS chain.
-        requestContext.run({ requestId }, () => {
-          const level =
-            outcome === "connection_closed" || res.statusCode >= 400
-              ? res.statusCode >= 500
-                ? "error"
-                : "warn"
-              : "info";
-          log[level]("http.completed", {
-            method,
-            route,
-            status,
-            durationMs: Math.round(seconds * 1000000) / 1000,
-            outcome,
-            code: resultCode(res.statusCode, outcome === "connection_closed"),
-          });
-        });
+        context.with(traceContext, () =>
+          requestContext.run({ requestId }, () => {
+            const level =
+              outcome === "connection_closed" || res.statusCode >= 400
+                ? res.statusCode >= 500
+                  ? "error"
+                  : "warn"
+                : "info";
+            log[level]("http.completed", {
+              method,
+              route,
+              status,
+              durationMs: Math.round(seconds * 1000000) / 1000,
+              outcome,
+              code: resultCode(res.statusCode, outcome === "connection_closed"),
+            });
+          }),
+        );
       };
       const finished = () => complete("finished");
       const closed = () => complete("connection_closed");

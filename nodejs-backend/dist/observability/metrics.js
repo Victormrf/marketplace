@@ -14,6 +14,8 @@ exports.createMetrics = createMetrics;
 exports.isMetricsScrape = isMetricsScrape;
 exports.metricsHandler = metricsHandler;
 const prom_client_1 = require("prom-client");
+const node_fs_1 = require("node:fs");
+const node_crypto_1 = require("node:crypto");
 const checkout_1 = require("../types/checkout");
 // Instrumentation is best effort and never changes a business response.
 function safely(operation) {
@@ -197,15 +199,23 @@ exports.metrics = createMetrics(process.env.METRICS_ENABLED === "true");
 function isMetricsScrape(method, path) {
     return ((method === "GET" || method === "HEAD") && /^\/metrics\/?$/i.test(path));
 }
-function metricsHandler(measurements = exports.metrics) {
+function metricsHandler(measurements = exports.metrics, remote = remoteMetricsAccess()) {
     return (req, res) => __awaiter(this, void 0, void 0, function* () {
-        var _a;
+        var _a, _b;
         res.setHeader("Cache-Control", "no-store");
         if (!measurements.enabled) {
             res.sendStatus(404);
             return;
         }
-        if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes((_a = req.socket.remoteAddress) !== null && _a !== void 0 ? _a : "")) {
+        const address = (_a = req.socket.remoteAddress) !== null && _a !== void 0 ? _a : "";
+        const local = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(address);
+        const supplied = (_b = req.header("Authorization")) !== null && _b !== void 0 ? _b : "";
+        const expected = remote.token ? `Bearer ${remote.token}` : "";
+        const authorized = expected.length > 0 &&
+            Buffer.byteLength(supplied) === Buffer.byteLength(expected) &&
+            (0, node_crypto_1.timingSafeEqual)(Buffer.from(supplied), Buffer.from(expected));
+        if (!local &&
+            !(remote.addresses.includes(address.replace(/^::ffff:/, "")) && authorized)) {
             res.sendStatus(403);
             return;
         }
@@ -213,8 +223,25 @@ function metricsHandler(measurements = exports.metrics) {
             const body = yield measurements.registry.metrics();
             res.type(measurements.registry.contentType).send(body);
         }
-        catch (_b) {
+        catch (_c) {
             res.sendStatus(503);
         }
     });
+}
+function remoteMetricsAccess() {
+    var _a, _b;
+    const addresses = ((_a = process.env.METRICS_REMOTE_ADDRESSES) !== null && _a !== void 0 ? _a : "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+    try {
+        const token = (0, node_fs_1.readFileSync)((_b = process.env.METRICS_REMOTE_TOKEN_FILE) !== null && _b !== void 0 ? _b : "", "utf8").trim();
+        return {
+            addresses,
+            token: /^[a-f0-9]{64}$/.test(token) ? token : undefined,
+        };
+    }
+    catch (_c) {
+        return { addresses: [] };
+    }
 }

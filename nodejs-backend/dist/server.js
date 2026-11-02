@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.app = void 0;
+const tracing_1 = require("./observability/tracing");
 const express_1 = __importDefault(require("express"));
 const db_1 = __importDefault(require("./config/db"));
 const path_1 = __importDefault(require("path"));
@@ -37,12 +38,16 @@ const requestLogging_1 = require("./middlewares/requestLogging");
 const logger_1 = require("./utils/logger");
 const metrics_1 = require("./observability/metrics");
 const postgresMetrics_1 = require("./observability/postgresMetrics");
+const health_1 = require("./observability/health");
 const app = (0, express_1.default)();
 exports.app = app;
+app.use(tracing_1.catalogTracing);
 app.use((0, requestLogging_1.requestLogging)());
 if (metrics_1.metrics.enabled) {
     app.get("/metrics", (0, metrics_1.metricsHandler)());
 }
+app.get("/health/live", health_1.liveness);
+app.get("/health/ready", (0, health_1.readiness)(() => (0, health_1.checkDatabase)(db_1.default)));
 app.use(express_1.default.json());
 const PORT = process.env.PORT || 8000;
 app.get("/", (req, res) => {
@@ -61,9 +66,6 @@ if (process.env.NODE_ENV !== "production") {
         res.sendFile(path_1.default.join(docsDirectory, "openapi.yaml"));
     });
 }
-// app.get("/health", (req, res) => {
-//   res.json({ status: "ok", env: process.env.NODE_ENV, db: process.env.DATABASE_URL ? "set" : "not set" });
-// });
 app.use((0, cors_1.default)({
     origin: ["http://localhost:3000", "https://v-market-one.vercel.app"], // frontend Next.js
     credentials: true,
@@ -86,10 +88,24 @@ app.use("/", deliveryController_1.deliveryRoutes);
 app.use("/inventory", inventoryController_1.inventoryRoutes);
 app.use("/checkout", checkoutController_1.checkoutRoutes);
 const postgresCollector = (0, postgresMetrics_1.createPostgresCollector)(() => (0, postgresMetrics_1.readPostgresSnapshot)(db_1.default));
+let httpServer;
+let shuttingDown = false;
 // Stop collection before closing Prisma; importing app does not start a poller.
 function shutdown() {
     return __awaiter(this, void 0, void 0, function* () {
+        if (shuttingDown) {
+            return;
+        }
+        shuttingDown = true;
+        if (httpServer) {
+            const server = httpServer;
+            yield new Promise((resolve) => {
+                server.close(() => resolve());
+                server.closeIdleConnections();
+            });
+        }
         yield postgresCollector.stop();
+        yield (0, tracing_1.stopTracing)();
         yield db_1.default.$disconnect();
         logger_1.logger.info("server.stopped");
         process.exit(0);
@@ -98,7 +114,7 @@ function shutdown() {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 if (require.main === module) {
-    app.listen(PORT, () => {
+    httpServer = app.listen(PORT, () => {
         postgresCollector.start();
         logger_1.logger.info("server.started", { port: Number(PORT) });
     });

@@ -1,4 +1,6 @@
+import { catalogTracing, stopTracing } from "./observability/tracing";
 import express from "express";
+import type { Server } from "node:http";
 import prisma from "./config/db";
 import path from "path";
 import { userRoutes } from "./controllers/userController";
@@ -26,11 +28,19 @@ import {
   readPostgresSnapshot,
 } from "./observability/postgresMetrics";
 
+import { liveness, readiness, checkDatabase } from "./observability/health";
+
 const app = express();
+app.use(catalogTracing);
 app.use(requestLogging());
 if (metrics.enabled) {
   app.get("/metrics", metricsHandler());
 }
+app.get("/health/live", liveness);
+app.get(
+  "/health/ready",
+  readiness(() => checkDatabase(prisma)),
+);
 app.use(express.json());
 
 const PORT = process.env.PORT || 8000;
@@ -55,10 +65,6 @@ if (process.env.NODE_ENV !== "production") {
     res.sendFile(path.join(docsDirectory, "openapi.yaml"));
   });
 }
-
-// app.get("/health", (req, res) => {
-//   res.json({ status: "ok", env: process.env.NODE_ENV, db: process.env.DATABASE_URL ? "set" : "not set" });
-// });
 
 app.use(
   cors({
@@ -89,10 +95,24 @@ app.use("/checkout", checkoutRoutes);
 const postgresCollector = createPostgresCollector(() =>
   readPostgresSnapshot(prisma),
 );
+let httpServer: Server | undefined;
+let shuttingDown = false;
 
 // Stop collection before closing Prisma; importing app does not start a poller.
 async function shutdown() {
+  if (shuttingDown) {
+    return;
+  }
+  shuttingDown = true;
+  if (httpServer) {
+    const server = httpServer;
+    await new Promise<void>((resolve) => {
+      server.close(() => resolve());
+      server.closeIdleConnections();
+    });
+  }
   await postgresCollector.stop();
+  await stopTracing();
   await prisma.$disconnect();
   logger.info("server.stopped");
   process.exit(0);
@@ -101,7 +121,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 if (require.main === module) {
-  app.listen(PORT, () => {
+  httpServer = app.listen(PORT, () => {
     postgresCollector.start();
     logger.info("server.started", { port: Number(PORT) });
   });

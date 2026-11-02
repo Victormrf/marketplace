@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.productRepository = exports.ProductRepository = void 0;
+const tracing_1 = require("../observability/tracing");
 const db_1 = __importDefault(require("../config/db"));
 const PRODUCT_READ_SELECT = {
     id: true,
@@ -75,18 +76,18 @@ function buildWhere(filters) {
 class ProductRepository {
     count(filters) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.product.count({ where: buildWhere(filters) });
+            return (0, tracing_1.catalogSpan)("repository.products.count", () => (0, tracing_1.catalogSpan)("prisma.product.count", () => db_1.default.product.count({ where: buildWhere(filters) })));
         });
     }
     findMany(filters, skip, take) {
         return __awaiter(this, void 0, void 0, function* () {
-            return db_1.default.product.findMany({
+            return (0, tracing_1.catalogSpan)("repository.products.findMany", () => (0, tracing_1.catalogSpan)("prisma.product.findMany", () => db_1.default.product.findMany({
                 where: buildWhere(filters),
                 select: PRODUCT_READ_SELECT,
                 orderBy: [{ createdAt: "desc" }, { id: "asc" }],
                 skip,
                 take,
-            });
+            })));
         });
     }
     findById(id) {
@@ -101,11 +102,11 @@ class ProductRepository {
         return __awaiter(this, void 0, void 0, function* () {
             if (productIds.length === 0)
                 return new Map();
-            const grouped = yield db_1.default.review.groupBy({
+            const grouped = yield (0, tracing_1.catalogSpan)("repository.reviews.averageRatings", () => (0, tracing_1.catalogSpan)("prisma.review.groupBy", () => db_1.default.review.groupBy({
                 by: ["productId"],
                 where: { productId: { in: productIds } },
                 _avg: { rating: true },
-            });
+            })));
             return new Map(grouped
                 .filter((row) => row.productId !== null && row._avg.rating !== null)
                 .map((row) => [

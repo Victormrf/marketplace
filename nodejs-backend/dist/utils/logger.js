@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logger = void 0;
 exports.createLogger = createLogger;
+const api_1 = require("@opentelemetry/api");
 const requestContext_1 = require("./requestContext");
 const checkout_1 = require("../types/checkout");
 const logCodes = [
@@ -76,19 +77,24 @@ function createLogger(options = {}) {
         (level === "error" ? process.stderr : process.stdout).write(`${line}\n`);
     });
     function write(level, event, context = {}) {
+        var _a;
         if (levels[level] < minimum) {
             return;
         }
         try {
+            const active = (_a = api_1.trace.getActiveSpan()) === null || _a === void 0 ? void 0 : _a.spanContext();
+            const correlation = active && (0, api_1.isSpanContextValid)(active)
+                ? { traceId: active.traceId, spanId: active.spanId }
+                : {};
             const record = {
                 timestamp: new Date().toISOString(),
                 level,
                 event: events.includes(event) ? event : "log.invalid_event",
-                context: Object.assign(Object.assign({}, safeContext(context)), { requestId: (0, requestContext_1.getRequestId)() }),
+                context: Object.assign(Object.assign(Object.assign({}, safeContext(context)), { requestId: (0, requestContext_1.getRequestId)() }), correlation),
             };
             sink(JSON.stringify(record), level);
         }
-        catch (_a) {
+        catch (_b) {
             // Logging failure must not change HTTP/business results; never print raw errors.
         }
     }

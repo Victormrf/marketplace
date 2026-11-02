@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requestLogging = requestLogging;
+const api_1 = require("@opentelemetry/api");
 const node_crypto_1 = require("node:crypto");
 const node_perf_hooks_1 = require("node:perf_hooks");
 const logger_1 = require("../utils/logger");
@@ -62,6 +63,7 @@ function requestLogging(log = logger_1.logger, measurements = metrics_1.metrics)
         const requestId = received && uuid.test(received) ? received : (0, node_crypto_1.randomUUID)();
         req.requestId = requestId;
         res.setHeader("X-Request-ID", requestId);
+        const traceContext = api_1.context.active();
         const started = node_perf_hooks_1.performance.now();
         const finishMetrics = (0, metrics_1.isMetricsScrape)(req.method, req.path)
             ? undefined
@@ -93,7 +95,7 @@ function requestLogging(log = logger_1.logger, measurements = metrics_1.metrics)
                     : res.statusCode;
                 finishMetrics === null || finishMetrics === void 0 ? void 0 : finishMetrics({ method, route, status, seconds, outcome });
                 // Re-enter explicitly: socket events can originate outside this ALS chain.
-                requestContext_1.requestContext.run({ requestId }, () => {
+                api_1.context.with(traceContext, () => requestContext_1.requestContext.run({ requestId }, () => {
                     const level = outcome === "connection_closed" || res.statusCode >= 400
                         ? res.statusCode >= 500
                             ? "error"
@@ -107,7 +109,7 @@ function requestLogging(log = logger_1.logger, measurements = metrics_1.metrics)
                         outcome,
                         code: resultCode(res.statusCode, outcome === "connection_closed"),
                     });
-                });
+                }));
             };
             const finished = () => complete("finished");
             const closed = () => complete("connection_closed");

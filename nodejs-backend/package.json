@@ -55,7 +55,9 @@
     "test:deliveries": "npm run build && node --test tests/deliveries.integration.test.js",
     "test:reviews": "npm run build && node --test tests/reviews.integration.test.js",
     "test:dashboard": "npm run build && node --test tests/dashboard.integration.test.js",
-    "test:all": "npm run clean:dist && npm run build && npm run test:db && node scripts/run-all-tests.js"
+    "test:all": "npm run clean:dist && npm run build && npm run test:db && node scripts/run-all-tests.js",
+    "observability:secrets": "node scripts/observability-secrets.js",
+    "test:tracing": "node --test tests/tracing-health.test.js"
   },
   "keywords": [],
   "author": "",
@@ -74,6 +76,11 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.200.0",
+    "@opentelemetry/resources": "2.0.1",
+    "@opentelemetry/sdk-trace-base": "2.0.1",
+    "@opentelemetry/sdk-trace-node": "2.0.1",
     "@prisma/client": "^6.11.1",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.3",

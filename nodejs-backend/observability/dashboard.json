@@ -1,0 +1,305 @@
+{
+  "uid": "marketplace-local",
+  "title": "Marketplace \u2014 observabilidade local",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "tags": ["local"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Respostas por status \u2014 acumuladas",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (marketplace_http_requests_total)",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "title": "Dura\u00e7\u00e3o HTTP p95 \u2014 somente com \u226520 respostas/5m",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(histogram_quantile(0.95, sum by (le) (rate(marketplace_http_request_duration_seconds_bucket[5m])))) and on() (sum(increase(marketplace_http_request_duration_seconds_count[5m])) >= 20)",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "Requisi\u00e7\u00f5es em andamento",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "marketplace_http_requests_in_flight",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Conex\u00f5es interrompidas \u2014 acumuladas",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(marketplace_http_connections_closed_total)",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "Mem\u00f3ria RSS Node",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "marketplace_process_resident_memory_bytes",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "CPU Node \u2014 n\u00facleos usados (n\u00e3o percentual)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(marketplace_process_cpu_seconds_total[1m]) and on() (count_over_time(marketplace_process_cpu_seconds_total[1m]) >= 3)",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Coleta PostgreSQL dispon\u00edvel",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "marketplace_postgres_collection_up",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Conex\u00f5es e sess\u00f5es ativas PostgreSQL",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{__name__=~\"marketplace_postgres_(connections|active_sessions)\"}",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "Checkout \u2014 contadores por resultado/c\u00f3digo",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{__name__=~\"marketplace_checkout_(created|replayed|conflicts|failures)_total\"}",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Dura\u00e7\u00e3o HTTP \u2014 m\u00e9dia acumulada observada",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(marketplace_http_request_duration_seconds_sum) / sum(marketplace_http_request_duration_seconds_count)",
+          "legendFormat": "{{__name__}} {{status}} {{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Sem amostras"
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

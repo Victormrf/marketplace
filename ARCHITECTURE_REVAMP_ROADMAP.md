@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 31/10/2026
-Estado atual: **Fases 3, 4 e 5 concluídas, fase 5 no escopo exploratório reduzido aprovado; 6.1 e 6.2 concluídas, próxima 6.3; pendências transversais preservadas**
+Última atualização: 02/11/2026
+Estado atual: **Fases 3, 4 e 5 concluídas, fase 5 no escopo exploratório reduzido aprovado; fase 6 concluída, próxima 7.1; pendências transversais preservadas**
 
 ## Objetivo
 
@@ -117,15 +117,15 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 - [x] 6.1 Logs JSON centralizados nativos do Node e AsyncLocalStorage, LOG_LEVEL com padrão info, stdout/stderr e sem dependências novas. Middleware antes do parser gera/valida UUID e retorna X-Request-ID; conclusão HTTP única com template seguro, status/duração e conexão encerrada (status null antes dos headers). Checkout registra criação/replay/conflito/falha técnica com mesmo ID e códigos fixos, sem mensagens/stacks/dados sensíveis. Em 26/10/2026, typecheck, build e test:logging 14/14 passaram: concorrência, headers, 400/401/403/404/409/500, 204, abort antes/depois de headers, deduplicação, níveis e redação. HTTP real local com persistência substituída por doubles, sem bancos, fixtures PostgreSQL, cargas ou tickets. Logs legados fora do escopo não foram substituídos em massa; correlação limitada à chamada Express. Ver [resumo](STEP_6_1_STRUCTURED_LOGGING_SUMMARY.md) e [operação/política](nodejs-backend/docs/REQUEST_LOGGING.md).
 - [x] 6.2 Métricas básicas locais concluídas em 31/10/2026: prom-client 15.1.3, registry privado, GET /metrics opt-in e restrito a loopback; desabilitado por padrão, sem nova stack. Contadores/histogramas HTTP, in-flight e abortos separados; mesmos templates seguros da 6.1 e scrapes excluídos. Checkout diferencia criação/replay/conflitos/falhas com os códigos dos logs. Prisma 6.11.1 via eventos query somente com duração; PostgreSQL por agregação READ ONLY periódica, sem sobreposição, timeout, indisponibilidade explícita (up=0/NaN), último sucesso e stop antes do disconnect. Typecheck/build, test:metrics 15/15 e test:logging 20/20 aprovados. Smoke somente leitura em marketplace_dev:5433: duas respostas de aplicação, dois scrapes 200 excluídos; coleta inicial 246,3 ms, uma conexão/zero outras sessões ativas, seis eventos Prisma e zero falhas. API efêmera/collector encerrados; nenhum dado de negócio, carga, gerador, purge ou ticket de escala. Filas/workers ficam para fase 7; não há métricas fictícias. Ver [operação e limites](nodejs-backend/docs/METRICS.md) e [resumo](STEP_6_2_BASIC_METRICS_SUMMARY.md).
-- [~] 6.3 Adicionar tracing, health/readiness checks e painéis locais; repetir um cenário da baseline para verificar a visibilidade. Próxima etapa; não iniciada nesta entrega. Repetição exige autorização própria, sem reutilizar tickets consumidos.
+- [x] 6.3 Concluída em 02/11/2026: tracing OTLP manual do catálogo HTTP/service/repository/Prisma e correlação dos logs; liveness/readiness 200 no marketplace_dev:5433; três GETs sequenciais 200 e trace real de oito spans conferido no Tempo e Grafana Explore, inclusive após reinício. Prometheus UP, coleta PostgreSQL up=1 e dez consultas do dashboard 200 via Playwright. Com Tempo parado, duas listagens adicionais e readiness continuaram 200. Corrigidos conflito de IP dos containers, plugin Loki opcional incompatível e protocolo de consulta Grafana/Tempo. Typecheck/build, tracing/health 11/11, métricas 15/15, logging 20/20, Compose config e promtool aprovados. Memória livre chegou a ~307 MiB em amostra: stack sob demanda, sem inferir capacidade ou autorizar cargas. API/stack de demonstração encerradas; volumes preservados e PostgreSQL preexistente ativo. Nenhuma escrita de negócio, fixture, carga, purge ou ticket. Ver [resumo](STEP_6_3_LOCAL_OBSERVABILITY_SUMMARY.md) e [operação/evidências](nodejs-backend/docs/OBSERVABILITY_LOCAL.md). Fase 6 concluída no escopo local; próxima 7.1, sem iniciá-la.
 
-**Concluída quando:** um erro ou lentidão pode ser rastreado da entrada HTTP até banco, job ou integração correspondente.
+**Fechamento da fase 6 (02/11/2026):** concluída no escopo local aprovado: logs, métricas, tracing de um caminho concreto, health/readiness e painéis validados. Spans Prisma medem chamadas do client, não tempo SQL exclusivo. Tracing Next/BFF e observabilidade de jobs/integrações ainda não existentes não foram prometidos; integração de filas permanece na fase 7.
 
 ## Fase 7 — Filas e workers
 
 **Objetivo:** mover trabalho adequado para execução assíncrona com segurança.
 
-- [ ] 7.1 Selecionar o primeiro caso concreto, começando pelo job de delivery já separado do servidor HTTP; definir o contrato do job e seu ciclo de vida.
+- [ ] 7.1 Próxima etapa: selecionar o primeiro caso concreto, começando pelo job de delivery já separado do servidor HTTP; definir o contrato do job e seu ciclo de vida.
 - [ ] 7.2 Executar worker independente com fila, retries, backoff, limites de concorrência e tratamento de falhas persistentes.
 - [ ] 7.3 Garantir idempotência do consumidor e publicação confiável quando houver alteração de banco seguida de envio à fila, avaliando outbox no caso real.
 - [ ] 7.4 Expandir gradualmente para notificações, reconciliação ou relatórios somente após validar o primeiro caso.
@@ -176,4 +176,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Etapa 6.3 — visualização local, tracing e health/readiness, aproveitando logs da 6.1 e métricas da 6.2. A fase 6 ainda não está concluída; não criar filas/workers antes da fase 7. A fase 5 foi concluída no escopo exploratório reduzido aprovado; qualquer nova rodada exige autorização própria, sem repetir tickets ou estender a exceção de RAM. Pendência transversal 2.7, recuperação de reviews próprias e verificação BACKEND_API_URL em produção na fase 11 preservadas; SSR autenticado continua adiado.
+Etapa 7.1 — selecionar o primeiro caso concreto de job, começando pelo delivery já separado do servidor HTTP; definir contrato e ciclo de vida antes de implementar fila/worker. Fase 6 concluída com demonstração integrada em 02/11/2026; a fase 7 não foi iniciada nesta entrega. A fase 5 foi concluída no escopo exploratório reduzido aprovado; qualquer nova rodada exige autorização própria, sem repetir tickets ou estender a exceção de RAM. Pendência transversal 2.7, recuperação de reviews próprias e verificação BACKEND_API_URL em produção na fase 11 preservadas; SSR autenticado continua adiado.

@@ -1,3 +1,4 @@
+import { catalogSpan } from "../observability/tracing";
 import { ProductCategory } from "@prisma/client";
 import { productRepository } from "../repositories/productRepository";
 import type {
@@ -163,7 +164,9 @@ export class ProductService {
     filters: ProductReadFilters = {},
     pagination: PaginationInput = { page: DEFAULT_PAGE, limit: DEFAULT_LIMIT },
   ) {
-    return this.readCollection(filters, pagination);
+    return catalogSpan("catalog.list", () =>
+      this.readCollection(filters, pagination),
+    );
   }
 
   async getProductReadById(productId: string): Promise<ProductReadDto> {

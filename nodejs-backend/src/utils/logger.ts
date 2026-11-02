@@ -1,3 +1,4 @@
+import { trace, isSpanContextValid } from "@opentelemetry/api";
 import { getRequestId } from "./requestContext";
 import { CHECKOUT_CONFLICT_CODES } from "../types/checkout";
 
@@ -44,7 +45,11 @@ type LogRecord = {
   timestamp: string;
   level: LogLevel;
   event: string;
-  context: LogContext & { requestId?: string };
+  context: LogContext & {
+    requestId?: string;
+    traceId?: string;
+    spanId?: string;
+  };
 };
 
 type LogSink = (line: string, level: LogLevel) => void;
@@ -107,11 +112,20 @@ export function createLogger(options: { level?: string; sink?: LogSink } = {}) {
       return;
     }
     try {
+      const active = trace.getActiveSpan()?.spanContext();
+      const correlation =
+        active && isSpanContextValid(active)
+          ? { traceId: active.traceId, spanId: active.spanId }
+          : {};
       const record: LogRecord = {
         timestamp: new Date().toISOString(),
         level,
         event: events.includes(event) ? event : "log.invalid_event",
-        context: { ...safeContext(context), requestId: getRequestId() },
+        context: {
+          ...safeContext(context),
+          requestId: getRequestId(),
+          ...correlation,
+        },
       };
       sink(JSON.stringify(record), level);
     } catch {

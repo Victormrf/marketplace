@@ -1,0 +1,73 @@
+# Optional, explicit stack. No business database or application starts here.
+name: marketplace-observability
+x-defaults: &defaults
+  restart: "no"
+  logging:
+    driver: json-file
+    options:
+      max-size: 1m
+      max-file: "3"
+services:
+  prometheus:
+    <<: *defaults
+    image: prom/prometheus:v3.2.1
+    mem_limit: 192m
+    cpus: 0.5
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2h
+      - --storage.tsdb.retention.size=100MB
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./nodejs-backend/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./nodejs-backend/observability/.local/metrics-token:/run/secrets/metrics-token:ro
+      - prometheus-data:/prometheus
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    networks:
+      local:
+        ipv4_address: 172.30.63.2
+  tempo:
+    <<: *defaults
+    image: grafana/tempo:2.7.1
+    mem_limit: 256m
+    cpus: 0.5
+    command: ["-config.file=/etc/tempo.yml"]
+    ports: ["127.0.0.1:4318:4318", "127.0.0.1:3200:3200"]
+    volumes:
+      - ./nodejs-backend/observability/tempo.yml:/etc/tempo.yml:ro
+      - tempo-data:/var/tempo
+    networks:
+      local:
+        ipv4_address: 172.30.63.3
+  grafana:
+    <<: *defaults
+    image: grafana/grafana:11.6.0
+    mem_limit: 256m
+    cpus: 0.5
+    ports: ["127.0.0.1:3063:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_PLUGINS_DISABLE_PLUGINS: grafana-lokiexplore-app
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+    volumes:
+      - ./nodejs-backend/observability/datasources.yml:/etc/grafana/provisioning/datasources/local.yml:ro
+      - ./nodejs-backend/observability/dashboards.yml:/etc/grafana/provisioning/dashboards/local.yml:ro
+      - ./nodejs-backend/observability/dashboard.json:/etc/grafana/marketplace/dashboard.json:ro
+      - ./nodejs-backend/observability/.local/grafana-password:/run/secrets/grafana-password:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      local:
+        ipv4_address: 172.30.63.4
+networks:
+  local:
+    ipam:
+      config:
+        - subnet: 172.30.63.0/24
+volumes:
+  prometheus-data:
+  tempo-data:
+  grafana-data:
