@@ -64,6 +64,12 @@ function accessWhere(access: DeliveryAccess): Prisma.DeliveryWhereInput {
   };
 }
 
+export class DeliveryConcurrentChangeError extends ConflictError {
+  constructor() {
+    super("Delivery changed concurrently");
+  }
+}
+
 export class DeliveryRepository {
   constructor(
     private readonly testHooks: {
@@ -218,8 +224,9 @@ export class DeliveryRepository {
             : {}),
         },
       });
-      if (updated.count !== 1)
-        throw new ConflictError("Delivery changed concurrently");
+      if (updated.count !== 1) {
+        throw new DeliveryConcurrentChangeError();
+      }
 
       await this.testHooks.beforeHistory?.();
       await tx.deliveryStatusHistory.create({

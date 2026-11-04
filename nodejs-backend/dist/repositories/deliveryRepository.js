@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DeliveryRepository = void 0;
+exports.DeliveryRepository = exports.DeliveryConcurrentChangeError = void 0;
 const db_1 = __importDefault(require("../config/db"));
 const customErrors_1 = require("../utils/customErrors");
 const deliverySelect = {
@@ -48,6 +48,12 @@ function accessWhere(access) {
             : {})),
     };
 }
+class DeliveryConcurrentChangeError extends customErrors_1.ConflictError {
+    constructor() {
+        super("Delivery changed concurrently");
+    }
+}
+exports.DeliveryConcurrentChangeError = DeliveryConcurrentChangeError;
 class DeliveryRepository {
     constructor(testHooks = {}) {
         this.testHooks = testHooks;
@@ -168,8 +174,9 @@ class DeliveryRepository {
                         ? { deliveredAt: new Date() }
                         : {})),
                 });
-                if (updated.count !== 1)
-                    throw new customErrors_1.ConflictError("Delivery changed concurrently");
+                if (updated.count !== 1) {
+                    throw new DeliveryConcurrentChangeError();
+                }
                 yield ((_b = (_a = this.testHooks).beforeHistory) === null || _b === void 0 ? void 0 : _b.call(_a));
                 yield tx.deliveryStatusHistory.create({
                     data: {

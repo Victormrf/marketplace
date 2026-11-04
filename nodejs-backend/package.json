@@ -57,7 +57,8 @@
     "test:dashboard": "npm run build && node --test tests/dashboard.integration.test.js",
     "test:all": "npm run clean:dist && npm run build && npm run test:db && node scripts/run-all-tests.js",
     "observability:secrets": "node scripts/observability-secrets.js",
-    "test:tracing": "node --test tests/tracing-health.test.js"
+    "test:tracing": "node --test tests/tracing-health.test.js",
+    "test:delivery-progression": "node --test tests/delivery-progression.test.js"
   },
   "keywords": [],
   "author": "",

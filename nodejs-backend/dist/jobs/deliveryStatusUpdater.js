@@ -8,6 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -16,37 +23,24 @@ exports.updateDeliveryStatuses = updateDeliveryStatuses;
 const db_1 = __importDefault(require("../config/db"));
 const deliveryRepository_1 = require("../repositories/deliveryRepository");
 const deliveryService_1 = require("../services/deliveryService");
-const customErrors_1 = require("../utils/customErrors");
-const BATCH_SIZE = 100;
+const deliveryProgression_1 = require("./deliveryProgression");
 function updateDeliveryStatuses() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const repository = new deliveryRepository_1.DeliveryRepository();
-        const service = new deliveryService_1.DeliveryService(repository);
-        let afterId = null;
-        while (true) {
-            const deliveries = yield repository.findForJob(afterId, BATCH_SIZE);
-            if (!deliveries.length)
-                break;
-            for (const delivery of deliveries) {
-                afterId = delivery.id;
-                const latestHistory = delivery.statusHistory[0];
-                if (!latestHistory || latestHistory.toStatus !== delivery.status) {
-                    continue;
-                }
-                const thresholdHours = delivery.status === "SEPARATED" ? 4 : 24;
-                const eligibleBefore = new Date(Date.now() - thresholdHours * 60 * 60 * 1000);
-                if (latestHistory.changedAt > eligibleBefore)
-                    continue;
-                yield service
-                    .advanceForJob(delivery.id, delivery.status, eligibleBefore, latestHistory.id)
-                    .catch((error) => {
-                    if (error instanceof customErrors_1.ConflictError)
-                        return;
-                    throw error;
-                });
+    return __awaiter(this, arguments, void 0, function* (repository = new deliveryRepository_1.DeliveryRepository(), service = new deliveryService_1.DeliveryService(), now = () => new Date()) {
+        var _a, e_1, _b, _c;
+        try {
+            for (var _d = true, _e = __asyncValues((0, deliveryProgression_1.discoverDeliveryProgressionJobs)(repository, now)), _f; _f = yield _e.next(), _a = _f.done, !_a; _d = true) {
+                _c = _f.value;
+                _d = false;
+                const job = _c;
+                yield (0, deliveryProgression_1.processDeliveryProgressionJob)(job, service, now());
             }
-            if (deliveries.length < BATCH_SIZE)
-                break;
+        }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+            }
+            finally { if (e_1) throw e_1.error; }
         }
     });
 }

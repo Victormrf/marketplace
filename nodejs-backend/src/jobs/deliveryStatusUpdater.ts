@@ -1,46 +1,18 @@
 import prisma from "../config/db";
 import { DeliveryRepository } from "../repositories/deliveryRepository";
 import { DeliveryService } from "../services/deliveryService";
-import { ConflictError } from "../utils/customErrors";
+import {
+  discoverDeliveryProgressionJobs,
+  processDeliveryProgressionJob,
+} from "./deliveryProgression";
 
-const BATCH_SIZE = 100;
-
-export async function updateDeliveryStatuses(): Promise<void> {
-  const repository = new DeliveryRepository();
-  const service = new DeliveryService(repository);
-  let afterId: string | null = null;
-
-  while (true) {
-    const deliveries = await repository.findForJob(afterId, BATCH_SIZE);
-    if (!deliveries.length) break;
-
-    for (const delivery of deliveries) {
-      afterId = delivery.id;
-      const latestHistory = delivery.statusHistory[0];
-      if (!latestHistory || latestHistory.toStatus !== delivery.status) {
-        continue;
-      }
-
-      const thresholdHours = delivery.status === "SEPARATED" ? 4 : 24;
-      const eligibleBefore = new Date(
-        Date.now() - thresholdHours * 60 * 60 * 1000,
-      );
-      if (latestHistory.changedAt > eligibleBefore) continue;
-
-      await service
-        .advanceForJob(
-          delivery.id,
-          delivery.status,
-          eligibleBefore,
-          latestHistory.id,
-        )
-        .catch((error: unknown) => {
-          if (error instanceof ConflictError) return;
-          throw error;
-        });
-    }
-
-    if (deliveries.length < BATCH_SIZE) break;
+export async function updateDeliveryStatuses(
+  repository: Pick<DeliveryRepository, "findForJob"> = new DeliveryRepository(),
+  service: Pick<DeliveryService, "advanceForJob"> = new DeliveryService(),
+  now: () => Date = () => new Date(),
+): Promise<void> {
+  for await (const job of discoverDeliveryProgressionJobs(repository, now)) {
+    await processDeliveryProgressionJob(job, service, now());
   }
 }
 

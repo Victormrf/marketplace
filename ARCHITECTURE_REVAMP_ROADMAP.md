@@ -1,7 +1,7 @@
 # Marketplace — roteiro da próxima fase do revamp
 
-Última atualização: 02/11/2026
-Estado atual: **Fases 3, 4 e 5 concluídas, fase 5 no escopo exploratório reduzido aprovado; fase 6 concluída, próxima 7.1; pendências transversais preservadas**
+Última atualização: 03/11/2026
+Estado atual: **Fases 3, 4 e 5 concluídas, fase 5 no escopo exploratório reduzido aprovado; fase 6 concluída, 7.1 concluída, próxima 7.2; pendências transversais preservadas**
 
 ## Objetivo
 
@@ -125,8 +125,8 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 **Objetivo:** mover trabalho adequado para execução assíncrona com segurança.
 
-- [ ] 7.1 Próxima etapa: selecionar o primeiro caso concreto, começando pelo job de delivery já separado do servidor HTTP; definir o contrato do job e seu ciclo de vida.
-- [ ] 7.2 Executar worker independente com fila, retries, backoff, limites de concorrência e tratamento de falhas persistentes.
+- [x] 7.1 Concluída em 03/11/2026: progressão de deliveries separada em descoberta paginada (keyset/100 registros) e processamento de uma expectativa v1 por mensagem. Contrato restrito aos cinco estados automáticos, IDs de delivery/histórico e cutoff ISO UTC; identidade determinística por delivery/histórico. Relógio continua no último histórico (4/24 h), sem tracking; service e transação PostgreSQL preservados. Aplicado/ignorado explícitos; falhas originais propagadas, ignorando somente concorrência tipada e condições obsoletas. job:deliveries reutiliza as duas funções sem fila. Typecheck/build e test:delivery-progression 20/20 aprovados com doubles/relógio controlado, incluindo 205 candidatos, duplicatas e validação após lock. Nenhum banco/job real executado, dependência instalada ou schema alterado. Ver [resumo e contrato](STEP_7_1_DELIVERY_QUEUE_PREPARATION_SUMMARY.md).
+- [ ] 7.2 Próxima etapa: instalar/configurar BullMQ + Redis e executar worker Node independente, sem HTTP obrigatório, com retries/backoff, concorrência limitada e tratamento de falhas persistentes/payloads inválidos. Redis mantém a fila; PostgreSQL continua autoridade. Admitir mensagens repetidas, sem promessa de exatamente uma vez. Nenhuma infraestrutura instalada na 7.1.
 - [ ] 7.3 Garantir idempotência do consumidor e publicação confiável quando houver alteração de banco seguida de envio à fila, avaliando outbox no caso real.
 - [ ] 7.4 Expandir gradualmente para notificações, reconciliação ou relatórios somente após validar o primeiro caso.
 
@@ -176,4 +176,4 @@ Ao encerrar um item, registrar brevemente a evidência da validação, marcar `[
 
 ## Próximo handoff
 
-Etapa 7.1 — selecionar o primeiro caso concreto de job, começando pelo delivery já separado do servidor HTTP; definir contrato e ciclo de vida antes de implementar fila/worker. Fase 6 concluída com demonstração integrada em 02/11/2026; a fase 7 não foi iniciada nesta entrega. A fase 5 foi concluída no escopo exploratório reduzido aprovado; qualquer nova rodada exige autorização própria, sem repetir tickets ou estender a exceção de RAM. Pendência transversal 2.7, recuperação de reviews próprias e verificação BACKEND_API_URL em produção na fase 11 preservadas; SSR autenticado continua adiado.
+Etapa 7.2 — integrar o contrato de progressão de deliveries da 7.1 com BullMQ + Redis e worker Node independente: instalação/configuração, retries/backoff, concorrência limitada, validação de payload e encerramento. A 7.1 foi concluída sem executar job real ou acessar bancos. Garantia contra efeitos duplicados e publicação confiável continuam foco da 7.3; a transação PostgreSQL não é substituída pela identidade da fila. Fase 6 concluída com demonstração integrada em 02/11/2026; fase 7 em andamento. A fase 5 foi concluída no escopo exploratório reduzido aprovado; qualquer nova rodada exige autorização própria, sem repetir tickets ou estender a exceção de RAM. Pendência transversal 2.7, recuperação de reviews próprias e verificação BACKEND_API_URL em produção na fase 11 preservadas; SSR autenticado continua adiado.
