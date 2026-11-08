@@ -1,0 +1,36 @@
+name: marketplace-delivery-queue
+services:
+  redis:
+    image: redis:7.4.2-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - noeviction
+      - --auto-aof-rewrite-min-size
+      - 16mb
+    ports: ["127.0.0.1:6381:6379"]
+    volumes:
+      - delivery-redis-data:/data
+    mem_limit: 192m
+    cpus: 0.5
+    restart: "no"
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 1m
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+volumes:
+  delivery-redis-data:
+    name: marketplace-delivery-redis-data

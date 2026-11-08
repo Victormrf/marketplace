@@ -18,6 +18,13 @@ const logCodes = [
     "HTTP_CLIENT_ERROR",
     "HTTP_SERVER_ERROR",
     "HTTP_CONNECTION_CLOSED",
+    "INVALID_DELIVERY_JOB",
+    "DATABASE_RETRYABLE_CONFLICT",
+    "UNEXPECTED_DELIVERY_JOB_ERROR",
+    "QUEUE_UNAVAILABLE",
+    "QUEUE_PUBLICATION_FAILED",
+    "WORKER_SHUTDOWN_INCOMPLETE",
+    "QUEUE_SHUTDOWN_INCOMPLETE",
 ];
 const levels = { debug: 10, info: 20, warn: 30, error: 40 };
 const events = [
@@ -28,6 +35,19 @@ const events = [
     "checkout.failed",
     "server.started",
     "server.stopped",
+    "delivery.job.published",
+    "delivery.publication.completed",
+    "delivery.job.completed",
+    "delivery.job.failed",
+    "delivery.queue.failed",
+    "delivery.worker.started",
+    "delivery.worker.stopped",
+    "delivery.discovery.configured",
+    "delivery.discovery.removed",
+    "delivery.discovery.started",
+    "delivery.discovery.completed",
+    "delivery.discovery.failed",
+    "delivery.discovery.stopped",
 ];
 function safeContext(input) {
     var _a;
@@ -64,6 +84,18 @@ function safeContext(input) {
     }
     if (input.code !== undefined && logCodes.includes(input.code)) {
         result.code = input.code;
+    }
+    if (typeof input.jobId === "string" &&
+        /^delivery-progression-v1-[a-f0-9]{64}$/.test(input.jobId)) {
+        result.jobId = input.jobId;
+    }
+    if (input.jobOutcome === "applied" || input.jobOutcome === "ignored") {
+        result.jobOutcome = input.jobOutcome;
+    }
+    for (const field of ["attempt", "count"]) {
+        if (Number.isSafeInteger(input[field]) && input[field] >= 0) {
+            result[field] = input[field];
+        }
     }
     return result;
 }

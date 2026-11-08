@@ -15,6 +15,13 @@ const logCodes = [
   "HTTP_CLIENT_ERROR",
   "HTTP_SERVER_ERROR",
   "HTTP_CONNECTION_CLOSED",
+  "INVALID_DELIVERY_JOB",
+  "DATABASE_RETRYABLE_CONFLICT",
+  "UNEXPECTED_DELIVERY_JOB_ERROR",
+  "QUEUE_UNAVAILABLE",
+  "QUEUE_PUBLICATION_FAILED",
+  "WORKER_SHUTDOWN_INCOMPLETE",
+  "QUEUE_SHUTDOWN_INCOMPLETE",
 ] as const;
 export type LogCode = (typeof logCodes)[number];
 
@@ -28,6 +35,19 @@ const events = [
   "checkout.failed",
   "server.started",
   "server.stopped",
+  "delivery.job.published",
+  "delivery.publication.completed",
+  "delivery.job.completed",
+  "delivery.job.failed",
+  "delivery.queue.failed",
+  "delivery.worker.started",
+  "delivery.worker.stopped",
+  "delivery.discovery.configured",
+  "delivery.discovery.removed",
+  "delivery.discovery.started",
+  "delivery.discovery.completed",
+  "delivery.discovery.failed",
+  "delivery.discovery.stopped",
 ] as const;
 type LogEvent = (typeof events)[number];
 
@@ -39,6 +59,10 @@ type LogContext = {
   outcome?: "finished" | "connection_closed";
   code?: LogCode;
   port?: number;
+  jobId?: string;
+  jobOutcome?: "applied" | "ignored";
+  attempt?: number;
+  count?: number;
 };
 
 type LogRecord = {
@@ -92,6 +116,20 @@ function safeContext(input: LogContext): LogContext {
   }
   if (input.code !== undefined && logCodes.includes(input.code)) {
     result.code = input.code;
+  }
+  if (
+    typeof input.jobId === "string" &&
+    /^delivery-progression-v1-[a-f0-9]{64}$/.test(input.jobId)
+  ) {
+    result.jobId = input.jobId;
+  }
+  if (input.jobOutcome === "applied" || input.jobOutcome === "ignored") {
+    result.jobOutcome = input.jobOutcome;
+  }
+  for (const field of ["attempt", "count"] as const) {
+    if (Number.isSafeInteger(input[field]) && input[field]! >= 0) {
+      result[field] = input[field];
+    }
   }
   return result;
 }
