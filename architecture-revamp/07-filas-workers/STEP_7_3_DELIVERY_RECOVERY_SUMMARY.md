@@ -35,7 +35,7 @@ evento obrigatório que não possa ser reconstruída pela consulta atual.
 Publisher registra identidade segura em falha de publicação. Inspeção read-only
 por jobId mostra estado, tentativas e outcome/código sanitizado. O comando
 `queue:deliveries:status -- --job <id>` não publica e recusa IDs inválidos.
-Instruções e limites: [DELIVERY_QUEUE.md](nodejs-backend/docs/DELIVERY_QUEUE.md).
+Instruções e limites: [DELIVERY_QUEUE.md](../../nodejs-backend/docs/DELIVERY_QUEUE.md).
 
 Typecheck e build aprovados. Testes: progressão **20/20**, fila **11/11**,
 integração fila **7/7**, recuperação **5/5**: **43/43 aprovados**. CLI retornou

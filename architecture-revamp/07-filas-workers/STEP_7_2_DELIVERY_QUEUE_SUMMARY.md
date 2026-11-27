@@ -34,4 +34,4 @@ Concluída em 05/11/2026. Próxima: **7.3**, sem iniciá-la.
   e proteção aprofundada contra efeitos duplicados ficam para 7.3. Sem schema,
   migration, carga, banco de escala, observabilidade nova ou commit.
 
-[Operação, parâmetros, arquivos e evidências](nodejs-backend/docs/DELIVERY_QUEUE.md).
+[Operação, parâmetros, arquivos e evidências](../../nodejs-backend/docs/DELIVERY_QUEUE.md).

@@ -22,7 +22,7 @@
 ## Ambiente e fixtures
 
 As instruções operacionais, comandos de instalação/execução, recuperação,
-relatórios e isolamento estão centralizados no [README E2E](nextjs-frontend/e2e/README.md).
+relatórios e isolamento estão centralizados no [README E2E](../../nextjs-frontend/e2e/README.md).
 O alvo exclusivo é `127.0.0.1:5434/marketplace_e2e`, com o serviço
 `postgres-e2e` em container e armazenamento tmpfs. A primeira rodada partiu com
 esse container parado; o runner o iniciou e aplicou a baseline existente

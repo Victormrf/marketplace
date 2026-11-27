@@ -1,6 +1,6 @@
 # Etapa 6.2 — Métricas básicas locais
 
-Concluída em 31/10/2026. Operação e catálogo das métricas em [METRICS.md](nodejs-backend/docs/METRICS.md).
+Concluída em 31/10/2026. Operação e catálogo das métricas em [METRICS.md](../../nodejs-backend/docs/METRICS.md).
 
 - `prom-client` 15.1.3, registry privado por processo, endpoint `/metrics` opt-in (`METRICS_ENABLED=true`), desabilitado por padrão e restrito a socket loopback. Sem Prometheus/Grafana ou outra stack. Não publicar via proxy externo.
 - HTTP: respostas concluídas, duração, in-flight e abortos separados, usando os mesmos templates da 6.1. Uma finalização, decremento no aborto e scrapes excluídos. Labels sem IDs, URLs concretas ou dados sensíveis. Métricas nativas do processo para CPU/memória e runtime, sem labels de ambiente.

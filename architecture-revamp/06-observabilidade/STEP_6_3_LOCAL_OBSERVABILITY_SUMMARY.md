@@ -30,7 +30,7 @@ Docker. A fase 6 está concluída no escopo local acordado; próxima etapa 7.1.
   Nenhuma escrita de negócio, fixture, carga, purge, produção ou ticket de escala.
 
 Instruções, limitações, evidência de correlação, medidas e comandos centralizados
-em [OBSERVABILITY_LOCAL.md](nodejs-backend/docs/OBSERVABILITY_LOCAL.md).
+em [OBSERVABILITY_LOCAL.md](../../nodejs-backend/docs/OBSERVABILITY_LOCAL.md).
 A conexão Docker foi observada como loopback neste host; exceção remota por IP
 exato + segredo validada por doubles. Sem tracing Next/BFF, Loki ou observabilidade
 de filas fictícia. Pendências transversais preservadas; fase 7 não iniciada.

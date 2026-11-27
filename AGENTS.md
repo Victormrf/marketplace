@@ -14,6 +14,13 @@
 - Do not reformat unrelated files or generate large formatting-only diffs outside the requested scope.
 - Readability takes priority over minimizing the number of lines.
 
+## Architecture revamp documentation
+
+- Keep architecture revamp documents in `architecture-revamp/`, never at the project root.
+- General documents (roadmap, original handoff, backend progress) stay directly in `architecture-revamp/`.
+- Step summaries and proposals go in the folder of their roadmap phase, named `NN-<phase-slug>` (for example, `architecture-revamp/08-cache/`). Create the folder when a phase produces its first document.
+- Use links relative to the document's own folder when referencing other files.
+
 ## Implementation handoff report
 
 - At the end of every implementation handoff, include a concise Markdown table with the columns `Arquivo` and `Responsabilidade`.
