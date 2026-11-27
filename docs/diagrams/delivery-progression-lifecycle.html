@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ciclo de vida da progressão assíncrona de deliveries</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-paper: #f5f5f5;
+      --color-ink: #2d3142;
+      --color-muted: #4f5d75;
+      --color-accent: #bf4520;
+      --font-sans: 'Geist', system-ui, sans-serif;
+      --font-serif: 'Instrument Serif', 'Noto Serif', serif;
+      --font-mono: 'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1320px; width: 100%; }
+
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 1280px; display: block; }
+
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Swimlane · Fase 7 · Deliveries</p>
+    <h1>Ciclo de vida da progressão assíncrona de deliveries</h1>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="delivery-progression-lifecycle-title delivery-progression-lifecycle-desc">
+        <title id="delivery-progression-lifecycle-title">Progressão assíncrona de deliveries</title>
+        <desc id="delivery-progression-lifecycle-desc">Swimlane mostrando o scheduler do BullMQ disparando a descoberta paginada, a publicação de jobs com identidade determinística, o worker que valida e delega ao service, e a transição atômica no PostgreSQL, que é onde ficam as garantias contra efeitos duplicados.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+        </defs>
+
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+        <!-- Lane dividers -->
+        <line x1="40" y1="80" x2="1240" y2="80" stroke="rgba(45,49,66,0.22)" stroke-width="1"/>
+        <line x1="40" y1="184" x2="1240" y2="184" stroke="rgba(45,49,66,0.10)" stroke-width="1"/>
+        <line x1="40" y1="288" x2="1240" y2="288" stroke="rgba(45,49,66,0.10)" stroke-width="1"/>
+        <line x1="40" y1="392" x2="1240" y2="392" stroke="rgba(45,49,66,0.10)" stroke-width="1"/>
+        <line x1="40" y1="496" x2="1240" y2="496" stroke="rgba(45,49,66,0.10)" stroke-width="1"/>
+        <line x1="40" y1="600" x2="1240" y2="600" stroke="rgba(45,49,66,0.22)" stroke-width="1"/>
+        <line x1="200" y1="80" x2="200" y2="600" stroke="rgba(45,49,66,0.22)" stroke-width="1"/>
+
+        <!-- Lane labels -->
+        <text x="56" y="128" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">SCHEDULER</text>
+        <text x="56" y="142" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">bullmq · redis</text>
+        <text x="56" y="232" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">DESCOBERTA</text>
+        <text x="56" y="246" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">worker · conc. 1</text>
+        <text x="56" y="336" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">FILA</text>
+        <text x="56" y="350" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">delivery-progression</text>
+        <text x="56" y="440" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">PROGRESSÃO</text>
+        <text x="56" y="454" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">worker + service</text>
+        <text x="56" y="544" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">POSTGRESQL</text>
+        <text x="56" y="558" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">fonte da verdade</text>
+
+        <!-- Arrows (drawn before nodes) -->
+        <path d="M 392,132 H 504 Q 512,132 512,140 V 206" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <line x1="512" y1="264" x2="512" y2="518" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <path d="M 600,236 H 704 Q 712,236 712,244 V 310" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <line x1="712" y1="368" x2="712" y2="414" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <line x1="792" y1="444" x2="822" y2="444" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <line x1="912" y1="472" x2="912" y2="518" stroke="#bf4520" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <path d="M 1000,548 H 1048 Q 1056,548 1056,540 V 486" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <path d="M 1104,404 V 348 Q 1104,340 1096,340 H 794" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <line x1="824" y1="548" x2="602" y2="548" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+        <!-- Arrow labels -->
+        <rect x="418" y="114" width="48" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="442" y="123" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">JOB V1</text>
+
+        <rect x="520" y="326" width="48" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="544" y="335" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">SELECT</text>
+
+        <rect x="722" y="258" width="76" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="760" y="267" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">ADD + JOBID</text>
+
+        <rect x="720" y="376" width="56" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="748" y="385" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">CONSUMO</text>
+
+        <rect x="920" y="488" width="64" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="952" y="497" fill="#bf4520" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">TRANSAÇÃO</text>
+
+        <rect x="1064" y="506" width="64" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="1096" y="515" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">RESULTADO</text>
+
+        <rect x="912" y="322" width="88" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="956" y="331" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">RETRY · 1S/2S</text>
+
+        <rect x="664" y="528" width="96" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="712" y="537" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">NOVO HISTÓRICO</text>
+
+        <!-- Scheduler: periodic tick -->
+        <rect x="232" y="104" width="160" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="312" y="126" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Tick periódico</text>
+        <text x="312" y="140" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">every: 300000 ms</text>
+        <text x="312" y="152" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">delivery-discovery-v1</text>
+
+        <!-- Discovery worker -->
+        <rect x="424" y="208" width="176" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="512" y="230" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Descobrir elegíveis</text>
+        <text x="512" y="244" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">keyset · 100 por página</text>
+        <text x="512" y="256" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">filtro 4 h / 24 h em memória</text>
+
+        <!-- Progression queue -->
+        <rect x="632" y="312" width="160" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="712" y="334" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Job de progressão</text>
+        <text x="712" y="348" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">jobId = sha256(id, hist.)</text>
+        <text x="712" y="360" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">payload v1 mínimo</text>
+
+        <!-- Progression worker: validate -->
+        <rect x="632" y="416" width="160" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="712" y="438" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Validar contrato</text>
+        <text x="712" y="452" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">version · campos · UTC</text>
+        <text x="712" y="464" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">cutoff ≤ agora − prazo</text>
+
+        <!-- Service: next status -->
+        <rect x="824" y="416" width="176" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="912" y="438" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Decidir próximo status</text>
+        <text x="912" y="452" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">DeliveryService</text>
+        <text x="912" y="464" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">SEPARATED → … → DELIVERED</text>
+
+        <!-- Outcome -->
+        <rect x="1040" y="404" width="192" height="80" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="1136" y="426" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Resultado do job</text>
+        <text x="1136" y="442" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">applied → completed</text>
+        <text x="1136" y="456" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ignored → completed, sem efeito</text>
+        <text x="1136" y="470" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">failed → 3x transitório, retido</text>
+
+        <!-- PostgreSQL: paginated read -->
+        <rect x="424" y="520" width="176" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="512" y="542" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Ler candidatas</text>
+        <text x="512" y="556" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">status ∉ DELIVERED, RETURNED</text>
+        <text x="512" y="568" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">+ último histórico</text>
+
+        <!-- PostgreSQL: atomic transition (focal) -->
+        <rect x="824" y="520" width="176" height="56" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+        <text x="912" y="542" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Transição atômica</text>
+        <text x="912" y="556" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">FOR UPDATE + releitura</text>
+        <text x="912" y="568" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">status + histórico, mesma tx</text>
+
+        <!-- Annotation callouts -->
+        <text x="880" y="122" fill="#2d3142" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif">Duplicata, atraso ou reentrega após crash:</text>
+        <text x="880" y="140" fill="#2d3142" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif">a releitura vê o histórico novo e devolve ignored.</text>
+
+        <text x="1076" y="560" fill="#2d3142" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif">As garantias moram aqui.</text>
+        <text x="1076" y="578" fill="#2d3142" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif">O Redis só entrega jobs.</text>
+
+        <!-- Legend -->
+        <line x1="40" y1="628" x2="1240" y2="628" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <text x="40" y="646" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGENDA</text>
+
+        <rect x="40" y="664" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="60" y="672" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif">Etapa de processamento</text>
+
+        <rect x="204" y="664" width="14" height="10" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="224" y="672" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif">Estado armazenado</text>
+
+        <rect x="348" y="664" width="14" height="10" rx="2" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+        <text x="368" y="672" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif">Garantia de negócio</text>
+
+        <line x1="500" y1="670" x2="528" y2="670" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <text x="536" y="672" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif">Fluxo do job</text>
+
+        <line x1="628" y1="670" x2="656" y2="670" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <text x="664" y="672" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif">Retry ou próximo ciclo (4 h / 24 h)</text>
+
+        <line x1="860" y1="670" x2="888" y2="670" stroke="#bf4520" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <text x="896" y="672" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif">Chamada transacional</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
