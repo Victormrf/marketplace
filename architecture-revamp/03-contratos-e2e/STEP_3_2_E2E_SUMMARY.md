@@ -9,7 +9,7 @@ limpeza conferida no final de cada teste, screenshots e traces em falhas.
 ## Execução
 
 Pré-requisitos, comandos, isolamento, fixtures, relatórios e recuperação após
-interrupção estão centralizados no [README E2E](nextjs-frontend/e2e/README.md).
+interrupção estão centralizados no [README E2E](../../nextjs-frontend/e2e/README.md).
 
 ## Evidências
 

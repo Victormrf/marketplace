@@ -22,6 +22,6 @@ toolchain, commit-base, fixtures e limitações.
 
 Toolchain, composição das fixtures, lista das jornadas e limites estão em
 [E2E_FUNCTIONAL_BASELINE.md](E2E_FUNCTIONAL_BASELINE.md). Os passos de operação
-estão em [README E2E](nextjs-frontend/e2e/README.md). A captura de pagamento
+estão em [README E2E](../../nextjs-frontend/e2e/README.md). A captura de pagamento
 usa o simulador interno; a suíte não substitui testes de concorrência em escala
 nem valida integrações reais externas.

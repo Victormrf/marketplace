@@ -17,7 +17,7 @@ scheduler ao iniciar. Concorrência global Redis 1 limita consumidores de
 descoberta em processos distintos. Reutilizados contrato de progressão, clocks,
 locks, classificação segura, três tentativas limitadas, retenção e shutdown.
 
-Operação documentada em [DELIVERY_QUEUE.md](nodejs-backend/docs/DELIVERY_QUEUE.md):
+Operação documentada em [DELIVERY_QUEUE.md](../../nodejs-backend/docs/DELIVERY_QUEUE.md):
 scripts schedule:deliveries:configure/status/remove e worker:deliveries:discovery;
 worker:deliveries continua responsável por avançar uma delivery de cada vez.
 

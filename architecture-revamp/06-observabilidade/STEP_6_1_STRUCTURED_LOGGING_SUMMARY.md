@@ -4,7 +4,7 @@ Implementação restrita ao Express: logger JSON centralizado nativo do Node, n�
 
 - Middleware antes do parser gera/valida UUID, devolve `X-Request-ID`, oferece `req.requestId` e contexto aos services. Um evento de conclusão por request registra template seguro, status/duração e finalização ou fechamento antecipado; antes dos headers, status null.
 - Checkout registra criação, replay, conflito esperado e falha inesperada com o mesmo ID. Mensagens/stacks de erros não são serializadas; códigos fixos e allowlists protegem o contexto. Nenhuma regra, resposta de negócio, transação, lock ou idempotência alterada.
-- Política de redação, exemplo sanitizado de correlação, configuração e cuidados de retenção em [REQUEST_LOGGING.md](nodejs-backend/docs/REQUEST_LOGGING.md).
+- Política de redação, exemplo sanitizado de correlação, configuração e cuidados de retenção em [REQUEST_LOGGING.md](../../nodejs-backend/docs/REQUEST_LOGGING.md).
 - Validação inicial (26/10/2026): typecheck (`npx tsc --noEmit`), build e `npm run test:logging` **14/14 aprovados**. Testes usam HTTP real local com logger capturado e persistência substituída por doubles, sem banco/dataset de escala; o sandbox inicialmente bloqueou loopback com EACCES, e a execução com permissão local passou. A suíte integra `test:all`.
 - Arquivos principais: `src/utils/logger.ts` seleciona/sanitiza campos e controla nível/sink; `src/utils/requestContext.ts` mantém contexto; `src/middlewares/requestLogging.ts` identifica e encerra chamadas; checkout service/controller emitem eventos seguros. `dist` foi gerado exclusivamente pelo build, mantendo a política de versionamento existente.
 
